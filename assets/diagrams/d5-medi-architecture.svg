@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+    <marker id="arrowM" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d600aa"/>
+    </marker>
+    <style>
+      .bg{fill:#1b1b1f}
+      .title{fill:#ffffff;font-size:34px;font-weight:700}
+      .sub{fill:#b4b4be;font-size:16px;font-family:'Open Sans',sans-serif}
+      .node{fill:#232328;stroke:#a78bfa;stroke-width:1.5;rx:10}
+      .doc{fill:#241a22;stroke:#d600aa;stroke-width:1.5;rx:10}
+      .ntext{fill:#ffffff;font-size:17px;font-weight:700}
+      .small{fill:#ededf2;font-size:14px;font-family:'Open Sans',sans-serif}
+      .mono{font-family:'Cascadia Code',Consolas,monospace}
+      .pill{fill:#15151a;stroke:rgba(255,255,255,0.14);stroke-width:1;rx:8}
+      .accent{fill:#f5b8e6}
+      .legend{fill:#15151a;stroke:rgba(255,255,255,0.14);stroke-width:1;rx:10}
+      .label{fill:#d600aa;font-size:14px;font-weight:700;font-family:'Open Sans',sans-serif}
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+  <text class="title" x="60" y="66">MEDI architecture</text>
+  <text class="sub" x="60" y="94">document readers produce structured documents; processors and chunkers carry typed page provenance</text>
+
+  <!-- Pipeline nodes -->
+  <rect class="node" x="52" y="210" width="150" height="110" rx="10" stroke="#512bd4"/>
+  <text class="ntext mono" x="72" y="244">Reader</text>
+  <text class="small" x="72" y="272">Ingestion</text>
+  <text class="small" x="72" y="292">DocumentReader</text>
+
+  <rect class="doc" x="230" y="185" width="210" height="160" rx="10"/>
+  <text class="ntext mono" x="250" y="219">IngestionDocument</text>
+  <rect class="pill" x="250" y="238" width="170" height="32" rx="8"/>
+  <text class="small" x="268" y="259">Sections / Elements</text>
+  <rect class="pill" x="250" y="278" width="170" height="32" rx="8"/>
+  <text class="small" x="268" y="299">PageNumber</text>
+  <rect class="pill" x="250" y="318" width="170" height="32" rx="8"/>
+  <text class="small accent" x="268" y="339">Metadata bag</text>
+
+  <rect class="node" x="468" y="210" width="142" height="110" rx="10"/>
+  <text class="ntext" x="488" y="244">Document</text>
+  <text class="ntext" x="488" y="267">Processors</text>
+  <text class="small" x="488" y="294">normalize</text>
+
+  <rect class="node" x="638" y="210" width="110" height="110" rx="10"/>
+  <text class="ntext" x="658" y="252">Chunker</text>
+  <text class="small" x="658" y="282">split</text>
+
+  <rect class="node" x="776" y="210" width="154" height="110" rx="10"/>
+  <text class="ntext" x="796" y="244">Chunk</text>
+  <text class="ntext" x="796" y="267">Processors</text>
+  <text class="small" x="796" y="294">embed / enrich</text>
+
+  <rect class="node" x="958" y="210" width="170" height="110" rx="10"/>
+  <text class="ntext mono" x="978" y="244">ChunkWriter&lt;T&gt;</text>
+  <text class="small" x="978" y="272">Ingestion</text>
+  <text class="small" x="978" y="292">ChunkWriter&lt;T&gt;</text>
+
+  <rect class="node" x="1156" y="210" width="84" height="110" rx="10" stroke="#512bd4"/>
+  <text class="ntext" x="1174" y="252">vector</text>
+  <text class="ntext" x="1174" y="275">store</text>
+  <text class="small" x="1174" y="302">top-k</text>
+
+  <!-- Flow arrows -->
+  <line x1="202" y1="265" x2="228" y2="265" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="440" y1="265" x2="466" y2="265" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="610" y1="265" x2="636" y2="265" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="748" y1="265" x2="774" y2="265" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="930" y1="265" x2="956" y2="265" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1128" y1="265" x2="1154" y2="265" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Metadata propagation lane -->
+  <path d="M335 378 C440 410, 562 410, 690 392 S945 370, 1198 392" fill="none" stroke="#d600aa" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arrowM)"/>
+  <text class="label" x="360" y="430">#7516 typed page provenance: PageNumber flows into chunk.Pages</text>
+  <text class="label" x="450" y="456">metadata enrichments stay separate; writer decides persistence</text>
+  <circle cx="335" cy="378" r="5" fill="#d600aa"/>
+  <circle cx="690" cy="392" r="5" fill="#d600aa"/>
+  <circle cx="1043" cy="378" r="5" fill="#d600aa"/>
+  <circle cx="1198" cy="392" r="5" fill="#d600aa"/>
+
+  <!-- Diagnostics callout -->
+  <rect class="legend" x="700" y="510" width="470" height="90" rx="10" stroke="#d600aa"/>
+  <text class="ntext" x="724" y="544" fill="#f5b8e6">observability is emitted by the pipeline</text>
+  <text class="sub" x="724" y="572">OpenTelemetry activities via ActivitySource</text>
+  <text class="sub" x="724" y="594">+ structured logs through ILogger</text>
+  <line x1="1030" y1="510" x2="1030" y2="324" stroke="#d600aa" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowM)"/>
+
+  <rect class="legend" x="82" y="520" width="470" height="70" rx="10"/>
+  <text class="sub" x="106" y="550">Readers can be PdfPigReader, OcrDocumentReader, or custom sources.</text>
+  <text class="sub" x="106" y="574">Downstream stages stay document-shaped.</text>
+</svg>

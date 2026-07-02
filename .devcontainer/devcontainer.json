@@ -1,0 +1,25 @@
+{
+  "name": "reveal-presentation-template",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:1-10.0",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "lts" },
+    "ghcr.io/devcontainers/features/azure-cli:1": {}
+  },
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "Slides", "onAutoForward": "openPreview" }
+  },
+  "postCreateCommand": "npm install",
+  "containerEnv": {
+    "DOTNET_NOLOGO": "1",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit"
+      ]
+    }
+  }
+}

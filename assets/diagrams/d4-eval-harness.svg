@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+    <style>
+      .bg{fill:#1b1b1f}
+      .title{fill:#ffffff;font-size:34px;font-weight:700}
+      .sub{fill:#b4b4be;font-size:16px;font-family:'Open Sans',sans-serif}
+      .node{fill:#232328;stroke:#a78bfa;stroke-width:1.5;rx:10}
+      .ntext{fill:#ffffff;font-size:18px;font-weight:700}
+      .mono{font-family:'Cascadia Code',Consolas,monospace}
+      .ex{fill:#15151a;stroke:rgba(255,255,255,0.14);stroke-width:1;rx:8}
+      .etext{fill:#ededf2;font-size:16px;font-family:'Open Sans',sans-serif}
+      .eval{fill:#241a22;stroke:#d600aa;stroke-width:1.5;rx:10}
+      .evtext{fill:#f5b8e6;font-size:16px;font-weight:700;font-family:'Open Sans',sans-serif}
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+  <text class="title" x="60" y="66">Do OCR engines beat naive PdfPig? Measure it.</text>
+  <text class="sub" x="60" y="94">Two encodings of one document, one downstream pipeline. The only variable is extraction. Two evaluators score each — one custom, one built-in.</text>
+
+  <!-- doc -->
+  <rect class="node" x="60" y="150" width="150" height="70" rx="10" stroke="#512bd4"/>
+  <text class="ntext" x="80" y="182">document</text>
+  <text class="sub" x="80" y="204">tables + figures</text>
+
+  <!-- extractors column -->
+  <rect class="ex" x="300" y="130" width="300" height="46" rx="8"/><text class="etext mono" x="320" y="159">pdfpig-native  <tspan fill="#b4b4be">baseline</tspan></text>
+  <rect class="ex" x="300" y="186" width="300" height="46" rx="8"/><text class="etext mono" x="320" y="215">mistral-ocr</text>
+  <rect class="ex" x="300" y="242" width="300" height="46" rx="8"/><text class="etext mono" x="320" y="271">azure-di</text>
+  <rect class="ex" x="300" y="298" width="300" height="46" rx="8"/><text class="etext mono" x="320" y="327">vision-llm</text>
+
+  <!-- pipeline -->
+  <rect class="node" x="680" y="186" width="230" height="102" rx="10" stroke="#512bd4"/>
+  <text class="ntext" x="700" y="218">same pipeline</text>
+  <text class="sub" x="700" y="244">chunk → retrieve</text>
+  <text class="sub" x="700" y="266">→ answer</text>
+
+  <!-- evaluators -->
+  <rect class="eval" x="980" y="150" width="240" height="90" rx="10"/>
+  <text class="evtext" x="1000" y="180">OcrExtractionEvaluator</text>
+  <text class="sub" x="1000" y="202">custom · deterministic</text>
+  <text class="sub" x="1000" y="224">yield · tables · images · coverage</text>
+
+  <rect class="eval" x="980" y="256" width="240" height="70" rx="10" stroke="#a78bfa"/>
+  <text class="evtext" x="1000" y="286" fill="#c9b8ff">F1Evaluator</text>
+  <text class="sub" x="1000" y="308">built-in NLP · answer vs reference</text>
+
+  <!-- arrows doc->extractors -->
+  <line x1="210" y1="185" x2="298" y2="153" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="210" y1="185" x2="298" y2="209" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="210" y1="185" x2="298" y2="265" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="210" y1="185" x2="298" y2="321" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <!-- extractors -> pipeline -->
+  <line x1="600" y1="237" x2="678" y2="237" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <!-- pipeline -> evaluators -->
+  <line x1="910" y1="220" x2="978" y2="195" stroke="#d600aa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="910" y1="255" x2="978" y2="285" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- leaderboard -->
+  <rect class="node" x="60" y="380" width="1160" height="306" rx="12" stroke="#512bd4"/>
+  <text class="ntext" x="84" y="410">Leaderboard  <tspan class="sub" font-family="'Open Sans',sans-serif">— born-digital + scanned USGS twins · sorted by F1 · no gold accuracy claimed</tspan></text>
+
+  <!-- two side-by-side tables: born-digital | scanned -->
+  <line x1="620" y1="428" x2="620" y2="616" stroke="rgba(255,255,255,0.14)"/>
+  <text class="sub" x="100" y="440" font-weight="700" fill="#8ce89a">born-digital</text>
+  <text class="sub" x="660" y="440" font-weight="700" fill="#ffb17a">scanned · image-only</text>
+
+  <!-- column headers -->
+  <g font-family="'Open Sans',sans-serif" font-size="13" font-weight="700" fill="#ffffff">
+    <text x="100" y="464">Extractor</text><text x="360" y="464">T+F</text><text x="440" y="464">Cov</text><text x="530" y="464">F1</text>
+    <text x="660" y="464">Extractor</text><text x="920" y="464">T+F</text><text x="1000" y="464">Cov</text><text x="1090" y="464">F1</text>
+  </g>
+  <line x1="100" y1="472" x2="600" y2="472" stroke="rgba(255,255,255,0.14)"/>
+  <line x1="660" y1="472" x2="1180" y2="472" stroke="rgba(255,255,255,0.14)"/>
+
+  <!-- born-digital rows (sorted by F1) -->
+  <g font-family="'Open Sans',sans-serif" font-size="15" fill="#ededf2">
+    <text x="100" y="498" class="mono">mistral-ocr</text>
+    <text x="360" y="498" fill="#8ce89a">0/1</text><text x="440" y="498">100%</text><text x="530" y="498" fill="#8ce89a">0.65</text>
+    <text x="100" y="524" class="mono" fill="#b4b4be">pdfpig-native</text>
+    <text x="360" y="524">0/0</text><text x="440" y="524">100%</text><text x="530" y="524" fill="#8ce89a">0.65</text>
+    <text x="100" y="550" class="mono">pdfpig+ocr-fallback</text>
+    <text x="360" y="550">0/0</text><text x="440" y="550">100%</text><text x="530" y="550">0.64</text>
+    <text x="100" y="576" class="mono">vision-llm</text>
+    <text x="360" y="576">0/0</text><text x="440" y="576">100%</text><text x="530" y="576">0.62</text>
+    <text x="100" y="602" class="mono" fill="#f5b8e6">azure-di</text>
+    <text x="360" y="602" fill="#8ce89a">3/3</text><text x="440" y="602">100%</text><text x="530" y="602">0.57</text>
+  </g>
+
+  <!-- scanned rows (sorted by F1) -->
+  <g font-family="'Open Sans',sans-serif" font-size="15" fill="#ededf2">
+    <text x="660" y="498" class="mono">pdfpig+ocr-fallback</text>
+    <text x="920" y="498" fill="#8ce89a">0/3</text><text x="1000" y="498">100%</text><text x="1090" y="498" fill="#8ce89a">0.71</text>
+    <text x="660" y="524" class="mono">vision-llm</text>
+    <text x="920" y="524">0/0</text><text x="1000" y="524">100%</text><text x="1090" y="524">0.63</text>
+    <text x="660" y="550" class="mono">mistral-ocr</text>
+    <text x="920" y="550" fill="#8ce89a">0/3</text><text x="1000" y="550">100%</text><text x="1090" y="550">0.62</text>
+    <text x="660" y="576" class="mono" fill="#f5b8e6">azure-di</text>
+    <text x="920" y="576" fill="#8ce89a">3/3</text><text x="1000" y="576">100%</text><text x="1090" y="576">0.58</text>
+    <text x="660" y="602" class="mono" fill="#ff8a8a">pdfpig-native</text>
+    <text x="920" y="602" fill="#ff8a8a">0/0</text><text x="1000" y="602" fill="#ff8a8a">0%</text><text x="1090" y="602" fill="#ff8a8a">0.21</text>
+  </g>
+
+  <line x1="100" y1="616" x2="1180" y2="616" stroke="rgba(255,255,255,0.10)"/>
+  <text class="sub" x="100" y="638" font-size="13.5" fill="#b4b4be"><tspan fill="#ededf2" font-weight="700">T+F</tspan> tables + figures recovered · <tspan fill="#ededf2" font-weight="700">Cov</tspan> authored facts found in text (floor check) · <tspan fill="#ededf2" font-weight="700">F1</tspan> answer word-overlap vs reference, 0–1</text>
+  <text class="sub" x="100" y="662" font-size="16">born-digital → native PdfPig <tspan fill="#8ce89a">ties on F1</tspan> (answer text is in the layer) but recovers <tspan fill="#ff8a8a">0 tables / 0 figures</tspan>;</text>
+  <text class="sub" x="100" y="682" font-size="16">scanned → native <tspan fill="#ff8a8a">collapses to 0% coverage</tspan> — OCR is the only path that reads the page. Structure lives in T+F, not F1.</text>
+</svg>

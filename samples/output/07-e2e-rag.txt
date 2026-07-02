@@ -1,0 +1,6 @@
+OCR -> reader: 12 pages of structured elements
+Chunked: 22 chunks, each carrying its source page (from #7516)
+Retrieved 4 chunks: pages 9, 6
+
+Q: how do I purify water and how long do I wait?
+A: To purify water using the Life Guard X Emergency Survival Kit, first locate the portable water filter in the kit. Extend the tubing and securely attach it to the water source with a tight seal. Then, pump the handle to force water through the filtration membrane, which removes 99.9999% of waterborne bacteria and 99.9% of waterborne protozoan parasites, making the water safe to drink. Alternatively, you can use the water purification tablets by placing the appropriate number of tablets into the water to be treated. After adding the tablets, wait for the recommended time before consuming the water (exact waiting time is specified in the kit's instructions) [page 9].

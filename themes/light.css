@@ -1,0 +1,32 @@
+/* =====================================================================
+   THEME: light
+   A worked example of a second theme. It changes only token values, no
+   structural CSS. Swap to it by pointing the one themes/ <link> in
+   index.html at themes/light.css. This proves a theme is a one-line swap.
+   ===================================================================== */
+
+:root {
+  /* Brand */
+  --brand-primary: #1f6feb;
+  --brand-primary-bright: #1f6feb;
+  --brand-accent: #cf222e;
+  --brand-gradient: linear-gradient(120deg, var(--brand-primary), var(--brand-accent));
+
+  /* Surfaces + text */
+  --deck-bg: #fbfbfd;
+  --deck-surface: #ffffff;
+  --deck-text: #1c1c22;
+  --deck-heading: #0b0b0f;
+  --deck-muted: #5a5a66;
+  --deck-line: rgba(0, 0, 0, 0.12);
+  /* Code blocks stay dark so the monokai syntax theme keeps its contrast. */
+  --deck-code-bg: #15151a;
+  --deck-quote-bg: rgba(0, 0, 0, 0.03);
+
+  /* Derived accents (links, code, selection) */
+  --brand-link-hover: #0a4fb4;
+  --brand-link-underline: rgba(31, 111, 235, 0.35);
+  --brand-selection: rgba(31, 111, 235, 0.18);
+  --brand-inline-code-bg: rgba(31, 111, 235, 0.1);
+  --brand-inline-code-text: #0a4fb4;
+}

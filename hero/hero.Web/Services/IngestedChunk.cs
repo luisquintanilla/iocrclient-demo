@@ -1,0 +1,11 @@
+﻿using Microsoft.Extensions.DataIngestion;
+using Microsoft.Extensions.VectorData;
+
+namespace hero.Web.Services;
+
+public class IngestedChunk : IngestionChunkVectorRecord
+{
+    public const int VectorDimensions = 1536; // 1536 is the default vector size for the OpenAI text-embedding-3-small model
+    public const string VectorDistanceFunction = DistanceFunction.CosineDistance;
+    public const string CollectionName = "data-hero-chunks";
+}

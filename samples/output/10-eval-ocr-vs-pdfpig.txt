@@ -1,0 +1,25 @@
+document : data/usgs-petroleum-assessment.pdf
+questions: 6   known facts: 11
+
+--- pdfpig-native ---
+  pages=2 tables=0 images=0 yield=11657 chars, coverage=100 %, avgF1=0.61, 499ms
+
+--- mistral-ocr ---
+  pages=2 tables=0 images=1 yield=12657 chars, coverage=100 %, avgF1=0.64, 6020ms
+
+--- azure-di ---
+  pages=2 tables=3 images=3 yield=14847 chars, coverage=100 %, avgF1=0.60, 7479ms
+
+--- vision-llm ---
+  pages=1 tables=0 images=0 yield=11901 chars, coverage=100 %, avgF1=0.63, 55908ms
+
+| Extractor | Pages | Tables | Images | Yield (chars) | Coverage | avg F1 | ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| azure-di | 2 | 3 | 3 | 14847 | 100 % | 0.60 | 7479 |
+| mistral-ocr | 2 | 0 | 1 | 12657 | 100 % | 0.64 | 6020 |
+| vision-llm | 1 | 0 | 0 | 11901 | 100 % | 0.63 | 55908 |
+| pdfpig-native | 2 | 0 | 0 | 11657 | 100 % | 0.61 | 499 |
+
+Takeaway: on this born-digital PDF, pdfpig-native ties on text (coverage 100 %, F1 0.61) at a fraction of the latency (499ms), but recovers 0 tables / 0 figures. azure-di surfaces 3 table(s) + 3 figure(s) — the structure the naive text layer cannot see, and the only path that reads scanned pages at all.
+
+report -> bench/report/leaderboard.md

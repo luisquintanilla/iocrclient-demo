@@ -1,0 +1,36 @@
+{
+  "document": "usgs-petroleum-assessment.pdf",
+  "note": "Authored Q&A over a public-domain USGS fact sheet (Timan-Pechora Basin assessment, 2018). References are hand-written; knownFacts are short strings a faithful extraction should surface. No gold accuracy is claimed — F1 is against these references, KnownFactCoverage is a reference-free structural check.",
+  "questions": [
+    {
+      "question": "What is the mean estimate of undiscovered technically recoverable oil in the province?",
+      "reference": "The mean undiscovered technically recoverable oil is about 1.4 billion barrels.",
+      "knownFacts": ["1.4 billion barrels", "timan-pechora"]
+    },
+    {
+      "question": "What is the mean estimate of undiscovered gas in the province?",
+      "reference": "The mean undiscovered gas is about 46 trillion cubic feet.",
+      "knownFacts": ["46 trillion cubic feet"]
+    },
+    {
+      "question": "How many continuous assessment units were assessed?",
+      "reference": "Four continuous assessment units were assessed.",
+      "knownFacts": ["four", "assessment unit"]
+    },
+    {
+      "question": "Where is most of the assessed gas located?",
+      "reference": "Most of the gas, about 78 percent, is in the Ural Foredeep Continuous Gas assessment unit.",
+      "knownFacts": ["ural foredeep", "78"]
+    },
+    {
+      "question": "What is the total organic carbon content of the source rocks?",
+      "reference": "The source rocks have high total organic carbon, up to about 20 weight percent.",
+      "knownFacts": ["total organic carbon", "20"]
+    },
+    {
+      "question": "Who conducted the assessment and in what year?",
+      "reference": "The U.S. Geological Survey conducted the assessment in 2018.",
+      "knownFacts": ["u.s. geological survey", "2018"]
+    }
+  ]
+}

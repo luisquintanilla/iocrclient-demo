@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+    <marker id="arrowM" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d600aa"/>
+    </marker>
+    <style>
+      .bg{fill:#1b1b1f}
+      .title{fill:#ffffff;font-size:34px;font-weight:700}
+      .sub{fill:#b4b4be;font-size:16px;font-family:'Open Sans',sans-serif}
+      .node{fill:#232328;stroke:#a78bfa;stroke-width:1.5;rx:10}
+      .ntext{fill:#ffffff;font-size:19px;font-weight:700}
+      .sink{fill:#15151a;stroke:rgba(255,255,255,0.14);stroke-width:1;rx:7}
+      .stext{fill:#ededf2;font-size:15px;font-family:'Open Sans',sans-serif}
+      .mono{font-family:'Cascadia Code',Consolas,monospace}
+      .boundary{fill:none;stroke:#d600aa;stroke-width:2;stroke-dasharray:7 6;rx:16}
+      .blabel{fill:#d600aa;font-size:15px;font-weight:700;font-family:'Open Sans',sans-serif}
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+  <text class="title" x="60" y="66">Data flow &amp; the boundary</text>
+  <text class="sub" x="60" y="94">IOcrClient owns "bytes → structured pages" and is usable directly. OcrDocumentReader WRAPS it — calls ExtractAsync, maps the result into a document.</text>
+
+  <!-- boundary regions -->
+  <rect class="boundary" x="40" y="130" width="470" height="470" rx="16"/>
+  <text class="blabel" x="60" y="156">IOcrClient — a capability</text>
+  <rect class="boundary" x="540" y="130" width="700" height="470" rx="16" stroke="#512bd4"/>
+  <text class="blabel" x="560" y="156" fill="#a78bfa">IngestionDocumentReader / MEDI — a pipeline</text>
+
+  <!-- input -->
+  <rect class="node" x="80" y="190" width="180" height="66" rx="10" stroke="#512bd4"/>
+  <text class="ntext" x="100" y="222">PDF / image</text>
+  <text class="sub" x="100" y="244">stream · DataContent · UriContent</text>
+
+  <!-- ocr client -->
+  <rect class="node" x="80" y="300" width="390" height="60" rx="10"/>
+  <text class="ntext mono" x="100" y="336">IOcrClient.ExtractAsync</text>
+
+  <!-- OcrResult with sinks -->
+  <rect class="node" x="80" y="404" width="390" height="176" rx="10"/>
+  <text class="ntext mono" x="100" y="434">OcrResult → OcrPage[]</text>
+  <rect class="sink" x="100" y="448" width="160" height="36" rx="7"/><text class="stext" x="116" y="472">Markdown text</text>
+  <rect class="sink" x="272" y="448" width="176" height="36" rx="7"/><text class="stext" x="288" y="472">Tables (rows×cols)</text>
+  <rect class="sink" x="100" y="494" width="160" height="36" rx="7"/><text class="stext" x="116" y="518">Blocks + bbox</text>
+  <rect class="sink" x="272" y="494" width="176" height="36" rx="7" stroke="#d600aa"/><text class="stext" x="288" y="518" fill="#f5b8e6">Images / figures</text>
+  <rect class="sink" x="100" y="540" width="348" height="30" rx="7"/><text class="stext" x="116" y="561">Confidence · language · AdditionalProperties</text>
+
+  <!-- reader (wraps the capability) -->
+  <rect class="node" x="576" y="250" width="300" height="62" rx="10" stroke="#512bd4"/>
+  <text class="ntext mono" x="596" y="280">OcrDocumentReader</text>
+  <text class="sub" x="596" y="300">wraps IOcrClient · maps → IngestionDocument</text>
+
+  <rect class="node" x="576" y="344" width="300" height="62" rx="10" stroke="#512bd4"/>
+  <text class="ntext mono" x="596" y="374">IngestionDocument</text>
+  <text class="sub" x="596" y="394">+ PageNumber, metadata</text>
+
+  <!-- pipeline (linear: doc → chunk → retrieve → cited answer) -->
+  <rect class="node" x="576" y="438" width="300" height="62" rx="10" stroke="#512bd4"/>
+  <text class="ntext" x="596" y="468">chunk</text>
+  <text class="sub" x="700" y="468">PageNumber → chunk.Pages (#7516)</text>
+
+  <rect class="node" x="940" y="438" width="270" height="62" rx="10" stroke="#512bd4"/>
+  <text class="ntext" x="960" y="468">retrieve → answer</text>
+  <text class="sub" x="960" y="488">grounded on chunks</text>
+
+  <rect class="node" x="940" y="344" width="270" height="62" rx="10" stroke="#d600aa"/>
+  <text class="ntext" x="960" y="374">cited answer</text>
+  <text class="sub" x="960" y="394">[page N] provenance</text>
+
+  <!-- figure enrichment note -->
+  <rect class="sink" x="576" y="524" width="300" height="56" rx="7" stroke="#d600aa"/>
+  <text class="stext" x="596" y="546" fill="#f5b8e6">figure bytes / captions</text>
+  <text class="sub" x="596" y="567">→ optional enricher (caption, extract)</text>
+
+  <!-- arrows -->
+  <!-- capability: PDF → ExtractAsync → OcrResult -->
+  <line x1="170" y1="256" x2="170" y2="298" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="200" y1="360" x2="200" y2="402" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <!-- composition: the reader WRAPS the capability (dependency, not a sequential step) -->
+  <path d="M574 278 C520 278, 500 322, 472 330" fill="none" stroke="#d600aa" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrowM)"/>
+  <!-- pipeline: reader → doc → chunk → retrieve → cited answer -->
+  <line x1="726" y1="312" x2="726" y2="342" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="726" y1="406" x2="726" y2="436" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="876" y1="469" x2="938" y2="469" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1075" y1="438" x2="1075" y2="408" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <!-- figure path -->
+  <line x1="448" y1="512" x2="574" y2="548" stroke="#d600aa" stroke-width="2" marker-end="url(#arrowM)"/>
+</svg>

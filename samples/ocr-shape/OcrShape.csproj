@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The REAL IOcrClient (#7588) + MEDI (preview2 + #7516), consumed from the local-pack feed built
+    by scripts/build-local-feed.sh (version 10.8.0-dev). Every provider in this demo implements the
+    actual Microsoft.Extensions.AI.IOcrClient, and the OcrDocumentReader bridges it to MEDI's
+    IngestionDocumentReader. When #7588 + #7516 ship, delete ../local-feed and bump the versions.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <!-- IOcrClient / OCR types and MEDI chunkers are marked [Experimental]; opt in explicitly. -->
+    <NoWarn>$(NoWarn);MEAI001;MEAI002;MEAI003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Real abstractions + core middleware + OpenAI binding + MEDI pipeline (local-pack). -->
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.0-dev" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.0-dev" />
+    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.8.0-dev" />
+    <!-- Credentials for every sample come from user-secrets (id iocrclient-demo), env fallback. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.9" />
+    <!-- Provider SDKs (nuget.org). -->
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />
+    <PackageReference Include="Azure.AI.ContentUnderstanding" Version="1.1.0" />
+    <!-- Native PDF text + heuristic layout for the shared PdfPigReader building block. -->
+    <PackageReference Include="PdfPig" Version="0.1.15" />
+  </ItemGroup>
+
+</Project>

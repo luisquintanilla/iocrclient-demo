@@ -1,0 +1,32 @@
+/* =====================================================================
+   THEME: default (dark)
+   A theme is just this token block. To make your own theme, copy this
+   file to themes/<name>.css, change the values, and point index.html at
+   it (swap the one themes/... <link>). Nothing else needs to change.
+   Every token below is consumed by css/base.css and css/components.css.
+   ===================================================================== */
+
+:root {
+  /* Brand */
+  --brand-primary: #512bd4;
+  --brand-primary-bright: #a78bfa;
+  --brand-accent: #d600aa;
+  --brand-gradient: linear-gradient(120deg, var(--brand-primary), var(--brand-accent));
+
+  /* Surfaces + text */
+  --deck-bg: #1b1b1f;
+  --deck-surface: #232328;
+  --deck-text: #ededf2;
+  --deck-heading: #ffffff;
+  --deck-muted: #b4b4be;
+  --deck-line: rgba(255, 255, 255, 0.12);
+  --deck-code-bg: #15151a;
+  --deck-quote-bg: rgba(255, 255, 255, 0.04);
+
+  /* Derived accents (links, code, selection) */
+  --brand-link-hover: #b9a6ff;
+  --brand-link-underline: rgba(138, 109, 240, 0.4);
+  --brand-selection: rgba(214, 0, 170, 0.35);
+  --brand-inline-code-bg: rgba(138, 109, 240, 0.14);
+  --brand-inline-code-text: #d9ccff;
+}

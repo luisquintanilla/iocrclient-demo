@@ -1,0 +1,6 @@
+provider                        pages  tables    chars  first-heading
+------------------------------------------------------------------------------------------
+vision-llm (gpt-4.1-mini)           1       0    14249  ```markdown
+mistral-ocr                        12       0    13592  Emergency Survival Kit
+azure-document-intelligence        12       1    15337  Emergency Survival Kit
+azure-content-understanding        12       0    15265  Emergency Survival Kit

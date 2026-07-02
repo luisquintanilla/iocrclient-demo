@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <marker id="arrowUp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+    <style>
+      .bg{fill:#1b1b1f}
+      .title{fill:#ffffff;font-size:34px;font-weight:700}
+      .sub{fill:#b4b4be;font-size:16px;font-family:'Open Sans',sans-serif}
+      .layer{fill:#232328;stroke-width:1.5;rx:12}
+      .lname{fill:#ffffff;font-size:20px;font-weight:700}
+      .lsub{fill:#9a9aa4;font-size:14px;font-family:'Open Sans',sans-serif;font-style:italic}
+      .comp{fill:#15151a;stroke:rgba(255,255,255,0.16);stroke-width:1;rx:8}
+      .focus{fill:#1c141b;stroke:#d600aa;stroke-width:1.8;rx:8}
+      .note{fill:none;stroke:#6b6b77;stroke-width:1.2;stroke-dasharray:5 4;rx:8}
+      .clabel{fill:#ededf2;font-size:15px;font-family:'Open Sans',sans-serif}
+      .nlabel{fill:#9a9aa4;font-size:14px;font-family:'Open Sans',sans-serif;font-style:italic}
+      .mono{font-family:'Cascadia Code',Consolas,monospace;font-size:14px}
+      .tag{fill:#d600aa;font-size:13px;font-weight:700;font-family:'Open Sans',sans-serif}
+      .arrowText{fill:#a78bfa;font-size:13px;font-weight:700;font-family:'Open Sans',sans-serif;letter-spacing:.08em}
+      .legend{fill:#b4b4be;font-size:13px;font-family:'Open Sans',sans-serif}
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+  <text class="title" x="60" y="60">The .NET AI dependency stack</text>
+  <text class="sub" x="60" y="88">foundation-up: OCR is a peer capability at the base; pipeline, concretes, and app build on top</text>
+  <!-- legend: component vs note -->
+  <rect class="comp" x="908" y="46" width="20" height="16" rx="4"/>
+  <text class="legend" x="934" y="59">solid = component</text>
+  <rect class="note" x="1058" y="46" width="20" height="16" rx="4"/>
+  <text class="legend" x="1084" y="59">dashed = note</text>
+
+  <!-- Application (top) -->
+  <rect class="layer" x="60" y="120" width="1160" height="108" rx="12" stroke="#512bd4"/>
+  <text class="lname" x="88" y="154">Application / pipeline run <tspan class="lsub">— ingest → retrieve → answer with page citations</tspan></text>
+  <rect class="comp" x="88" y="168" width="262" height="44"/><text class="clabel mono" x="108" y="196">Aspire AppHost</text>
+  <rect class="comp" x="370" y="168" width="262" height="44"/><text class="clabel" x="390" y="196">hero web app</text>
+  <rect class="comp" x="652" y="168" width="262" height="44"/><text class="clabel" x="672" y="196">ingest → retrieve → answer</text>
+  <rect class="note" x="934" y="168" width="262" height="44"/><text class="nlabel" x="954" y="196">provider-agnostic UX</text>
+
+  <line x1="640" y1="262" x2="640" y2="230" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowUp)"/>
+  <text class="arrowText" x="666" y="248">BUILT ON</text>
+
+  <!-- CommunityToolkit concretes -->
+  <rect class="layer" x="60" y="262" width="1160" height="108" rx="12" stroke="#a78bfa"/>
+  <text class="lname" x="88" y="296">CommunityToolkit concretes <tspan class="lsub">— implementations that compose the contracts</tspan></text>
+  <rect class="comp" x="88" y="310" width="262" height="44"/><text class="clabel" x="108" y="338">OCR providers: vision-LLM</text>
+  <rect class="comp" x="370" y="310" width="262" height="44"/><text class="clabel" x="390" y="338">Mistral · Azure DI · CU</text>
+  <rect class="comp" x="652" y="310" width="262" height="44"/><text class="clabel mono" x="672" y="338">PdfPigReader</text>
+  <rect class="comp" x="934" y="310" width="262" height="44"/><text class="clabel mono" x="954" y="338">OcrDocumentReader</text>
+
+  <line x1="640" y1="404" x2="640" y2="372" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowUp)"/>
+  <text class="arrowText" x="666" y="390">BUILT ON</text>
+
+  <!-- MEDI abstractions -->
+  <rect class="layer" x="60" y="404" width="1160" height="108" rx="12" stroke="#a78bfa"/>
+  <text class="lname" x="88" y="438">Microsoft.Extensions.DataIngestion <tspan class="tag">MEDI</tspan> <tspan class="lsub">— the ingestion pipeline abstractions</tspan></text>
+  <rect class="comp" x="88" y="452" width="262" height="44"/><text class="clabel mono" x="108" y="480">IngestionDocumentReader</text>
+  <rect class="comp" x="370" y="452" width="262" height="44"/><text class="clabel" x="390" y="480">chunkers</text>
+  <rect class="comp" x="652" y="452" width="262" height="44"/><text class="clabel mono" x="672" y="480">IngestionPipeline&lt;T&gt;</text>
+  <rect class="comp" x="934" y="452" width="262" height="44"/><text class="clabel mono" x="954" y="480">IngestionChunkWriter&lt;T&gt;</text>
+
+  <line x1="640" y1="546" x2="640" y2="514" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowUp)"/>
+  <text class="arrowText" x="666" y="532">BUILT ON</text>
+
+  <!-- Foundation: MEAI abstractions (peers) -->
+  <rect class="layer" x="60" y="546" width="1160" height="140" rx="12" stroke="#512bd4"/>
+  <text class="lname" x="88" y="580">Microsoft.Extensions.AI abstractions <tspan class="tag">foundation</tspan> <tspan class="lsub">— three peer capability contracts</tspan></text>
+  <rect class="comp" x="88" y="594" width="262" height="44"/><text class="clabel mono" x="108" y="622">IChatClient</text>
+  <rect class="comp" x="370" y="594" width="262" height="44"/><text class="clabel mono" x="390" y="622">IEmbeddingGenerator</text>
+  <rect class="focus" x="652" y="594" width="262" height="44"/><text class="clabel mono" x="672" y="622" fill="#f5b8e6">IOcrClient</text>
+  <rect class="note" x="934" y="594" width="262" height="44"/><text class="nlabel" x="954" y="622">one capability shape</text>
+  <rect class="note" x="88" y="650" width="1108" height="30" stroke="#d600aa" stroke-opacity="0.55"/>
+  <text x="108" y="670" font-size="14" font-family="'Open Sans',sans-serif" fill="#f5b8e6"><tspan font-weight="700">OCR is a peer capability</tspan> <tspan fill="#cfcfd6">— it sits beside IChatClient &amp; IEmbeddingGenerator at the base, not bolted on per app.</tspan></text>
+</svg>

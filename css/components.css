@@ -1,0 +1,255 @@
+/* =====================================================================
+   Reusable slide components.
+   Keep this file talk-neutral. Add talk-specific styles after this block.
+   ===================================================================== */
+
+.reveal .title-slide h1 {
+  font-size: 2.7em;
+  margin-bottom: 0.1em;
+  line-height: 1.05;
+}
+.reveal .title-slide .subtitle {
+  color: var(--deck-muted);
+  font-size: 1.05em;
+  font-weight: 600;
+}
+.reveal .title-slide .byline {
+  margin-top: 1.2em;
+  color: var(--deck-muted);
+  font-size: 0.7em;
+}
+.reveal .title-rule {
+  height: 6px;
+  width: 320px;
+  margin: 0.6em auto 0.4em;
+  border-radius: 99px;
+  background: var(--brand-gradient);
+}
+
+.reveal .kicker {
+  display: inline-block;
+  font-family: var(--r-heading-font);
+  font-size: 0.5em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-primary-bright);
+  margin-bottom: 0.4em;
+}
+
+.reveal .cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
+  align-items: start;
+}
+.reveal .cols.narrow-left {
+  grid-template-columns: 0.8fr 1.2fr;
+}
+.reveal .cols > div {
+  min-width: 0;
+}
+.reveal .col-left {
+  text-align: left;
+}
+
+.reveal .lead {
+  font-family: var(--r-heading-font);
+  font-weight: 700;
+  font-size: 1.5em;
+  line-height: 1.15;
+}
+.reveal .muted {
+  color: var(--deck-muted);
+}
+.reveal .small {
+  font-size: 0.7em;
+}
+
+.reveal .callout {
+  text-align: left;
+  background: var(--deck-surface);
+  border: 1px solid var(--deck-line);
+  border-left: 4px solid var(--brand-accent);
+  border-radius: 14px;
+  padding: 0.6em 1em;
+}
+
+.reveal .run {
+  display: inline-block;
+  font-family: var(--r-code-font);
+  font-size: 0.6em;
+  background: var(--deck-code-bg);
+  border: 1px solid var(--deck-line);
+  border-radius: 8px;
+  padding: 0.4em 0.8em;
+  color: #c9f0c9;
+}
+.reveal .run::before {
+  content: "› ";
+  color: var(--brand-accent);
+}
+.reveal a.run {
+  text-decoration: none;
+}
+.reveal a.run:hover {
+  border-color: var(--brand-accent);
+  color: #eafbea;
+}
+
+.reveal .output {
+  text-align: left;
+  border: 1px solid var(--deck-line);
+  border-left: 3px solid var(--brand-accent);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.reveal .output .output-label {
+  display: block;
+  font-family: var(--r-code-font);
+  font-size: 0.42em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-primary-bright);
+  padding: 0.8em 1.1em 0;
+}
+.reveal .output pre {
+  margin: 0.3em 0 0;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+.reveal .output pre code {
+  border-radius: 0;
+  font-size: 0.5em;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 460px;
+}
+
+.reveal .cols.code-output {
+  align-items: stretch;
+}
+.reveal .cols.code-output > .col-left {
+  display: flex;
+  flex-direction: column;
+}
+.reveal .cols.code-output > .col-left > pre {
+  flex: 1 1 auto;
+  display: flex;
+  margin: 0;
+  box-shadow: none;
+  border: 1px solid var(--deck-line);
+  border-left: 3px solid var(--brand-primary-bright);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.reveal .cols.code-output > .col-left > pre > code {
+  flex: 1;
+  border-radius: 0;
+  font-size: 0.5em;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: none;
+}
+.reveal .cols.code-output > .col-left > .output {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--deck-code-bg);
+}
+.reveal .cols.code-output > .col-left > .output > pre {
+  flex: 1;
+}
+.reveal .cols.code-output > .col-left > .output > pre code {
+  max-height: none;
+}
+
+.reveal .slide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5em 0.9em;
+  margin-top: 0.7em;
+}
+
+/* Wide layer/stack diagram: a single full-width code block sized to fit the two tiers. */
+.reveal .stack {
+  text-align: left;
+  border: 1px solid var(--deck-line);
+  border-left: 3px solid var(--brand-accent);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.reveal .stack pre {
+  margin: 0;
+  box-shadow: none;
+  border: none;
+  border-radius: 0;
+}
+.reveal .stack pre code {
+  border-radius: 0;
+  font-size: 0.44em;
+  line-height: 1.45;
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 520px;
+}
+.reveal .foot {
+  position: absolute;
+  bottom: -0.2em;
+  left: 0;
+  right: 0;
+  font-size: 0.45em;
+  color: var(--deck-muted);
+  font-family: var(--r-code-font);
+}
+
+/* Full-width branded SVG diagram (assets/diagrams/*.svg). */
+.reveal .diagram {
+  display: block;
+  margin: 0.4em auto 0;
+  max-width: 100%;
+  max-height: 490px;
+  border: 1px solid var(--deck-line);
+  border-radius: 12px;
+  background: var(--deck-bg);
+}
+
+/* --- Big stat (a single number that earns the slide) --- */
+.reveal .stat {
+  font-family: var(--r-heading-font);
+  font-weight: 700;
+  font-size: 4.2em;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--brand-primary-bright);
+}
+.reveal .stat-label {
+  display: block;
+  margin-top: 0.4em;
+  color: var(--deck-muted);
+  font-size: 0.95em;
+}
+
+/* --- Full-bleed image caption (pair with data-background-image) --- */
+.reveal .bleed-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.4em;
+  margin: 0;
+  font-family: var(--r-code-font);
+  font-size: 0.5em;
+  color: var(--deck-text);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0.4em 0.8em;
+  border-radius: 8px;
+  display: inline-block;
+}

@@ -1,0 +1,29 @@
+{
+  "name": "reveal-presentation-template",
+  "version": "1.0.0",
+  "description": "A reusable RevealJS presentation template with a grounded sample-output workflow.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "preview": "node build.mjs && node serve.mjs",
+    "serve": "node serve.mjs",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('public',{recursive:true,force:true}))\""
+  },
+  "keywords": [
+    "revealjs",
+    "presentation",
+    "slides",
+    "samples",
+    "template"
+  ],
+  "author": "luisquintanilla",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luisquintanilla/reveal-presentation-template.git"
+  },
+  "homepage": "https://luisquintanilla.github.io/reveal-presentation-template/",
+  "dependencies": {
+    "reveal.js": "^5.1.0"
+  }
+}

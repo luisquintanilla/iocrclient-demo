@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+    <style>
+      .bg{fill:#1b1b1f}
+      .title{fill:#ffffff;font-size:34px;font-weight:700}
+      .sub{fill:#b4b4be;font-size:16px;font-family:'Open Sans',sans-serif}
+      .card{fill:#232328;stroke:#a78bfa;stroke-width:1.5;rx:12}
+      .card2{fill:#241a22;stroke:#d600aa;stroke-width:1.5;rx:12}
+      .ctitle{fill:#ffffff;font-size:18px;font-weight:700}
+      .small{fill:#ededf2;font-size:14px;font-family:'Open Sans',sans-serif}
+      .mono{font-family:'Cascadia Code',Consolas,monospace}
+      .pill{fill:#15151a;stroke:rgba(255,255,255,0.14);stroke-width:1;rx:8}
+      .label{fill:#a78bfa;font-size:14px;font-weight:700;font-family:'Open Sans',sans-serif}
+      .accent{fill:#f5b8e6}
+      .axis{fill:#b4b4be;font-size:15px;font-family:'Open Sans',sans-serif;font-weight:700}
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+  <text class="title" x="60" y="66">Extraction spectrum: compose the seams</text>
+  <text class="sub" x="60" y="94">PdfPigReader exposes two pluggable seams: HOW to segment pages and WHEN to call OCR.</text>
+
+  <!-- Composition banner -->
+  <rect class="pill" x="60" y="128" width="1160" height="58" rx="10" stroke="#d600aa"/>
+  <text class="label" x="84" y="154" fill="#d600aa">COMPOSITION over existing seams, not a built-in fallback type</text>
+  <text class="sub" x="84" y="176">Seam 1 = IPageSegmenter · Seam 2 = IOcrClient + OcrPolicy</text>
+
+  <!-- Spectrum cards -->
+  <rect class="card" x="60" y="230" width="270" height="250" rx="12"/>
+  <text class="ctitle" x="84" y="264">1. Native text</text>
+  <text class="sub" x="84" y="288">+ heuristic layout</text>
+  <rect class="pill" x="84" y="314" width="222" height="40" rx="8"/>
+  <text class="small mono" x="102" y="339">DefaultPageSegmenter</text>
+  <rect class="pill" x="84" y="366" width="222" height="40" rx="8"/>
+  <text class="small mono" x="102" y="391">OcrPolicy.Never</text>
+  <text class="small" x="84" y="438">local · zero-ML · fastest</text>
+
+  <rect class="card" x="350" y="230" width="270" height="250" rx="12"/>
+  <text class="ctitle" x="374" y="264">2. Native text</text>
+  <text class="sub" x="374" y="288">+ ONNX layout</text>
+  <rect class="pill" x="374" y="314" width="222" height="40" rx="8"/>
+  <text class="small mono" x="392" y="339">OnnxPageSegmenter</text>
+  <rect class="pill" x="374" y="366" width="222" height="40" rx="8"/>
+  <text class="small mono" x="392" y="391">OcrPolicy.Never</text>
+  <text class="small" x="374" y="438">local ML layout model</text>
+
+  <rect class="card2" x="640" y="230" width="270" height="250" rx="12"/>
+  <text class="ctitle" x="664" y="264">3. OCR scanned pages</text>
+  <text class="sub" x="664" y="288">native text first</text>
+  <rect class="pill" x="664" y="314" width="222" height="40" rx="8"/>
+  <text class="small mono" x="682" y="339">IOcrClient.ExtractAsync</text>
+  <rect class="pill" x="664" y="366" width="222" height="40" rx="8"/>
+  <text class="small mono" x="682" y="391">OcrPolicy.Auto</text>
+  <text class="small accent" x="664" y="438">only scanned / empty pages</text>
+
+  <rect class="card2" x="930" y="230" width="290" height="250" rx="12"/>
+  <text class="ctitle" x="954" y="264">4. Whole-doc OCR</text>
+  <text class="sub" x="954" y="288">richest service path</text>
+  <rect class="pill" x="954" y="314" width="242" height="40" rx="8"/>
+  <text class="small mono" x="972" y="339">OcrDocumentReader</text>
+  <rect class="pill" x="954" y="366" width="242" height="40" rx="8"/>
+  <text class="small mono" x="972" y="391">OcrPolicy.AllPages</text>
+  <text class="small accent" x="954" y="438">tables · figures · scans</text>
+
+  <!-- Axis -->
+  <line x1="100" y1="546" x2="1180" y2="546" stroke="#a78bfa" stroke-width="3" marker-end="url(#arrow)"/>
+  <circle cx="195" cy="546" r="6" fill="#512bd4"/>
+  <circle cx="485" cy="546" r="6" fill="#512bd4"/>
+  <circle cx="775" cy="546" r="6" fill="#d600aa"/>
+  <circle cx="1075" cy="546" r="6" fill="#d600aa"/>
+  <text class="axis" x="100" y="580">cheapest / local</text>
+  <text class="axis" x="1022" y="580">richest / service</text>
+
+  <!-- Caption -->
+  <rect class="pill" x="170" y="620" width="940" height="52" rx="10"/>
+  <text class="ctitle" x="196" y="653" fill="#f5b8e6">Degrade = pick the rung your environment/document supports.</text>
+</svg>

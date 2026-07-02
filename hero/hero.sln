@@ -1,0 +1,34 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{ED1BCA80-F4A7-42FE-A70E-0D35C308E6D0}") = "hero.AppHost", "hero.AppHost\hero.AppHost.csproj", "{165DBB96-A032-41F1-A50B-A81F7456C8B2}"
+EndProject
+Project("{ED1BCA80-F4A7-42FE-A70E-0D35C308E6D0}") = "hero.ServiceDefaults", "hero.ServiceDefaults\hero.ServiceDefaults.csproj", "{1D8F4CD5-03D0-497F-BE32-988ED7B6E2CC}"
+EndProject
+Project("{ED1BCA80-F4A7-42FE-A70E-0D35C308E6D0}") = "hero.Web", "hero.Web\hero.Web.csproj", "{E2BC31F1-E984-4B37-AC49-D536849C72F2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{165DBB96-A032-41F1-A50B-A81F7456C8B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{165DBB96-A032-41F1-A50B-A81F7456C8B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{165DBB96-A032-41F1-A50B-A81F7456C8B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{165DBB96-A032-41F1-A50B-A81F7456C8B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D8F4CD5-03D0-497F-BE32-988ED7B6E2CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D8F4CD5-03D0-497F-BE32-988ED7B6E2CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D8F4CD5-03D0-497F-BE32-988ED7B6E2CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D8F4CD5-03D0-497F-BE32-988ED7B6E2CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2BC31F1-E984-4B37-AC49-D536849C72F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2BC31F1-E984-4B37-AC49-D536849C72F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2BC31F1-E984-4B37-AC49-D536849C72F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2BC31F1-E984-4B37-AC49-D536849C72F2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

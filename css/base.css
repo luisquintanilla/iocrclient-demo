@@ -1,0 +1,157 @@
+/* =====================================================================
+   Base deck styling for reveal.js (theme-neutral).
+   This file consumes the design tokens a theme defines (see themes/).
+   It never sets brand colors directly. Swap the theme, not this file.
+   Type: Space Grotesk headings + Open Sans body, self-hosted.
+   ===================================================================== */
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/space-grotesk-v12-latin-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/open-sans-v34-latin-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../assets/fonts/open-sans-v34-latin-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Open Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/open-sans-v34-latin-700.woff2") format("woff2");
+}
+
+.reveal-viewport {
+  background: var(--deck-bg);
+}
+
+.reveal {
+  --r-background-color: var(--deck-bg);
+  --r-main-font: "Open Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+  --r-main-font-size: 28px;
+  --r-main-color: var(--deck-text);
+  --r-heading-font: "Space Grotesk", "Open Sans", system-ui, sans-serif;
+  --r-heading-color: var(--deck-heading);
+  --r-heading-font-weight: 700;
+  --r-heading-line-height: 1.1;
+  --r-heading-letter-spacing: -0.01em;
+  --r-heading-text-transform: none;
+  --r-heading1-size: 2.4em;
+  --r-heading2-size: 1.5em;
+  --r-heading3-size: 1.1em;
+  --r-link-color: var(--brand-primary-bright);
+  --r-link-color-hover: var(--brand-link-hover);
+  --r-selection-background-color: var(--brand-selection);
+  --r-code-font: "Cascadia Code", "Fira Code", "SFMono-Regular", Consolas, monospace;
+  color: var(--r-main-color);
+  font-family: var(--r-main-font);
+  font-size: var(--r-main-font-size);
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+  color: var(--r-heading-color);
+  font-family: var(--r-heading-font);
+  font-weight: 700;
+  line-height: var(--r-heading-line-height);
+  letter-spacing: -0.01em;
+}
+
+.reveal .gradient,
+.reveal h1 .grad,
+.reveal h2 .grad {
+  color: var(--brand-primary-bright);
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .reveal .gradient,
+  .reveal h1 .grad,
+  .reveal h2 .grad {
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+}
+
+.reveal a {
+  color: var(--r-link-color);
+  text-decoration: none;
+  border-bottom: 1px solid var(--brand-link-underline);
+}
+.reveal a:hover {
+  color: var(--r-link-color-hover);
+  border-bottom-color: var(--brand-accent);
+}
+
+.reveal pre {
+  width: 100%;
+  margin: 0.6em 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--deck-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.reveal pre code {
+  background: var(--deck-code-bg);
+  padding: 1.1em 1.2em;
+  border-radius: 12px;
+  font-size: 0.62em;
+  line-height: 1.45;
+  max-height: 540px;
+}
+.reveal code {
+  font-family: var(--r-code-font);
+}
+.reveal :not(pre) > code {
+  background: var(--brand-inline-code-bg);
+  color: var(--brand-inline-code-text);
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+  font-size: 0.92em;
+}
+
+.reveal .hljs-comment,
+.reveal .hljs-quote,
+.reveal .hljs-meta {
+  color: #8b8778;
+}
+
+.reveal ul,
+.reveal ol {
+  margin-left: 1em;
+}
+.reveal li {
+  margin: 0.35em 0;
+}
+.reveal li::marker {
+  color: var(--brand-accent);
+}
+
+.reveal blockquote {
+  width: 92%;
+  border-left: 4px solid var(--brand-accent);
+  background: var(--deck-quote-bg);
+  color: var(--deck-text);
+  padding: 0.8em 1em;
+  border-radius: 10px;
+}

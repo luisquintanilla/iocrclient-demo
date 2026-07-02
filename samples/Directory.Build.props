@@ -1,0 +1,9 @@
+<Project>
+  <!-- IOcrClient / OCR types and MEDI chunkers are [Experimental]; the demo opts in explicitly so
+       every file-based sample (dotnet run NN-*.cs) and the shared ocr-shape project compile clean.
+       IL2026/IL3050: the MEDI dynamic vector-mapping helper (GetIngestionRecordCollection) is
+       flagged for trimming/AOT; the file-based samples are neither trimmed nor AOT-compiled. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);MEAI001;MEAI002;MEAI003;IL2026;IL3050</NoWarn>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+    <marker id="arrowM" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d600aa"/>
+    </marker>
+    <style>
+      .bg{fill:#1b1b1f}
+      .title{fill:#ffffff;font-size:34px;font-weight:700}
+      .sub{fill:#b4b4be;font-size:16px;font-family:'Open Sans',sans-serif}
+      .layer{fill:#232328;stroke-width:1.5;rx:12}
+      .lname{fill:#ffffff;font-size:21px;font-weight:700}
+      .box{fill:#15151a;stroke:rgba(255,255,255,0.14);stroke-width:1;rx:8}
+      .focus{fill:#241a22;stroke:#d600aa;stroke-width:1.8;rx:8}
+      .btext{fill:#ededf2;font-size:16px;font-family:'Open Sans',sans-serif}
+      .mono{font-family:'Cascadia Code',Consolas,monospace}
+      .tag{fill:#d600aa;font-size:13px;font-weight:700;font-family:'Open Sans',sans-serif}
+      .call{fill:#f5b8e6;font-size:16px;font-weight:700;font-family:'Open Sans',sans-serif}
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+  <text class="title" x="60" y="66">The whole .NET AI stack</text>
+  <text class="sub" x="60" y="94">IOcrClient is not an app helper. It sits beside chat and embeddings as a base capability contract.</text>
+
+  <!-- Top app -->
+  <rect class="layer" x="230" y="130" width="820" height="82" rx="12" stroke="#512bd4"/>
+  <text class="lname" x="256" y="163">Aspire-orchestrated application</text>
+  <text class="sub" x="256" y="190">web UI · workers · eval harness · ingestion jobs · RAG answers</text>
+
+  <!-- CommunityToolkit -->
+  <rect class="layer" x="160" y="260" width="960" height="100" rx="12" stroke="#a78bfa"/>
+  <text class="lname" x="186" y="292">CommunityToolkit concretes</text>
+  <rect class="box" x="186" y="310" width="210" height="34" rx="8"/>
+  <text class="btext" x="206" y="333">Vision-LLM OCR</text>
+  <rect class="box" x="412" y="310" width="236" height="34" rx="8"/>
+  <text class="btext" x="432" y="333">Mistral · Azure DI · CU</text>
+  <rect class="box" x="664" y="310" width="170" height="34" rx="8"/>
+  <text class="btext mono" x="684" y="333">PdfPigReader</text>
+  <rect class="box" x="850" y="310" width="244" height="34" rx="8"/>
+  <text class="btext mono" x="870" y="333">OcrDocumentReader</text>
+
+  <!-- Extension libraries -->
+  <rect class="layer" x="110" y="398" width="1060" height="96" rx="12" stroke="#a78bfa"/>
+  <text class="lname" x="136" y="430">Extension libraries built on the base contracts</text>
+  <rect class="box" x="136" y="448" width="456" height="30" rx="8"/>
+  <text class="btext" x="156" y="469">Microsoft.Extensions.DataIngestion <tspan class="tag">MEDI</tspan></text>
+  <rect class="box" x="616" y="448" width="528" height="30" rx="8"/>
+  <text class="btext" x="636" y="469">Microsoft.Extensions.DataRetrieval</text>
+
+  <!-- Foundation -->
+  <rect class="layer" x="60" y="540" width="1160" height="106" rx="12" stroke="#512bd4"/>
+  <text class="lname" x="84" y="572">Microsoft.Extensions.AI abstractions <tspan class="tag">foundation</tspan></text>
+  <rect class="box" x="84" y="592" width="240" height="36" rx="8"/>
+  <text class="btext mono" x="104" y="615">IChatClient</text>
+  <rect class="box" x="350" y="592" width="310" height="36" rx="8"/>
+  <text class="btext mono" x="370" y="615">IEmbeddingGenerator</text>
+  <rect class="focus" x="686" y="584" width="310" height="52" rx="8"/>
+  <text class="btext mono" x="706" y="608" fill="#ffffff">IOcrClient</text>
+  <text class="sub" x="706" y="629">ExtractAsync → OcrResult</text>
+  <rect class="box" x="1022" y="592" width="174" height="36" rx="8"/>
+  <text class="btext" x="1042" y="615">common patterns</text>
+
+  <!-- Layer arrows -->
+  <line x1="640" y1="540" x2="640" y2="496" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="640" y1="398" x2="640" y2="362" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="640" y1="260" x2="640" y2="214" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- IOcrClient callout -->
+  <rect class="focus" x="1028" y="414" width="190" height="64" rx="10"/>
+  <text class="call" x="1048" y="440">where OCR lives</text>
+  <text class="sub" x="1048" y="464">base capability</text>
+  <path d="M1122 478 C1094 540, 1036 594, 998 606" fill="none" stroke="#d600aa" stroke-width="2.5" stroke-dasharray="8 7" marker-end="url(#arrowM)"/>
+</svg>

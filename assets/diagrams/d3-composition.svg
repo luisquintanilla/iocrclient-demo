@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+    <style>
+      .bg{fill:#1b1b1f}
+      .title{fill:#ffffff;font-size:34px;font-weight:700}
+      .sub{fill:#b4b4be;font-size:16px;font-family:'Open Sans',sans-serif}
+      .node{fill:#232328;stroke-width:1.5;rx:10}
+      .ntext{fill:#ffffff;font-size:20px;font-weight:700}
+      .mono{font-family:'Cascadia Code',Consolas,monospace}
+      .pill{fill:#15151a;stroke:rgba(255,255,255,0.14);stroke-width:1;rx:20}
+      .ptext{fill:#ededf2;font-size:16px;font-family:'Open Sans',sans-serif}
+      .pr{fill:#d600aa;font-size:13px;font-weight:700;font-family:'Open Sans',sans-serif}
+      .role{fill:#a78bfa;font-size:16px;font-weight:700;font-family:'Open Sans',sans-serif}
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1280" height="720"/>
+  <text class="title" x="60" y="66">Composition, not inheritance</text>
+  <text class="sub" x="60" y="94">The reader owns WHEN to OCR (a policy). The client owns HOW (a provider). Two axes, composed — the CommunityToolkit #13/#14/#15 shape.</text>
+
+  <!-- Reader box -->
+  <rect class="node" x="80" y="150" width="520" height="230" rx="12" stroke="#512bd4"/>
+  <text class="ntext mono" x="104" y="188">PdfPigReader : IngestionDocumentReader</text>
+  <text class="pr" x="104" y="212">CommunityToolkit/AI #14</text>
+  <text class="role" x="104" y="248">decides WHEN to OCR — OcrPolicy</text>
+  <rect class="pill" x="104" y="266" width="150" height="40" rx="20"/><text class="ptext" x="126" y="291">Never</text>
+  <rect class="pill" x="266" y="266" width="220" height="40" rx="20"/><text class="ptext" x="288" y="291">FallbackForEmptyPages</text>
+  <rect class="pill" x="104" y="318" width="150" height="40" rx="20"/><text class="ptext" x="126" y="343">AllPages</text>
+  <text class="sub" x="272" y="343">native text first, OCR only what needs it</text>
+
+  <!-- composes arrow -->
+  <line x1="600" y1="265" x2="700" y2="265" stroke="#a78bfa" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text class="role" x="600" y="252">composes</text>
+
+  <!-- Client box -->
+  <rect class="node" x="700" y="150" width="500" height="230" rx="12" stroke="#a78bfa"/>
+  <text class="ntext mono" x="724" y="188">IOcrClient</text>
+  <text class="pr" x="724" y="212">dotnet/extensions #7588</text>
+  <text class="role" x="724" y="248">decides HOW — the provider</text>
+  <rect class="pill" x="724" y="266" width="200" height="40" rx="20"/><text class="ptext" x="746" y="291">VisionLmOcrClient</text>
+  <text class="pr" x="936" y="291">#15</text>
+  <rect class="pill" x="724" y="318" width="150" height="40" rx="20"/><text class="ptext" x="746" y="343">Mistral OCR</text>
+  <rect class="pill" x="886" y="318" width="150" height="40" rx="20"/><text class="ptext" x="908" y="343">Azure DI</text>
+  <rect class="pill" x="1048" y="318" width="130" height="40" rx="20"/><text class="ptext" x="1070" y="343">CU</text>
+
+  <!-- the point -->
+  <rect class="node" x="80" y="430" width="1120" height="90" rx="12" stroke="#d600aa" fill="#241a22"/>
+  <text class="ntext" x="104" y="466" fill="#f5b8e6">The reader depends on IOcrClient ONLY — zero IChatClient.</text>
+  <text class="sub" x="104" y="496" font-size="18">Swapping the OCR engine is one constructor argument. Swapping the policy never touches the provider. Neither knows the other's internals.</text>
+
+  <!-- code line -->
+  <rect class="node" x="80" y="556" width="1120" height="110" rx="12" fill="#15151a" stroke="rgba(255,255,255,0.14)"/>
+  <text class="mono" x="104" y="592" fill="#c9f0c9" font-size="17">var reader = new PdfPigReader(</text>
+  <text class="mono" x="140" y="620" fill="#a78bfa" font-size="17">ocrClient: new VisionLmOcrClient(chat),   // HOW — swap for Mistral / Azure DI on one line</text>
+  <text class="mono" x="140" y="648" fill="#f5b8e6" font-size="17">policy:    OcrPolicy.FallbackForEmptyPages); // WHEN — independent of the provider</text>
+</svg>

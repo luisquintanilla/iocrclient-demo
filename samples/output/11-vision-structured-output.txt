@@ -1,0 +1,10 @@
+=== (A) structured transcription: OFF vs ON ===
+
+[structured=OFF] source=vision-llm pages=1 tables=0 figures=0 lang=? conf=?
+[structured=ON ] source=vision-llm pages=10 tables=0 figures=0 lang=English conf=0.99
+
+=== (B) OCR-then-extract a typed POCO (GetService<IChatClient>) ===
+
+  title    : Life Guard X Emergency Survival Kit User Guide
+  topic    : Emergency Survival Kit Contents and Usage
+  keyPoints: Comprehensive kit including first aid supplies, emergency food, essential tools, emergency shelter, water purification, and communication devices.; First aid supplies feature bandages, antiseptics, medications, medical tools, and a first aid guide for treating minor injuries.; Emergency food consists of high-calorie rations with recommendations for storage and consumption guidelines.; Essential tools include a multi-tool, fire starter, whistle, flashlight, and emergency blanket, designed for various emergency tasks.; Emergency shelter is a two-person tent with instructions for setup, usage, and maintenance, ensuring protection in adverse conditions.; Water purification system comprises a portable filter and purification tablets with usage, maintenance, and safety precautions detailed.; Communication tools feature a portable two-way radio, whistle, signal mirror, and emergency contact information, plus tips for effective signaling.

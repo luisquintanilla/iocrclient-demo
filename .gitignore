@@ -1,0 +1,26 @@
+node_modules/
+public/
+.DS_Store
+.env
+.env.*
+
+# .NET local build output
+bin/
+obj/
+
+# Local captures you are still editing
+samples/output/*.draft.txt
+samples/output/images/
+
+# local grounding env (endpoints/account names — never commit)
+samples/.env.grounding
+**/bin/
+**/obj/
+
+# Internal reconciliation notes (never publish)
+DEMO-RECONCILIATION-NOTES.md
+
+# Local-feed: the runtime nupkgs ARE committed so the repo is clone-and-run.
+# They are unofficial local dev builds — see local-feed/README.md for provenance.
+# Symbols packages are not needed to run, so keep them out.
+local-feed/*.symbols.nupkg
