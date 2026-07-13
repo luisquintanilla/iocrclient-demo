@@ -13,13 +13,15 @@
 // which engine. OcrDocumentReader is the ONE bridge — it composes ANY IOcrClient and never needs a
 // per-engine subclass or a VisionOnly flag.
 //
-// It also grounds dotnet/extensions #7516 (opt-in chunk metadata) on the REAL chunker: name the
-// element metadata keys you want and they survive onto chunks, so the pipeline can cite [page N].
+// It also shows how to keep page provenance end to end on the REAL chunker: the stock SectionChunker
+// does not copy element metadata onto chunks, so chunk within page boundaries and every chunk keeps
+// its source page — the pipeline can then cite [page N] with no framework opt-in.
 //
 //   az login  (keyless)
-//   source .env.grounding            # OCR_FOUNDRY_ENDPOINT etc. — never committed
+//   dotnet user-secrets set OCR:FoundryEndpoint <url> --id iocrclient-demo   (see README; never committed)
 //   dotnet run 06-medi-pipeline.cs
 
+using System.Runtime.CompilerServices;
 using Azure.Identity;
 using DemoOcr;
 using Microsoft.Extensions.AI;
@@ -60,35 +62,34 @@ foreach (IngestionDocumentElement el in document.EnumerateContent().Take(3))
     }
 }
 
-// --- 3. #7516, on the REAL chunker: opt in to exactly the provenance keys you need. ---
+// --- 3. Carry provenance onto chunks. The stock SectionChunker does NOT copy element metadata onto
+//        chunks, so page provenance is lost by default. Recover it by chunking each page-section on its
+//        own: SectionChunker is section-bounded and the reader emits one section per page, so every
+//        chunk keeps its exact source page — no cross-page bleed, no framework opt-in. ---
 Tokenizer tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
+var chunker = new SectionChunker(new IngestionChunkerOptions(tokenizer) { MaxTokensPerChunk = 512 });
 
-// BEFORE: default options name no keys -> provenance stays on elements, chunks lose it.
-List<IngestionChunk> before = await ChunkAll(
-    new SectionChunker(new IngestionChunkerOptions(tokenizer) { MaxTokensPerChunk = 512 }),
-    document);
+// BEFORE: chunk the whole document -> chunks are page-blind (element metadata does not ride along).
+List<IngestionChunk> whole = await ChunkAll(chunker, document);
 
-// AFTER: name the keys (#7516 MetadataKeysToPropagate) -> page_number survives onto every chunk.
-var keys = new HashSet<string> { "page_number", "ocr_source", "confidence" };
-List<IngestionChunk> after = await ChunkAll(
-    new SectionChunker(new IngestionChunkerOptions(tokenizer) { MaxTokensPerChunk = 512, MetadataKeysToPropagate = keys }),
-    document);
-
-Console.WriteLine($"\n=== #7516 before / after (same document, same chunker, one option) ===");
-Report("before (no keys named)", before);
-Report("after  (page_number opted in)", after);
-
-IngestionChunk? sample = after.FirstOrDefault(c => c.HasMetadata && c.Metadata.ContainsKey("page_number"));
-if (sample is not null)
+// AFTER: chunk per page -> every chunk is tagged with its source page.
+var tagged = new List<(IngestionChunk Chunk, int Page)>();
+await foreach ((IngestionChunk Chunk, int Page) c in ChunkByPage(document, chunker))
 {
-    Console.WriteLine($"\nchunk cites: page_number = {sample.Metadata["page_number"]}, ocr_source = {sample.Metadata["ocr_source"]}");
-    Console.WriteLine("-> The provenance survives OCR -> reader -> chunk. The pipeline can cite [page N].");
+    tagged.Add(c);
 }
 
-static void Report(string label, List<IngestionChunk> chunks)
+Console.WriteLine($"\n=== provenance onto chunks (same document, same chunker) ===");
+Console.WriteLine($"  whole-document chunk : {whole.Count,3} chunk(s), any carry page metadata = {whole.Any(c => c.HasMetadata)}");
+Console.WriteLine($"  per-page chunk       : {tagged.Count,3} chunk(s), every chunk knows its page = {tagged.All(t => t.Page >= 0)}");
+
+object? ocrSource = document.EnumerateContent()
+    .FirstOrDefault(e => e.HasMetadata && e.Metadata.ContainsKey("ocr_source"))?.Metadata["ocr_source"];
+var cite = tagged.FirstOrDefault(t => t.Page >= 0);
+if (cite.Chunk is not null)
 {
-    bool any = chunks.Any(c => c.HasMetadata);
-    Console.WriteLine($"  {label,-32}: {chunks.Count} chunk(s), carry metadata = {any}");
+    Console.WriteLine($"\nchunk cites: page = {cite.Page}, ocr_source = {ocrSource}");
+    Console.WriteLine("-> The provenance survives OCR -> reader -> chunk. The pipeline can cite [page N].");
 }
 
 static async Task<List<IngestionChunk>> ChunkAll(IngestionChunker chunker, IngestionDocument doc)
@@ -99,6 +100,23 @@ static async Task<List<IngestionChunk>> ChunkAll(IngestionChunker chunker, Inges
         list.Add(c);
     }
     return list;
+}
+
+// Hand-rolled page provenance: chunk each page-section on its own so every chunk keeps its source page.
+static async IAsyncEnumerable<(IngestionChunk Chunk, int Page)> ChunkByPage(
+    IngestionDocument document, SectionChunker chunker,
+    [EnumeratorCancellation] CancellationToken ct = default)
+{
+    foreach (IngestionDocumentSection section in document.Sections)
+    {
+        int page = section.Metadata.TryGetValue("page_number", out object? p) && p is int i ? i : -1;
+        var pageDoc = new IngestionDocument(document.Identifier);
+        pageDoc.Sections.Add(section);
+        await foreach (IngestionChunk c in chunker.ProcessAsync(pageDoc, ct))
+        {
+            yield return (c, page);
+        }
+    }
 }
 
 static string Trim(string s, int n) => s.Length <= n ? s : s[..n] + "…";

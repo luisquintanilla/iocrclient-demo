@@ -11,12 +11,12 @@ that capability into a real MEDI pipeline whose page structure makes the final a
 
 `IOcrClient` is proposed in [dotnet/extensions #7588](https://github.com/dotnet/extensions/pull/7588)
 and is not on nuget.org yet. Rather than vendor a copy, `scripts/build-local-feed.sh` packs the REAL
-branch — `data-ingestion-preview2` + #7516 (opt-in metadata propagation) + #7588 (IOcrClient) — into
+branch — `data-ingestion-preview2` + #7588 (IOcrClient) — into
 `../local-feed/` at version `10.8.0-dev`. `nuget.config` resolves those `Microsoft.Extensions.*`
 packages from the local feed and everything else (Azure SDKs, OpenAI, PdfPig) from nuget.org.
 
 So the samples `using Microsoft.Extensions.AI;` and `using Microsoft.Extensions.DataIngestion;` bind to
-the actual types. When #7588 + #7516 ship, delete the local feed and the `<clear/>` in `nuget.config`
+the actual types. When #7588 ships, delete the local feed and the `<clear/>` in `nuget.config`
 and bump to the published versions. `ocr-shape/` holds the four provider implementations
 (`VisionLlmOcrClient`, `FoundryMistralOcrClient`, `AzureDocumentIntelligenceClient`,
 `ContentUnderstandingClient`) plus `OcrDocumentReader` — the `IOcrClient` -> MEDI bridge.
@@ -39,7 +39,7 @@ and bump to the published versions. `ocr-shape/` holds the four provider impleme
 | `03-content-understanding.cs` | Azure Content Understanding (CU region) | A third engine, third wire protocol, same result. |
 | `04-mistral-ocr.cs` | Mistral OCR on Azure AI Foundry | Purpose-built document AI: whole PDF in one call, per-page Markdown. |
 | `05-one-loop-four-clients.cs` | all four above | The payoff. Four engines, one loop, identical call. |
-| `06-medi-pipeline.cs` | Mistral OCR | The bridge: `OcrDocumentReader` -> `SectionChunker`, with #7516 metadata propagation shown before/after ([#7516](https://github.com/dotnet/extensions/pull/7516)). |
+| `06-medi-pipeline.cs` | Mistral OCR | The bridge: `OcrDocumentReader` -> `SectionChunker`. Page provenance survives the chunker with no new API — the reader emits one section per page, so chunking each page-section tags every chunk with its source page (whole-doc vs per-page shown). |
 | `07-e2e-rag.cs` | Mistral OCR + a chat model | End to end: OCR -> reader -> chunk (page provenance) -> retrieve -> page-cited answer. |
 | `08-pdfpig-reader.cs` | Mistral OCR (+ PdfPig from nuget) | The same seam a second way: PdfPig native text + per-page OCR fallback composing `IOcrClient` ([CommunityToolkit #14](https://github.com/CommunityToolkit/AI/pull/14)). |
 | `09-images-and-uris.cs` | Mistral OCR + Azure Document Intelligence | The result grows: `OcrPage.Images` (figure bytes + bbox + caption) via `IncludeImages`, and the `UriContent` overload — both proposed into [#7588](https://github.com/dotnet/extensions/pull/7588). Image bytes saved under `output/images/` (gitignored). |

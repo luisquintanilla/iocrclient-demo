@@ -11,9 +11,9 @@ repo: TODO repo URL after publishing
      samples/output/, and the samples run on the REAL dotnet/extensions code (preview2 +
      #7588), packed into a local feed, not a vendored copy. The through-line: document parsing is
      fragmented and vendor-locked; a provider-neutral capability (IOcrClient) fixes it; a thin reader
-     (OcrDocumentReader) bridges it into the MEDI pipeline; proposed typed page provenance on chunks
-     (#7516) makes the answers citable; and the PdfPig reader (CommunityToolkit #14) shows the same
-     seam composed a second way. The work spans two repos and five PRs. -->
+     (OcrDocumentReader) bridges it into the MEDI pipeline; per-page chunking keeps the answers
+     citable on the shipping API; and the PdfPig reader (CommunityToolkit #14) shows the same
+     seam composed a second way. The work spans two repos. -->
 
 <div class="title-slide">
 
@@ -76,7 +76,7 @@ Everything else builds on these.
 
 ## From bytes to a cited answer
 
-<img class="diagram" src="assets/diagrams/d2-data-flow.svg" alt="Data flow across a boundary. On the left, IOcrClient is a capability usable directly: a PDF or image enters IOcrClient.ExtractAsync and becomes an OcrResult of pages carrying markdown, tables, blocks, images/figures, and confidence. On the right, the MEDI pipeline: OcrDocumentReader WRAPS the IOcrClient (a dashed composition arrow shows it calls ExtractAsync), then maps the result into an IngestionDocument with typed PageNumber values and ocr_source metadata. The proposed #7516 chunk.Pages API carries page provenance through chunking, retrieval, and page-level citations. A dashed boundary separates IOcrClient (a capability) from the reader/pipeline. The figure/image path is highlighted from images to an optional enricher.">
+<img class="diagram" src="assets/diagrams/d2-data-flow.svg" alt="Data flow across a boundary. On the left, IOcrClient is a capability usable directly: a PDF or image enters IOcrClient.ExtractAsync and becomes an OcrResult of pages carrying markdown, tables, blocks, images/figures, and confidence. On the right, the MEDI pipeline: OcrDocumentReader WRAPS the IOcrClient (a dashed composition arrow shows it calls ExtractAsync), then maps the result into an IngestionDocument with typed PageNumber values and ocr_source metadata. Page provenance rides the shipping API: the reader emits one section per page, and per-page chunking carries the page number through chunking, retrieval, and page-level citations. A dashed boundary separates IOcrClient (a capability) from the reader/pipeline. The figure/image path is highlighted from images to an optional enricher.">
 
 Note:
 This is the map for the whole deck. Left of the dashed line is the OCR capability — bytes to
@@ -466,8 +466,8 @@ dotnet/extensions          ── ABSTRACTIONS (provider-neutral) ────�
   Microsoft.Extensions.DataIngestion (MEDI)
     IngestionDocumentReader                     the pipeline front door
     IngestionDocument / Section / Element  (PageNumber + Metadata)
-    Chunkers  ── #7516 proposed: PageNumber -> chunk.Pages (typed list)
-    IngestionChunk (Pages + Metadata) -> writer -> vector store
+    Chunkers  ── one section per page -> chunk per page -> source page tagged
+    IngestionChunk (Content + Metadata) -> writer -> vector store
 
 CommunityToolkit/AI        ── CONCRETES (impls, provider/native deps) ───────
     PdfPigReader   (#14)  IngestionDocumentReader: digital text +
@@ -500,28 +500,29 @@ PdfPigReader are concretes. Nothing in the core knows about Mistral or PdfPig.
 var reader = new OcrDocumentReader(ocr);
 var doc = await reader.ReadAsync(pdf, name, "application/pdf");
 
-// Proposed #7516 shape: typed page provenance on chunks
+// One section per OCR page (page_number stamped) —
+// no new chunking API needed for provenance.
 var chunker = new SectionChunker(new(tokenizer) {
     MaxTokensPerChunk = 256,
 });
-await foreach (var c in chunker.ProcessAsync(doc, ct))
-    // proposed API: c.Pages carries element.PageNumber values
+// chunk each page-section on its own -> every chunk
+// carries its exact source page (shipping API):
+await foreach (var (chunk, page) in ChunkByPage(doc, chunker))
+    // page = element.PageNumber for this section
 ```
 
 </div>
 <div class="col-left">
 
 <div class="output">
-<span class="output-label">proposed shape</span>
+<span class="output-label">captured — 07-e2e-rag.cs</span>
 
 ```text
-IngestionDocument: 12 section(s), 12 element(s)
+OCR -> reader: 12 pages of structured elements
+Chunked: 22 chunks, each tagged with its source page
+Retrieved 4 chunks (vector similarity): pages 9, 1, 4
 
-#7516 proposed public API:
-  IngestionChunk<T>.Pages : IReadOnlyList<int>
-
-chunk cites: pages = [0]
-other metadata: ocr_source = mistral-ocr
+answer ends: … [page 9]
 ```
 </div>
 
@@ -529,14 +530,16 @@ other metadata: ocr_source = mistral-ocr
 </div>
 
 <div class="slide-actions">
-<span class="run">proposed #7516 API shape, not in the dev-feed yet</span>
+<span class="run">runs on the shipping API — citations, no new chunking primitive</span>
 </div>
 
 Note:
-A retriever can find the right text and still be unable to say where it came from. #7516 proposes
-typed page provenance on the chunk: the chunker gathers `element.PageNumber` into `chunk.Pages`
-(`IReadOnlyList<int>`). That API is not in today's dev-feed; the current sample validates the earlier
-string-key prototype.
+A retriever can find the right text and still be unable to say where it came from. You do not need a
+new chunking API for that. `OcrDocumentReader` already emits one section per OCR page with
+`page_number` in the section metadata; chunk each page-section on its own and every chunk is tagged
+with its source page. The page `Index` on `OcrResult` (#7588) plus per-page chunking makes answers
+citable today. We explored propagating element metadata through the chunker in dotnet/extensions
+#7516; it closed unmerged (2026-07-09) and the demo doesn't need it.
 
 ---
 
@@ -544,12 +547,13 @@ string-key prototype.
 
 ## Provenance rides the pipeline, not just the reader
 
-<img class="diagram" src="assets/diagrams/d5-medi-architecture.svg" alt="MEDI ingestion pipeline left to right: IngestionDocumentReader produces an IngestionDocument with sections, elements, typed page numbers, and metadata, then document processors, a chunker, chunk processors, and a writer decide what persists to a vector store, while emitting OpenTelemetry traces and logs. The proposed #7516 chunk.Pages API carries typed page provenance from the reader to the citable chunk; ocr_source and other enrichment stay in metadata.">
+<img class="diagram" src="assets/diagrams/d5-medi-architecture.svg" alt="MEDI ingestion pipeline left to right: IngestionDocumentReader produces an IngestionDocument with sections, elements, typed page numbers, and metadata, then document processors, a chunker, chunk processors, and a writer decide what persists to a vector store, while emitting OpenTelemetry traces and logs. Per-page chunking carries the page number from the reader to the citable chunk; ocr_source and other enrichment stay in metadata.">
 
 Note:
-Zoom out from the one reader to the whole MEDI pipeline. OcrDocumentReader is just the first stage; the
-#7516 proposal carries typed page provenance through the in-memory stages: document processors, the
-chunker, and chunk processors. Page becomes `chunk.Pages`; other enrichment, like `ocr_source`,
+Zoom out from the one reader to the whole MEDI pipeline. OcrDocumentReader is just the first stage;
+because it emits one section per page, per-page chunking carries the page number through the in-memory
+stages: document processors, the chunker, and chunk processors. The page rides on each chunk; other
+enrichment, like `ocr_source`,
 `confidence`, and bbox, stays in metadata. The writer still decides what persists to the vector store.
 And because it's MEDI, the whole pipeline is instrumented: OpenTelemetry traces and logs fall out for
 free, which is exactly what the Aspire hero app surfaces on its dashboard.
@@ -649,7 +653,7 @@ using IOcrClient ocr =                 // swap engine
     new FoundryMistralOcrClient(foundry, cred);
 var doc = await new OcrDocumentReader(ocr)
               .ReadAsync(pdf, name, "application/pdf");
-var chunks = chunker.ProcessAsync(doc, ct);    // #7516
+var chunks = ChunkByPage(doc, chunker);        // page-tagged
 
 // REAL embeddings + LOCAL MEVD vector store
 await col.UpsertAsync(chunks);                 // embeds each
@@ -731,7 +735,7 @@ discriminating structural signal is **Tables+Figures**, not Coverage. No gold ac
 
 - **#7588** `IOcrClient` — the provider-neutral OCR seam
   - adds `OcrImage`/`OcrPage.Images`, a `UriContent` overload, and the `ExtractAsync` rename
-- **#7516** proposed typed page provenance through chunking, makes answers citable
+- page provenance rides the shipping API (per-page chunking); the earlier chunk-propagation proposal **#7516** closed unmerged
 
 </div>
 <div class="col-left">
@@ -759,7 +763,7 @@ prove the whole thing composes on real code.
 ## Try it, then shape it
 
 - Clone the repo, run `scripts/build-local-feed.sh`, then `05-one-loop-four-clients.cs` on your own PDF
-- Read the seam: `#7588` (IOcrClient) and `#7516` (proposed typed page provenance) in `dotnet/extensions`
+- Read the seam: `#7588` (IOcrClient) in `dotnet/extensions` — provenance rides per-page chunking on it
 - See it composed: `#13/#14/#15` in `CommunityToolkit/AI` — the reader composes the client
 - Remember: OCR is a capability, the reader is the bridge, and provenance makes answers citable
 

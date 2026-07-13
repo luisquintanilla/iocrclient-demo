@@ -60,7 +60,6 @@ Tokenizer tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
 var chunker = new SectionChunker(new IngestionChunkerOptions(tokenizer)
 {
     MaxTokensPerChunk = 256,
-    MetadataKeysToPropagate = new HashSet<string> { "page_number", "ocr_source" },
 });
 int chunks = 0;
 await foreach (IngestionChunk _ in chunker.ProcessAsync(nativeDoc, default)) chunks++;

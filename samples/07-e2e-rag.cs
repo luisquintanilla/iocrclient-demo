@@ -4,20 +4,23 @@
 
 // 07-e2e-rag.cs — the whole point, end to end, on the REAL MEDI pipeline:
 //
-//   IOcrClient (#7588)  ->  OcrDocumentReader  ->  SectionChunker (#7516 opt-in)  ->  vector retrieve  ->  cited answer
+//   IOcrClient (#7588)  ->  OcrDocumentReader  ->  SectionChunker (per page)  ->  vector retrieve  ->  cited answer
 //
 // Both abstractions pay off together. IOcrClient turns the PDF into page-structured Markdown; the
-// OcrDocumentReader bridges it into MEDI; naming page_number in MetadataKeysToPropagate (#7516) carries
-// the page onto every chunk, so the final answer cites its source page. Swap the OCR provider on one
-// line and nothing else changes. Retrieval is REAL here: a real IEmbeddingGenerator (Azure OpenAI
-// embeddings) + a local Microsoft.Extensions.VectorData store (CommunityToolkit.VectorData.InMemory).
-// The store is interchangeable — swap InMemoryVectorStore for SqliteVectorStore (see 12) and nothing
-// else changes. Sample 12 runs the SAME shape through the MEDI IngestionPipeline + VectorStoreWriter.
+// OcrDocumentReader bridges it into MEDI (one section per OCR page, each stamped with its page). The
+// SectionChunker is section-bounded, so chunking each page-section on its own tags every chunk with its
+// exact source page — the answer cites [page N] with zero cross-page bleed and no framework opt-in.
+// Swap the OCR provider on one line and nothing else changes. Retrieval is REAL here: a real
+// IEmbeddingGenerator (Azure OpenAI embeddings) + a local Microsoft.Extensions.VectorData store
+// (CommunityToolkit.VectorData.InMemory). The store is interchangeable — swap InMemoryVectorStore for
+// SqliteVectorStore (see 12) and nothing else changes. Sample 12 runs the SAME shape through the MEDI
+// IngestionPipeline + VectorStoreWriter.
 //
 //   az login  (keyless)
 //   dotnet user-secrets set OCR:FoundryEndpoint <url> --id iocrclient-demo   (see README; never committed)
 //   dotnet run 07-e2e-rag.cs -- data/usgs-petroleum-assessment.pdf "What is the mean estimate of undiscovered technically recoverable oil in the province?"
 
+using System.Runtime.CompilerServices;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using CommunityToolkit.VectorData.InMemory;
@@ -43,21 +46,18 @@ await using (FileStream src = File.OpenRead(pdf))
 }
 Console.WriteLine($"OCR -> reader: {document.Sections.Count} pages of structured elements");
 
-// 2) Chunk with the real MEDI SectionChunker, opting page_number into every chunk (#7516).
+// 2) Chunk with the real MEDI SectionChunker — one page at a time so every chunk keeps its source
+//    page. SectionChunker is section-bounded and the bridge emits one section per OCR page, so this
+//    yields the same chunks as whole-document chunking but with exact, always-correct page provenance.
 Tokenizer tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
-var chunker = new SectionChunker(new IngestionChunkerOptions(tokenizer)
-{
-    MaxTokensPerChunk = 256,
-    MetadataKeysToPropagate = new HashSet<string> { "page_number", "ocr_source" },
-});
+var chunker = new SectionChunker(new IngestionChunkerOptions(tokenizer) { MaxTokensPerChunk = 256 });
 
 var chunks = new List<(string Text, int Page)>();
-await foreach (IngestionChunk c in chunker.ProcessAsync(document, default))
+await foreach ((string Text, int Page) c in ChunkByPage(document, chunker))
 {
-    int page = c.HasMetadata && c.Metadata.TryGetValue("page_number", out object? p) ? Convert.ToInt32(p) : -1;
-    chunks.Add((ChunkText(c), page));
+    chunks.Add(c);
 }
-Console.WriteLine($"Chunked: {chunks.Count} chunks, each carrying its source page (from #7516)");
+Console.WriteLine($"Chunked: {chunks.Count} chunks, each tagged with its source page");
 
 // 3) Retrieve top-k with a REAL embedding + local vector store (interchangeable via MEVD).
 IEmbeddingGenerator<string, Embedding<float>> embedder =
@@ -91,6 +91,25 @@ Console.WriteLine($"A: {answer.Text}");
 return 0;
 
 static string ChunkText(IngestionChunk c) => (c.Content as TextContent)?.Text ?? c.Content?.ToString() ?? string.Empty;
+
+// Hand-rolled page provenance. SectionChunker is section-bounded and OcrDocumentReader emits one
+// section per OCR page (stamped section.Metadata["page_number"]), so chunking each page-section on its
+// own tags every emitted chunk with its exact source page — no cross-page bleed, no framework opt-in.
+static async IAsyncEnumerable<(string Text, int Page)> ChunkByPage(
+    IngestionDocument document, SectionChunker chunker,
+    [EnumeratorCancellation] CancellationToken ct = default)
+{
+    foreach (IngestionDocumentSection section in document.Sections)
+    {
+        int page = section.Metadata.TryGetValue("page_number", out object? p) && p is int i ? i : -1;
+        var pageDoc = new IngestionDocument(document.Identifier);
+        pageDoc.Sections.Add(section);
+        await foreach (IngestionChunk c in chunker.ProcessAsync(pageDoc, ct))
+        {
+            yield return (ChunkText(c), page);
+        }
+    }
+}
 
 static string Require(string name) =>
     DemoOcr.DemoConfig.Config[name]

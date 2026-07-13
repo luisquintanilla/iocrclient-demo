@@ -10,6 +10,11 @@
 //      overload is symmetric with the shipped DataContent one. It resolves self-contained data: URIs and
 //      leaves native URL passthrough as an explicit open question (see docs/api-notes.md).
 //
+//  (C) ExtractFromUriAsync — the opt-in remote downloader (R2). ExtractAsync(UriContent) never touches
+//      the network (remote -> NotSupported); ExtractFromUriAsync is the explicit counterpart that GETs
+//      http/https bytes with a CALLER-supplied HttpClient, then runs the normal stream extraction. We
+//      serve the local PDF over loopback so this is a real http download with no external dependency.
+//
 //   az login
 //   OCR_FOUNDRY_ENDPOINT=https://<account>.services.ai.azure.com \
 //   OCR_DI_ENDPOINT=https://<account>.cognitiveservices.azure.com \
@@ -52,6 +57,30 @@ using IOcrClient mistral = new FoundryMistralOcrClient(
 OcrResult viaUri = await mistral.ExtractAsync(uriContent);
 Console.WriteLine($"UriContent -> {viaUri.OcrSource}: {viaUri.Pages.Count} page(s). " +
     "Same result, reached through the ergonomic UriContent entry point.");
+
+// (C) Remote http URI via the opt-in ExtractFromUriAsync downloader (R2) -------------------------
+// Serve the same PDF over loopback so the http path is exercised for real, self-contained.
+Console.WriteLine("\n--- Remote http URI via ExtractFromUriAsync (opt-in download) ---");
+int port = FreePort();
+string prefix = $"http://localhost:{port}/";
+using var listener = new System.Net.HttpListener();
+listener.Prefixes.Add(prefix);
+listener.Start();
+Task serve = Task.Run(async () =>
+{
+    System.Net.HttpListenerContext ctx = await listener.GetContextAsync();
+    ctx.Response.ContentType = "application/pdf";
+    ctx.Response.ContentLength64 = bytes.Length;
+    await ctx.Response.OutputStream.WriteAsync(bytes);
+    ctx.Response.Close();
+});
+
+using var http = new HttpClient();
+var remote = new UriContent($"{prefix}doc.pdf", "application/pdf");
+OcrResult viaRemote = await mistral.ExtractFromUriAsync(remote, http);
+await serve;
+Console.WriteLine($"UriContent(http) -> {viaRemote.OcrSource}: {viaRemote.Pages.Count} page(s). " +
+    "Bytes fetched over http by ExtractFromUriAsync(httpClient), then extracted normally.");
 return 0;
 
 async Task RunImages(string label, IOcrClient client)
@@ -90,3 +119,12 @@ async Task RunImages(string label, IOcrClient client)
 static string Require(string name) =>
     DemoOcr.DemoConfig.Config[name]
     ?? throw new InvalidOperationException($"Set {name} (see the header comment).");
+
+static int FreePort()
+{
+    var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+    probe.Start();
+    int p = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
+    probe.Stop();
+    return p;
+}

@@ -8,7 +8,7 @@ pipeline stage.** Repeated beat: *one interface, any engine, swap with a line, a
 survives all the way to the answer.*
 
 Every technical claim maps to a runnable sample under `samples/`, grounded in `samples/output/`. The
-samples run on the REAL `dotnet/extensions` code (preview2 + #7516 + #7588), packed into a local feed
+samples run on the REAL `dotnet/extensions` code (preview2 + #7588), packed into a local feed
 by `scripts/build-local-feed.sh` — not a vendored copy.
 
 ---
@@ -26,15 +26,15 @@ by `scripts/build-local-feed.sh` — not a vendored copy.
 | 6 | Two archetypes (native vs vision) | Archetypes | `05` | 2 | 0:16 |
 | 7 | Structured output from the vision path | Structured | `11` | 2 | 0:18 |
 | 8 | The boundary + the stack + where it lives | Boundary, Stack, Where | `06` | 3 | 0:21 |
-| 9 | Provenance survives the chunker (#7516) | Provenance | `06` | 2 | 0:23 |
+| 9 | Provenance survives the chunker | Provenance | `06` | 2 | 0:23 |
 | 10 | The same seam, a second way (PdfPig #14) + composition | PdfPig, Composition | `08` | 3 | 0:26 |
 | 11 | End to end: PDF to cited answer | End to end | `07` | 3 | 0:29 |
 | 12 | Does it pay off? OCR vs PdfPig eval | Eval | `10` | 2 | 0:31 |
 | 13 | The ask + close | Ask, Close | - | 1 | 0:32 |
 
 Lightning cut (10 min): keep 0, 1, 5, 8, 11, 12, 13. Drop the interface deep-read, the archetypes and
-structured-output slides, the figures slide, and the PdfPig/composition slides; mention #7516 in one
-line on the end-to-end slide.
+structured-output slides, the figures slide, and the PdfPig/composition slides; mention page
+provenance in one line on the end-to-end slide.
 
 Buffer plan: sections 5, 8, 11, and 12 are the ones that must land. If short on time, talk-only
 sections 3, 4, 7, 9, and 10 and let the captured output and diagrams carry them. Never skip the
@@ -98,14 +98,16 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
   in `dotnet/extensions`; the **concretes** (`VisionLMOcrClient`, `PdfPigReader`, processors) live
   in `CommunityToolkit/AI`. The core never privileges an engine.
 
-## 7. Provenance survives the chunker (2 min) · *sample: 06-medi-pipeline.cs* · #7516
-- A RAG pipeline chunks the reader's output. If the chunker drops element metadata, the page number is
-  gone and every citation becomes a guess.
-- #7516 makes propagation **opt-in**: name the keys you want in `MetadataKeysToPropagate`, and the
-  element's `page_number` survives into the chunk. Show the before/after on the real MEDI chunker:
-  `carry metadata = False -> True`, one option toggled. The chunk then cites `page_number = 0,
-  ocr_source = mistral-ocr`.
-- This is why `OcrPage.Index` mattered back in section 3. Already in review with the MEDI maintainers.
+## 7. Provenance survives the chunker (2 min) · *sample: 06-medi-pipeline.cs*
+- A RAG pipeline chunks the reader's output. If you chunk the whole document at once, a chunk can span
+  pages and the page number blurs — every citation becomes a guess.
+- No new chunking API is needed. `OcrDocumentReader` emits **one section per OCR page** with
+  `page_number` stamped; chunk each page-section on its own and every chunk carries its exact source
+  page. Show whole-doc (page metadata lost) vs per-page (`page = 9` on each chunk) on the real MEDI
+  `SectionChunker`.
+- This is why `OcrPage.Index` mattered back in section 3 — the page model on the shipping `IOcrClient`
+  (#7588) is enough to stay citable. (We explored propagating element metadata through the chunker in
+  #7516; it closed unmerged, and the demo doesn't need it.)
 
 ## 8. The same seam, a second way (2 min) · *sample: 08-pdfpig-reader.cs* · #13/#14/#15
 - Most PDFs already carry a digital text layer — paying an OCR engine to re-read it is wasteful.
@@ -129,8 +131,9 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
   point is the seam and the provenance.
 
 ## 10. The ask + close (1 min)
-- The work spans two repos. `dotnet/extensions`: **#7588** (the `IOcrClient` seam) and **#7516** (page
-  metadata through chunking). `CommunityToolkit/AI`: **#13** (design), **#15** (`VisionLMOcrClient`,
+- The work spans two repos. `dotnet/extensions`: **#7588** (the `IOcrClient` seam) — page provenance
+  already rides the shipping API via per-page chunking, so the earlier chunk-propagation proposal
+  (#7516) closed unmerged. `CommunityToolkit/AI`: **#13** (design), **#15** (`VisionLMOcrClient`,
   closes #13), **#14** (PdfPig reader composing any `IOcrClient`).
 - Every sample runs on the real preview2 + #7588 bits via `scripts/build-local-feed.sh` — this repo is
   the reproduction.

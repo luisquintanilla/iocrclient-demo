@@ -10,3 +10,6 @@ document : data/usgs-petroleum-assessment.pdf  (743,573 bytes)
 
 --- UriContent overload (data: URI) ---
 UriContent -> mistral-ocr: 2 page(s). Same result, reached through the ergonomic UriContent entry point.
+
+--- Remote http URI via ExtractFromUriAsync (opt-in download) ---
+UriContent(http) -> mistral-ocr: 2 page(s). Bytes fetched over http by ExtractFromUriAsync(httpClient), then extracted normally.

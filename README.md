@@ -18,11 +18,13 @@ second way (digital text first, OCR only the pages that need it).
 - **Diagrams:** [`assets/diagrams/`](assets/diagrams/) — four hand-authored branded SVGs (stack,
   data-flow/boundary, composition, eval harness) embedded in the deck and reusable standalone.
 - **Reproducible feed:** [`scripts/build-local-feed.sh`](scripts/build-local-feed.sh) packs the real
-  `dotnet/extensions` code (preview2 + #7516 + #7588) into `local-feed/` — the samples run on the real
+  `dotnet/extensions` code (preview2 + #7588) into `local-feed/` — the samples run on the real
   types, not a vendored copy.
 - **The body of work this drives, across two repos:**
-  - dotnet/extensions [#7588](https://github.com/dotnet/extensions/pull/7588) (IOcrClient) and
-    [#7516](https://github.com/dotnet/extensions/pull/7516) (page metadata through chunking)
+  - dotnet/extensions [#7588](https://github.com/dotnet/extensions/pull/7588) (IOcrClient) — the live
+    seam. Page provenance rides the shipping API (the reader emits one section per page; the samples
+    chunk per page), so an earlier chunk-propagation proposal,
+    [#7516](https://github.com/dotnet/extensions/pull/7516), closed unmerged and is no longer needed
   - CommunityToolkit/AI [#13](https://github.com/CommunityToolkit/AI/issues/13) (design),
     [#15](https://github.com/CommunityToolkit/AI/pull/15) (VisionLMOcrClient, closes #13),
     [#14](https://github.com/CommunityToolkit/AI/pull/14) (PdfPig reader composing any IOcrClient)
@@ -104,7 +106,7 @@ az login                                            # keyless DefaultAzureCreden
 # set endpoints once via user-secrets (UserSecretsId iocrclient-demo) — see docs/SETUP.md
 dotnet run samples/05-one-loop-four-clients.cs                     # defaults to the complex USGS fact sheet
 dotnet run samples/05-one-loop-four-clients.cs -- samples/data/survival-kit.pdf  # the simple born-digital baseline
-dotnet run samples/06-medi-pipeline.cs              # OcrDocumentReader -> MEDI chunker (#7516)
+dotnet run samples/06-medi-pipeline.cs              # OcrDocumentReader -> MEDI chunker; per-page provenance
 dotnet run samples/07-e2e-rag.cs                    # USGS default + its oil-estimate question
 dotnet run samples/08-pdfpig-reader.cs              # native text + OCR fallback on USGS
 dotnet run samples/09-images-and-uris.cs            # figures + UriContent overload

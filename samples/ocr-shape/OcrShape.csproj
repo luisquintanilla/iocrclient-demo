@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The REAL IOcrClient (#7588) + MEDI (preview2 + #7516), consumed from the local-pack feed built
+    The REAL IOcrClient (#7588) + MEDI (preview2), consumed from the local-pack feed built
     by scripts/build-local-feed.sh (version 10.8.0-dev). Every provider in this demo implements the
     actual Microsoft.Extensions.AI.IOcrClient, and the OcrDocumentReader bridges it to MEDI's
-    IngestionDocumentReader. When #7588 + #7516 ship, delete ../local-feed and bump the versions.
+    IngestionDocumentReader. When #7588 ships, delete ../local-feed and bump the versions.
   -->
 
   <PropertyGroup>

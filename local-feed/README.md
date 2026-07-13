@@ -6,8 +6,8 @@ real projects, and do not redistribute them as if they were shipped Microsoft pa
 
 ## What these are
 
-`IOcrClient` and the chunk page-provenance shown in this demo are **proposed** in open pull requests
-against [dotnet/extensions](https://github.com/dotnet/extensions) and are **not on nuget.org yet**.
+`IOcrClient` shown in this demo is **proposed** in an open pull request against
+[dotnet/extensions](https://github.com/dotnet/extensions) and is **not on nuget.org yet**.
 Rather than vendor a hand-copied snapshot, `../scripts/build-local-feed.sh` packs the *real*
 dotnet/extensions source into this folder at version `10.8.0-dev`, so the samples bind to the actual
 `Microsoft.Extensions.*` types. `../nuget.config` resolves these from `local-feed`; everything else
@@ -15,10 +15,9 @@ dotnet/extensions source into this folder at version `10.8.0-dev`, so the sample
 
 ## Provenance (what went into the build)
 
-Packed **2026-07-01** at version `10.8.0-dev` from this composition:
+Packed **2026-07-13** at version `10.8.0-dev` from this composition:
 
-- base: `dotnet/extensions` branch **`data-ingestion-preview2`** (latest MEDI: non-generic `IngestionChunk`)
-- **+ PR [#7516](https://github.com/dotnet/extensions/pull/7516)** — opt-in element→chunk metadata propagation (targets `data-ingestion-preview2`)
+- base: `dotnet/extensions` branch **`data-ingestion-preview2`** (latest MEDI: non-generic `IngestionChunk`; the public upstream branch, no in-flight PRs merged in)
 - **+ PR [#7588](https://github.com/dotnet/extensions/pull/7588)** — `IOcrClient` (the OCR seam; additive `Ocr/` folders grafted from the PR head, since #7588 targets `main`)
 - two one-line const edits the grafted files depend on (an experimental diagnostic id and an OpenTelemetry const) — see the build script
 
@@ -40,7 +39,7 @@ inside each `.nupkg`. This repository's own sample code is likewise MIT (see `..
 
 ## When to delete this feed
 
-The moment #7516 and #7588 ship on nuget.org, this whole folder becomes unnecessary:
+The moment #7588 ships on nuget.org, this whole folder becomes unnecessary:
 
 1. delete `local-feed/`,
 2. remove the `<clear/>` + `local-feed` source from `../nuget.config`,

@@ -22,8 +22,8 @@ dotnet --version
 
 ## 2. Get the code and the packages
 
-The `IOcrClient` (#7588) and chunk page-provenance (#7516) APIs are **not on nuget.org yet**, so the
-repo ships them prebuilt in [`local-feed/`](../local-feed/README.md) and `nuget.config` resolves them
+The `IOcrClient` (#7588) API is **not on nuget.org yet**, so the
+repo ships it prebuilt in [`local-feed/`](../local-feed/README.md) and `nuget.config` resolves it
 from there — nothing to build. (To rebuild/refresh the feed from public GitHub refs:
 `scripts/build-local-feed.sh`.)
 
@@ -85,7 +85,6 @@ This repo exists to gather feedback on the **proposed** building blocks while th
 review. If you have thoughts on the shape, that's the point:
 
 - **`IOcrClient`** — the provider-neutral OCR seam — [dotnet/extensions #7588](https://github.com/dotnet/extensions/pull/7588)
-- **chunk page-provenance** — carrying the page model through chunking — [dotnet/extensions #7516](https://github.com/dotnet/extensions/pull/7516)
 - **`OcrDocumentReader`** — the `IOcrClient` → MEDI bridge (in `samples/ocr-shape/`)
 
 Open an issue here for demo/repro problems, or comment on the PRs for API-shape feedback.

@@ -23,8 +23,8 @@ public readonly record struct PageOcrContext(int PageNumber, int NativeElementCo
 // miniature: native text first, OCR composed in as an injected enrichment (not bolted on downstream),
 // depending on IOcrClient only. OCR is an injected capability, so the reader keeps the plain
 // PdfPigReader name — under OcrPolicy.Never it is a pure native-text reader. Stamps the same metadata
-// keys (page_number/ocr_source) as the other readers, so #7516's MetadataKeysToPropagate carries
-// provenance into chunks identically.
+// keys (page_number/ocr_source) as the other readers, so per-page chunking carries provenance into
+// chunks identically.
 //   seam 1 — IPageSegmenter: HOW to segment a page (DefaultPageSegmenter heuristic; swap in
 //            OnnxPageSegmenter from CommunityToolkit/AI PR 3's PdfPig.OnnxLayoutAnalysis for ML layout).
 //   seam 2 — IOcrClient + OcrPolicy: WHEN/whether to OCR (Never / FallbackForEmptyPages / AllPages).

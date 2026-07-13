@@ -12,9 +12,9 @@ namespace DemoOcr;
 ///
 /// It maps the normalized <see cref="OcrResult"/> onto an <see cref="IngestionDocument"/>, stamping
 /// element PageNumber + Metadata with the SAME key conventions PdfPigReader uses (page_number,
-/// ocr_source, confidence, element_type, BoundingBox.*). With #7516's opt-in
-/// IngestionChunkerOptions.MetadataKeysToPropagate, those keys survive into chunks automatically; the
-/// pipeline can then cite [page N] end to end.
+/// ocr_source, confidence, element_type, BoundingBox.*). Because it emits one section per OCR page, a
+/// consumer that chunks each page-section on its own tags every chunk with its source page — so the
+/// pipeline can cite [page N] end to end on the shipping API (see samples 06/07).
 /// </summary>
 public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options = null) : IngestionDocumentReader
 {
