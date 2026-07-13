@@ -1,16 +1,6 @@
-OCR -> reader: 12 pages of structured elements
-Chunked: 22 chunks, each tagged with its source page
-Retrieved 4 chunks (vector similarity): pages 9, 1, 4
+OCR -> reader: 2 pages of structured elements
+Chunked: 21 chunks, each tagged with its source page
+Retrieved 4 chunks (vector similarity): pages 0, 1
 
-Q: how do I purify water and how long do I wait?
-A: To purify water using the Life Guard X Emergency Survival Kit, follow these steps:
-
-1. Locate the portable water filter in the kit.  
-2. Extend the tubing and securely attach it to the water source, ensuring a tight seal.  
-3. Begin to pump the handle to force water through the filtration membrane, which removes 99.9999% of waterborne bacteria and 99.9% of protozoan parasites, producing clean drinking water.  
-
-Alternatively, you can use the water purification tablets included in the kit:  
-1. Follow the instructions provided in the kit to place the appropriate number of tablets into the water to be treated.  
-2. Wait for the recommended time before consuming the water.  
-
-The exact waiting time for the tablets is found in the instructions provided with the kit (not specified in the context), so you must refer to those instructions to know the correct waiting period [page 9].
+Q: What is the mean estimate of undiscovered technically recoverable oil in the province?
+A: The mean estimate of undiscovered, technically recoverable oil in the Timan-Pechora Basin Province of Russia is 1.4 billion barrels (1,425 million barrels) of shale oil [page 0].

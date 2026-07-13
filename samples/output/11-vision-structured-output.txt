@@ -1,10 +1,11 @@
 === (A) structured transcription: OFF vs ON ===
 
 [structured=OFF] source=vision-llm pages=1 tables=0 figures=0 lang=? conf=?
-[structured=ON ] source=vision-llm pages=10 tables=0 figures=0 lang=English conf=0.99
+[structured=ON ] source=vision-llm pages=2 tables=3 figures=3 lang=en conf=0.98
+  figure caption (no bytes — VLM archetype): Map showing the four continuous assessment units (AUs) in the Timan-Pechora Basin Province of Russia.
 
 === (B) OCR-then-extract a typed POCO (GetService<IChatClient>) ===
 
-  title    : Life Guard X Emergency Survival Kit User Guide
-  topic    : Emergency Survival Kit Contents and Usage
-  keyPoints: Comprehensive kit including first aid supplies, emergency food, essential tools, emergency shelter, water purification, and communication devices.; First aid supplies feature bandages, antiseptics, medications, medical tools, and a first aid guide for treating minor injuries.; Emergency food consists of high-calorie rations with recommendations for storage and consumption guidelines.; Essential tools include a multi-tool, fire starter, whistle, flashlight, and emergency blanket, designed for various emergency tasks.; Emergency shelter is a two-person tent with instructions for setup, usage, and maintenance, ensuring protection in adverse conditions.; Water purification system comprises a portable filter and purification tablets with usage, maintenance, and safety precautions detailed.; Communication tools feature a portable two-way radio, whistle, signal mirror, and emergency contact information, plus tips for effective signaling.
+  title    : Assessment of Continuous Oil and Gas Resources of the Timan-Pechora Basin Province, Russia, 2018
+  topic    : Petroleum resource assessment in Timan-Pechora Basin, Russia
+  keyPoints: The USGS conducted a geology-based quantitative assessment of undiscovered, technically recoverable continuous oil and gas resources in the Timan-Pechora Basin Province, Russia.; Four assessment units were evaluated related to different total petroleum systems: Domanik TPS (Denisov-Khoreyver and Izhma-Pechora Shale Oil AUs), Ordovician–Lower Devonian Composite TPS (Denisov-Khoreyver Shale Gas AU), and Paleozoic Composite TPS (Ural Foredeep Continuous Gas AU).; The mean estimated undiscovered continuous resources are 1.4 billion barrels of shale oil, 46 trillion cubic feet of gas, and 737 million barrels of natural gas liquids.; Geological history includes formation related to closure of Uralian Ocean, sedimentation causing maturation of source rocks, and tectonic events influencing reservoir retention and migration.; The Ural Foredeep Continuous Gas AU contains about 78% of the mean total estimated gas resources, highlighting its importance within the province.

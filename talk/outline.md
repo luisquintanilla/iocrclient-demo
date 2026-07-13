@@ -117,15 +117,15 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
   fallback; #15 is `VisionLMOcrClient`, an `IOcrClient` over a vision chat model (it closes design
   issue #13). **The reader (#14) composes the client (#15)** — the boundary from section 6, in action.
 - `OcrPolicy` is WHEN to OCR, not WHICH model: `Never` / `FallbackForEmptyPages` / `AllPages`. Show the
-  captured run: the born-digital survival-kit needs 0 OCR calls under `Never` and `Fallback`, and 1
+  captured run: the born-digital USGS fact sheet needs 0 OCR calls under `Never` and `Fallback`, and 1
   whole-document call under `AllPages` — and every path feeds the SAME chunker.
 - Emphasize: the reader depends on `IOcrClient` only, never a chat model directly.
 
 ## 9. End to end: PDF to a cited answer (3 min) · *sample: 07-e2e-rag.cs*
 - Put it together: OCR the PDF (Mistral) -> `OcrDocumentReader` -> `SectionChunker` with page
   provenance -> retrieve -> answer grounded only on the retrieved chunks, each citable to its page.
-- Show the captured run: 12 pages, 22 page-tagged chunks, retrieved from pages 9/6, final answer ends
-  with `[page 9]`.
+- Show the captured run: 2 pages, 21 page-tagged chunks, retrieved from pages 0/1, final answer ends
+  with `[page 0]`.
 - Swap the one OCR line to any of the four engines and nothing else changes. The retriever is lexical
   on purpose; a real `IEmbeddingGenerator` + vector store drops into the marked slot unchanged. The
   point is the seam and the provenance.

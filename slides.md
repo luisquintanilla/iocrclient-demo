@@ -286,7 +286,7 @@ foreach (var client in clients)
 ```text
 provider                       pages tables  chars
 -------------------------------------------------------
-vision-llm (gpt-4.1-mini)          1      0  13266
+vision-llm (gpt-4.1-mini)          1      0  15751
 mistral-ocr                        2      0  12657
 azure-document-intelligence        2      3  14847
 azure-content-understanding        2      0  14773
@@ -375,7 +375,7 @@ var summary = await chat
 
 ```text
 structured=OFF -> 1 page,  tables=0 figures=0  lang=? conf=?
-structured=ON  -> 1 page,  tables=0 figures=1  lang=en conf=0.98
+structured=ON  -> 2 pages, tables=3 figures=3  lang=en conf=0.98
   (falls back to freeform if unsupported)
 
 typed POCO (OCR-then-extract):
@@ -518,11 +518,11 @@ await foreach (var (chunk, page) in ChunkByPage(doc, chunker))
 <span class="output-label">captured — 07-e2e-rag.cs</span>
 
 ```text
-OCR -> reader: 12 pages of structured elements
-Chunked: 22 chunks, each tagged with its source page
-Retrieved 4 chunks (vector similarity): pages 9, 1, 4
+OCR -> reader: 2 pages of structured elements
+Chunked: 21 chunks, each tagged with its source page
+Retrieved 4 chunks (vector similarity): pages 0, 1
 
-answer ends: … [page 9]
+answer ends: … [page 0]
 ```
 </div>
 
