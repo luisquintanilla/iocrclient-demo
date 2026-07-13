@@ -45,6 +45,8 @@ and bump to the published versions. `ocr-shape/` holds the four provider impleme
 | `09-images-and-uris.cs` | Mistral OCR + Azure Document Intelligence | The result grows: `OcrPage.Images` (figure bytes + bbox + caption) via `IncludeImages`, and the `UriContent` overload — both proposed into [#7588](https://github.com/dotnet/extensions/pull/7588). Image bytes saved under `output/images/` (gitignored). |
 | `10-eval-ocr-vs-pdfpig.cs` | `bench/OcrBench/` + a judge model | Does OCR beat naive PdfPig? Same chunk→retrieve→answer pipeline, one variable (the extractor), scored by a custom deterministic `OcrExtractionEvaluator` + the built-in NLP F1. Writes `bench/report/leaderboard.md`. |
 | `11-vision-structured-output.cs` | Azure OpenAI (gpt-4.1-mini) | Opt-in structured transcription from the vision path (`GetResponseAsync<T>` over an OcrResult-shaped schema), plus typed POCO extraction via the inner `IChatClient` (`GetService<IChatClient>()`). Degrades to freeform when unsupported. |
+| `14-ollama-glm-ocr.cs` | Ollama + `glm-ocr` (local; no cloud, no `az login`) | A **local, open-weights** OCR engine behind `IOcrClient`. GLM-OCR (~0.9B) reached through OllamaSharp's native `IChatClient` and the repo's existing `VisionLlmOcrClient` — no new provider class. The page image is pulled with PdfPig (image *extraction*, not rasterization); the two glm-ocr prompt/stop quirks and Ollama's missing done-frame are patched by composition **on the Ollama client only** (`ocr-shape` untouched). |
+| `15-ocr-engine-comparison.cs` | `bench/OcrBench/` + Azure DI + Mistral OCR + Ollama `glm-ocr` | Cloud vs local through one seam ([BlueGuardrails](https://blueguardrails.com/en/blog/high-throughput-vlm-ocr)'s cost/locality framing): Azure Document Intelligence vs Mistral OCR vs GLM-OCR (local) on the same scanned doc — latency (measured here), structure (tables/figures), and cited $/1k-page cost. An inline `PdfImageOcrClient` feeds the image-only local engine per page; missing cloud creds graceful-skip. |
 
 ## Configuration (no secrets in code)
 
@@ -63,6 +65,10 @@ dotnet user-secrets set "OCR:VisionDeployment"             "gpt-4.1-mini"       
 dotnet user-secrets set "OCR:EmbedDeployment"              "text-embedding-3-small" --id iocrclient-demo
 dotnet user-secrets set "OCR:MistralModel"                 "mistral-ocr-4-0"       --id iocrclient-demo
 ```
+
+The **local** engine (samples `14`/`15`, GLM-OCR on Ollama) needs **no secrets and no `az login`** — just
+`ollama pull glm-ocr`. It defaults to `http://localhost:11434` and model `glm-ocr`; override with the
+optional `OCR:OllamaEndpoint` / `OCR:OllamaOcrModel` keys (or env vars) if your Ollama runs elsewhere.
 
 ## Run
 
@@ -91,6 +97,11 @@ dotnet run 05-one-loop-four-clients.cs -- data/survival-kit.pdf
 dotnet run 09-images-and-uris.cs
 dotnet run 10-eval-ocr-vs-pdfpig.cs       # runs the USGS born-digital + scanned twins
 dotnet run 11-vision-structured-output.cs
+
+# round 4: a LOCAL, open-weights engine (GLM-OCR on Ollama) behind the same seam — no cloud, ~$0/page
+ollama pull glm-ocr                       # the entire setup for sample 14; no secrets, no az login
+dotnet run 14-ollama-glm-ocr.cs           # 100% local, GPU-backed
+dotnet run 15-ocr-engine-comparison.cs    # cloud vs local: Azure DI vs Mistral OCR vs GLM-OCR (needs az login for the two cloud engines)
 ```
 
 ## Capture for a slide
