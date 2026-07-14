@@ -32,7 +32,7 @@ static void Report(OcrResult r)
     Console.WriteLine($"pages  : {r.Pages.Count}");
     Console.WriteLine();
     OcrPage first = r.Pages[0];
-    Console.WriteLine($"--- page {first.Index}  ({first.Tables.Count} table(s)) ---");
+    Console.WriteLine($"--- page {first.PageNumber}  ({first.Tables.Count} table(s)) ---");
     string md = first.Markdown;
     Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 }

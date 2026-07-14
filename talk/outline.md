@@ -65,8 +65,8 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 - `ExtractAsync(Stream, mediaType) -> OcrResult`. Stream in, normalized result out. `GetService` is
   the same escape hatch `IChatClient` has, so middleware and callers can still reach the concrete
   engine.
-- `OcrResult` is a list of `OcrPage`, each with an `Index`, `Markdown`, and `Tables`. Point at
-  `OcrPage.Index`. It looks minor now; it is the thread we pull in sections 6 and 7.
+- `OcrResult` is a list of `OcrPage`, each with a `PageNumber`, `Markdown`, and `Tables`. Point at
+  `OcrPage.PageNumber`. It looks minor now; it is the thread we pull in sections 6 and 7.
 - Honesty note: #7588 is not on nuget.org yet, so `scripts/build-local-feed.sh` packs the real branch
   into a local feed. The samples run on the actual `IOcrClient` type, not a hand-written copy.
 
@@ -105,7 +105,7 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
   `page_number` stamped; chunk each page-section on its own and every chunk carries its exact source
   page. Show whole-doc (page metadata lost) vs per-page (`page = 9` on each chunk) on the real MEDI
   `SectionChunker`.
-- This is why `OcrPage.Index` mattered back in section 3 — the page model on the shipping `IOcrClient`
+- This is why `OcrPage.PageNumber` mattered back in section 3 — the page model on the shipping `IOcrClient`
   (#7588) is enough to stay citable. (We explored propagating element metadata through the chunker in
   #7516; it closed unmerged, and the demo doesn't need it.)
 

@@ -31,7 +31,7 @@ public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options 
         foreach (OcrPage page in result.Pages)
         {
             var section = new IngestionDocumentSection();
-            section.Metadata["page_number"] = page.Index;
+            section.Metadata["page_number"] = page.PageNumber;
             section.Metadata["ocr_source"] = ocrSource;
             if (page.Confidence is { } pc)
             {
@@ -43,9 +43,9 @@ public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options 
                 var paragraph = new IngestionDocumentParagraph(page.Markdown)
                 {
                     Text = page.Markdown,
-                    PageNumber = page.Index,
+                    PageNumber = page.PageNumber,
                 };
-                paragraph.Metadata["page_number"] = page.Index;
+                paragraph.Metadata["page_number"] = page.PageNumber;
                 paragraph.Metadata["ocr_source"] = ocrSource;
                 if (page.Confidence is { } c)
                 {
@@ -63,9 +63,9 @@ public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options 
                 var blockPara = new IngestionDocumentParagraph(block.Text)
                 {
                     Text = block.Text,
-                    PageNumber = page.Index,
+                    PageNumber = page.PageNumber,
                 };
-                blockPara.Metadata["page_number"] = page.Index;
+                blockPara.Metadata["page_number"] = page.PageNumber;
                 blockPara.Metadata["ocr_source"] = ocrSource;
                 if (block.Kind is { } kind)
                 {
@@ -89,9 +89,9 @@ public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options 
                 var tableEl = new IngestionDocumentParagraph(tableMarkdown)
                 {
                     Text = tableMarkdown,
-                    PageNumber = page.Index,
+                    PageNumber = page.PageNumber,
                 };
-                tableEl.Metadata["page_number"] = page.Index;
+                tableEl.Metadata["page_number"] = page.PageNumber;
                 tableEl.Metadata["ocr_source"] = ocrSource;
                 tableEl.Metadata["element_type"] = "table";
                 if (table.Cells is { Count: > 0 })
@@ -124,7 +124,7 @@ public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options 
         metadata["BoundingBox.Right"] = right;
         metadata["BoundingBox.Bottom"] = bottom;
         metadata["BoundingBox.PageNumber"] = r.PageNumber;
-        metadata["BoundingBox.Polygon"] = string.Join(",", r.Polygon);
+        metadata["BoundingBox.Polygon"] = string.Join(",", r.Polygon.SelectMany(p => new[] { p.X, p.Y }));
     }
 }
 
@@ -172,19 +172,5 @@ public static class OcrShapeExtensions
             }
         }
         return sb.ToString();
-    }
-
-    /// <summary>Axis-aligned bounds of the polygon, for the PdfPigReader BoundingBox.* keys.</summary>
-    public static (float Left, float Top, float Right, float Bottom) GetBounds(this OcrBoundingRegion region)
-    {
-        float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
-        for (int i = 0; i + 1 < region.Polygon.Count; i += 2)
-        {
-            minX = Math.Min(minX, region.Polygon[i]);
-            maxX = Math.Max(maxX, region.Polygon[i]);
-            minY = Math.Min(minY, region.Polygon[i + 1]);
-            maxY = Math.Max(maxY, region.Polygon[i + 1]);
-        }
-        return (minX, minY, maxX, maxY);
     }
 }

@@ -150,7 +150,7 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IOcrClient
             var img = pdf.GetPage(i).GetImages().FirstOrDefault();
             if (img is null || !img.TryGetPng(out byte[]? png) || png is null)
             {
-                pages.Add(new OcrPage(i - 1, ""));   // no extractable image on this page
+                pages.Add(new OcrPage(i, ""));   // no extractable image on this page
                 continue;
             }
 
@@ -158,7 +158,7 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IOcrClient
                 .ExtractAsync(new MemoryStream(png), "image/png", options, progress: null, cancellationToken)
                 .ConfigureAwait(false);
             modelId ??= one.ModelId;
-            pages.Add(new OcrPage(i - 1, one.Pages.Count > 0 ? one.Pages[0].Markdown : ""));
+            pages.Add(new OcrPage(i, one.Pages.Count > 0 ? one.Pages[0].Markdown : ""));
             progress?.Report(new OcrProgress { PagesProcessed = pages.Count, TotalPages = total, Status = "transcribing" });
         }
 

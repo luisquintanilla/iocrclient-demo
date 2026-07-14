@@ -112,7 +112,7 @@ public sealed class FoundryMistralOcrClient(
                 }
             }
 
-            pages.Add(new OcrPage(index, markdown) { Tables = tables, Images = images });
+            pages.Add(new OcrPage(index + 1, markdown) { Tables = tables, Images = images });
             progress?.Report(new OcrProgress { PagesProcessed = pages.Count, TotalPages = total, Status = "analyzing" });
         }
 

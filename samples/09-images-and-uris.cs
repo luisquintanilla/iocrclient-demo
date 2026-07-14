@@ -96,19 +96,23 @@ async Task RunImages(string label, IOcrClient client)
             for (int i = 0; i < page.Images.Count; i++)
             {
                 OcrImage img = page.Images[i];
-                string bbox = img.BoundingRegion is { } br
-                    ? $"bbox[{string.Join(",", br.GetBounds())}]" : "bbox:none";
+                string bbox = "bbox:none";
+                if (img.BoundingRegion is { } br)
+                {
+                    var b = br.GetBounds();
+                    bbox = $"bbox[{b.Left},{b.Top},{b.Right},{b.Bottom}]";
+                }
                 string caption = string.IsNullOrEmpty(img.Caption) ? "" : $" caption=\"{img.Caption}\"";
                 string saved = "no-bytes";
                 if (img.Content is { } content)
                 {
                     string ext = content.MediaType?.Split('/').Last() ?? "bin";
-                    string file = Path.Combine(outDir, $"{label}-p{page.Index}-{i}.{ext}");
+                    string file = Path.Combine(outDir, $"{label}-p{page.PageNumber}-{i}.{ext}");
                     await File.WriteAllBytesAsync(file, content.Data.ToArray());
                     saved = $"{content.Data.Length:N0}B -> {file}";
                 }
 
-                Console.WriteLine($"  p{page.Index} img{i}: {bbox}{caption}  ({saved})");
+                Console.WriteLine($"  p{page.PageNumber} img{i}: {bbox}{caption}  ({saved})");
             }
         }
 

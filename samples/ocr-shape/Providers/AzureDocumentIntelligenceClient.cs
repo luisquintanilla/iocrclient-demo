@@ -132,7 +132,7 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
             {
                 DocumentPage page = result.Pages[i];
                 int pageNo = page.PageNumber;
-                pages.Add(new OcrPage(i, i == 0 ? result.Content ?? "" : "")
+                pages.Add(new OcrPage(pageNo, i == 0 ? result.Content ?? "" : "")
                 {
                     Confidence = null,
                     Blocks = blocksByPage.TryGetValue(pageNo, out var b) ? b : [],
@@ -150,7 +150,7 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
         }
         else
         {
-            pages.Add(new OcrPage(0, result.Content ?? ""));
+            pages.Add(new OcrPage(1, result.Content ?? ""));
         }
 
         var tableCount = result.Tables?.Count ?? 0;
@@ -173,7 +173,12 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
             return null;
         }
         BoundingRegion r = regions[0];
-        return new OcrBoundingRegion(r.PageNumber, r.Polygon);
+        var polygon = new List<OcrPoint>(r.Polygon.Count / 2);
+        for (int i = 0; i + 1 < r.Polygon.Count; i += 2)
+        {
+            polygon.Add(new OcrPoint(r.Polygon[i], r.Polygon[i + 1]));
+        }
+        return new OcrBoundingRegion(r.PageNumber, polygon);
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null)

@@ -177,7 +177,7 @@ class OcrResult
 
 class OcrPage
 {
-    int Index;            // page number
+    int PageNumber;       // 1-based page number
     string Markdown;
     IReadOnlyList<OcrTable> Tables;
     IReadOnlyList<OcrImage> Images;   // figures
@@ -188,14 +188,14 @@ class OcrPage
 </div>
 <div class="col-left callout">
 
-Every engine normalizes onto this. The page `Index` is the detail that makes citations possible
+Every engine normalizes onto this. The page `PageNumber` is the detail that makes citations possible
 later, so it is a first-class field, not an afterthought in a metadata bag.
 
 </div>
 </div>
 
 Note:
-Keep this slide short. The one field to point at is OcrPage.Index. It is the thread we pull all the
+Keep this slide short. The one field to point at is OcrPage.PageNumber. It is the thread we pull all the
 way through the reader and the chunker to the citation.
 
 ---
@@ -537,7 +537,7 @@ Note:
 A retriever can find the right text and still be unable to say where it came from. You do not need a
 new chunking API for that. `OcrDocumentReader` already emits one section per OCR page with
 `page_number` in the section metadata; chunk each page-section on its own and every chunk is tagged
-with its source page. The page `Index` on `OcrResult` (#7588) plus per-page chunking makes answers
+with its source page. The page `PageNumber` on `OcrResult` (#7588) plus per-page chunking makes answers
 citable today. We explored propagating element metadata through the chunker in dotnet/extensions
 #7516; it closed unmerged (2026-07-09) and the demo doesn't need it.
 

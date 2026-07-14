@@ -115,12 +115,12 @@ public sealed class PdfPigReader(
     private static IngestionDocumentSection OcrPageToSection(OcrPage page, string? ocrSource)
     {
         var section = new IngestionDocumentSection();
-        section.Metadata["page_number"] = page.Index;
+        section.Metadata["page_number"] = page.PageNumber;
         section.Metadata["ocr_source"] = ocrSource ?? "ocr";
         if (!string.IsNullOrWhiteSpace(page.Markdown))
         {
-            var para = new IngestionDocumentParagraph(page.Markdown) { Text = page.Markdown, PageNumber = page.Index };
-            para.Metadata["page_number"] = page.Index;
+            var para = new IngestionDocumentParagraph(page.Markdown) { Text = page.Markdown, PageNumber = page.PageNumber };
+            para.Metadata["page_number"] = page.PageNumber;
             para.Metadata["ocr_source"] = ocrSource ?? "ocr";
             section.Elements.Add(para);
         }

@@ -74,7 +74,7 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
             .GetResponseAsync(message, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        var page = new OcrPage(0, response.Text);
+        var page = new OcrPage(1, response.Text);
         progress?.Report(new OcrProgress { PagesProcessed = 1, TotalPages = 1, Status = "completed" });
         return new OcrResult([page])
         {
@@ -114,7 +114,7 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
                     .Where(f => !string.IsNullOrWhiteSpace(f.Caption))
                     .Select(f => new OcrImage { Caption = f.Caption }).ToList();
 
-                pages.Add(new OcrPage(vp.Index, vp.Markdown ?? "")
+                pages.Add(new OcrPage(vp.Index + 1, vp.Markdown ?? "")
                 {
                     Tables = tables,
                     Images = images,

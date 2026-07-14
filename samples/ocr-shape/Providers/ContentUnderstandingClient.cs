@@ -99,7 +99,7 @@ public sealed class ContentUnderstandingClient : IOcrClient
                 {
                     DocumentPage page = doc.Pages[i];
                     bool first = pages.Count == 0;
-                    pages.Add(new OcrPage(page.PageNumber - 1, first ? doc.Markdown ?? "" : "")
+                    pages.Add(new OcrPage(page.PageNumber, first ? doc.Markdown ?? "" : "")
                     {
                         Tables = tablesByPage.TryGetValue(page.PageNumber, out var tb) ? tb : [],
                         AdditionalProperties = new() { ["cu.pageNumber"] = page.PageNumber },
@@ -114,13 +114,13 @@ public sealed class ContentUnderstandingClient : IOcrClient
             }
             else
             {
-                pages.Add(new OcrPage(0, doc.Markdown ?? ""));
+                pages.Add(new OcrPage(1, doc.Markdown ?? ""));
             }
         }
 
         if (pages.Count == 0)
         {
-            pages.Add(new OcrPage(0, ""));
+            pages.Add(new OcrPage(1, ""));
         }
 
         return new OcrResult(pages)
