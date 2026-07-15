@@ -58,7 +58,7 @@ public sealed class PdfPigReader(
             OcrResult result = await ocrClient.ExtractAsync(docStream, mediaType, cancellationToken: cancellationToken);
             OcrCalls++;
             foreach (OcrPage page in result.Pages)
-                document.Sections.Add(OcrPageToSection(page, result.OcrSource));
+                document.Sections.Add(OcrPageToSection(page, result.ModelId));
             return document;
         }
 

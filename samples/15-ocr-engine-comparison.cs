@@ -136,7 +136,7 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IOcrClient
 
     public async Task<OcrResult> ExtractAsync(
         Stream document, string mediaType, OcrOptions? options = null,
-        IProgress<OcrProgress>? progress = null, CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         using var buffer = new MemoryStream();
         await document.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
@@ -155,15 +155,18 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IOcrClient
             }
 
             OcrResult one = await _inner
-                .ExtractAsync(new MemoryStream(png), "image/png", options, progress: null, cancellationToken)
+                .ExtractAsync(new MemoryStream(png), "image/png", options, cancellationToken)
                 .ConfigureAwait(false);
             modelId ??= one.ModelId;
             pages.Add(new OcrPage(i, one.Pages.Count > 0 ? one.Pages[0].Markdown : ""));
-            progress?.Report(new OcrProgress { PagesProcessed = pages.Count, TotalPages = total, Status = "transcribing" });
         }
 
-        return new OcrResult(pages) { OcrSource = "glm-ocr-local", ModelId = modelId };
+        return new OcrResult(pages) { ModelId = modelId };
     }
+
+    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
+        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null) =>
         serviceType.IsInstanceOfType(this) ? this : _inner.GetService(serviceType, serviceKey);

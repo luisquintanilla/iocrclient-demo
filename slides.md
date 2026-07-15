@@ -140,7 +140,12 @@ public interface IOcrClient : IDisposable
         Stream document,
         string mediaType,
         OcrOptions? options = null,
-        IProgress<OcrProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
+        Stream document,
+        string mediaType,
+        OcrOptions? options = null,
         CancellationToken cancellationToken = default);
 
     object? GetService(
@@ -153,9 +158,11 @@ public interface IOcrClient : IDisposable
 </div>
 
 Note:
-This is the proposed shape from dotnet/extensions #7588. Stream in, a normalized OcrResult out. The
-GetService escape hatch mirrors IChatClient, so middleware and callers can reach the concrete engine.
-Everything in this deck runs on this exact type, packed locally from the real branch.
+This is the proposed shape from dotnet/extensions #7588. Stream in, a normalized OcrResult out — or
+ExtractStreamingAsync for OcrResponseUpdates, one per page, so a RAG pipeline can chunk page 1 while
+page 100 is still being read. That unary + streaming twin (replacing an IProgress callback) plus the
+GetService escape hatch is the exact family shape of IChatClient, so middleware and callers can reach
+the concrete engine. Everything in this deck runs on this exact type, packed locally from the real branch.
 
 ---
 
@@ -171,7 +178,6 @@ class OcrResult
 {
     IReadOnlyList<OcrPage> Pages;
     string Markdown;      // pages joined, in order
-    string? OcrSource;    // which engine
     string? ModelId;
 }
 
@@ -273,7 +279,7 @@ foreach (var client in clients)
 {
     // identical call for every engine
     var r = await client.ExtractAsync(stream, "application/pdf");
-    Report(r.OcrSource, r.Pages.Count);
+    Report(r.ModelId, r.Pages.Count);
 }
 ```
 

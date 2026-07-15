@@ -43,7 +43,6 @@ public sealed class ContentUnderstandingClient : IOcrClient
         Stream document,
         string mediaType,
         OcrOptions? options = null,
-        IProgress<OcrProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
@@ -82,7 +81,7 @@ public sealed class ContentUnderstandingClient : IOcrClient
                     {
                         cells.Add(new OcrTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
                         {
-                            Kind = c.Kind?.ToString(),
+                            Kind = c.Kind?.ToString() is { Length: > 0 } cellKind ? new OcrTableCellKind(cellKind) : null,
                             RowSpan = c.RowSpan ?? 1,
                             ColumnSpan = c.ColumnSpan ?? 1,
                         });
@@ -104,12 +103,6 @@ public sealed class ContentUnderstandingClient : IOcrClient
                         Tables = tablesByPage.TryGetValue(page.PageNumber, out var tb) ? tb : [],
                         AdditionalProperties = new() { ["cu.pageNumber"] = page.PageNumber },
                     });
-                    progress?.Report(new OcrProgress
-                    {
-                        PagesProcessed = pages.Count,
-                        TotalPages = doc.Pages.Count,
-                        Status = "analyzing",
-                    });
                 }
             }
             else
@@ -125,11 +118,14 @@ public sealed class ContentUnderstandingClient : IOcrClient
 
         return new OcrResult(pages)
         {
-            OcrSource = "azure-content-understanding",
             ModelId = analyzerId,
             RawRepresentation = result,
         };
     }
+
+    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
+        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this

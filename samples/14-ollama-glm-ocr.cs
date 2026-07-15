@@ -63,7 +63,6 @@ OcrResult result = await ocr.ExtractAsync(new MemoryStream(imageBytes), mediaTyp
 sw.Stop();
 
 string md = result.Pages.Count > 0 ? result.Pages[0].Markdown : "";
-Console.WriteLine($"source : {result.OcrSource}");
 Console.WriteLine($"model  : {result.ModelId}");
 Console.WriteLine($"chars  : {md.Length}   [{sw.ElapsedMilliseconds} ms on local GPU, first call includes model load]");
 Console.WriteLine();

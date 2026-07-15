@@ -47,16 +47,27 @@ else
   echo "==> reusing existing tree at $WORK (assumed on data-ingestion-preview2)"
 fi
 
-# --- 2) graft #7588 IOcrClient (additive) from the public PR head -------------------------------
+# --- 2) graft #7588 IOcrClient (additive) -------------------------------------------------------
 # #7588 targets main and preview2 is far behind main, so a full merge would conflict. The Ocr/ folders
-# are almost all new files, so we GRAFT them from the public PR head (pull/7588/head) — reproducible
-# from a public ref, no local-only branch required. Clear any prior copy first so a re-run doesn't nest
-# Ocr/ inside Ocr/.
-echo "==> fetching #7588 head (pull/7588/head)"
-git -C "$WORK" fetch "$UPSTREAM" pull/7588/head:pr-7588
-echo "==> grafting additive Ocr/ folders from pr-7588 (#7588 head)"
+# are almost all new files, so we GRAFT them (copying only the two Ocr/ folders). Clear any prior copy
+# first so a re-run doesn't nest Ocr/ inside Ocr/.
+#
+# Two sources, same footprint:
+#   * default  — the public PR head (pull/7588/head): reproducible from a public ref, no local branch.
+#   * OCR_SRC  — a LOCAL worktree (e.g. OCR_SRC=/path/to/extensions-ocr-worktree): the pre-publish
+#                validation path, for building the feed against local Ocr/ changes before the PR head
+#                is updated.
 rm -rf "$WORK/$ABS/Ocr" "$WORK/$AI/Ocr"
-git -C "$WORK" checkout pr-7588 -- "$ABS/Ocr" "$AI/Ocr"
+if [ -n "${OCR_SRC:-}" ]; then
+  echo "==> grafting additive Ocr/ folders from local OCR_SRC=$OCR_SRC"
+  cp -rT "$OCR_SRC/$ABS/Ocr" "$WORK/$ABS/Ocr"
+  cp -rT "$OCR_SRC/$AI/Ocr" "$WORK/$AI/Ocr"
+else
+  echo "==> fetching #7588 head (pull/7588/head)"
+  git -C "$WORK" fetch "$UPSTREAM" pull/7588/head:pr-7588
+  echo "==> grafting additive Ocr/ folders from pr-7588 (#7588 head)"
+  git -C "$WORK" checkout pr-7588 -- "$ABS/Ocr" "$AI/Ocr"
+fi
 
 # Two one-line edits the grafted files depend on:
 #   a) the experimental diagnostic id the [Experimental] attributes reference

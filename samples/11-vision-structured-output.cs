@@ -40,12 +40,12 @@ using IOcrClient ocr = new VisionLlmOcrClient(chat);
 Console.WriteLine("=== (A) structured transcription: OFF vs ON ===\n");
 
 OcrResult freeform = await OcrOnce(ocr, pdf, mediaType, structured: false);
-Console.WriteLine($"[structured=OFF] source={freeform.OcrSource} pages={freeform.Pages.Count} " +
+Console.WriteLine($"[structured=OFF] model={freeform.ModelId} pages={freeform.Pages.Count} " +
     $"tables={freeform.Pages.Sum(p => p.Tables.Count)} figures={freeform.Pages.Sum(p => p.Images.Count)} " +
     $"lang={Lang(freeform)} conf={Conf(freeform)}");
 
 OcrResult structured = await OcrOnce(ocr, pdf, mediaType, structured: true);
-Console.WriteLine($"[structured=ON ] source={structured.OcrSource} pages={structured.Pages.Count} " +
+Console.WriteLine($"[structured=ON ] model={structured.ModelId} pages={structured.Pages.Count} " +
     $"tables={structured.Pages.Sum(p => p.Tables.Count)} figures={structured.Pages.Sum(p => p.Images.Count)} " +
     $"lang={Lang(structured)} conf={Conf(structured)}");
 

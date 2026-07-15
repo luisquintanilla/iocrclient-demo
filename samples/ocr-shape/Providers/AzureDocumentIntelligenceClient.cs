@@ -32,7 +32,6 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
         Stream document,
         string mediaType,
         OcrOptions? options = null,
-        IProgress<OcrProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
@@ -98,7 +97,7 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
                 (blocksByPage.TryGetValue(pageNo, out var list) ? list : blocksByPage[pageNo] = new())
                     .Add(new OcrBlock(para.Content ?? "")
                     {
-                        Kind = para.Role?.ToString(),
+                        Kind = para.Role?.ToString() is { Length: > 0 } role ? new OcrBlockKind(role) : null,
                         BoundingRegion = region,
                     });
             }
@@ -116,7 +115,7 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
                 {
                     cells.Add(new OcrTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
                     {
-                        Kind = c.Kind.ToString(),
+                        Kind = c.Kind.ToString() is { Length: > 0 } cellKind ? new OcrTableCellKind(cellKind) : null,
                         RowSpan = c.RowSpan ?? 1,
                         ColumnSpan = c.ColumnSpan ?? 1,
                     });
@@ -135,16 +134,13 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
                 pages.Add(new OcrPage(pageNo, i == 0 ? result.Content ?? "" : "")
                 {
                     Confidence = null,
+                    Width = page.Width,
+                    Height = page.Height,
+                    CoordinateUnit = page.Unit?.ToString() is { Length: > 0 } unit ? new OcrCoordinateUnit(unit) : null,
                     Blocks = blocksByPage.TryGetValue(pageNo, out var b) ? b : [],
                     Tables = tablesByPage.TryGetValue(pageNo, out var tb) ? tb : [],
                     Images = imagesByPage.TryGetValue(pageNo, out var im) ? im : [],
                     AdditionalProperties = new() { ["di.pageNumber"] = pageNo },
-                });
-                progress?.Report(new OcrProgress
-                {
-                    PagesProcessed = i + 1,
-                    TotalPages = result.Pages.Count,
-                    Status = "analyzing",
                 });
             }
         }
@@ -157,7 +153,6 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
 
         return new OcrResult(pages)
         {
-            OcrSource = "azure-document-intelligence",
             ModelId = model,
             Usage = new OcrUsage { PagesProcessed = result.Pages?.Count },
             RawRepresentation = result,
@@ -180,6 +175,10 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
         }
         return new OcrBoundingRegion(r.PageNumber, polygon);
     }
+
+    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
+        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this

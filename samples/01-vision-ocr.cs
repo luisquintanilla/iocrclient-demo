@@ -29,7 +29,6 @@ using IOcrClient ocr = new VisionLlmOcrClient(chat);
 await using FileStream doc = File.OpenRead(image);
 OcrResult result = await ocr.ExtractAsync(doc, mediaType);
 
-Console.WriteLine($"source : {result.OcrSource}");
 Console.WriteLine($"model  : {result.ModelId}");
 Console.WriteLine($"pages  : {result.Pages.Count}");
 Console.WriteLine();

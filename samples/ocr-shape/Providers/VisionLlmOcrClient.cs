@@ -44,7 +44,7 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
 
     public async Task<OcrResult> ExtractAsync(
         Stream document, string mediaType, OcrOptions? options = null,
-        IProgress<OcrProgress>? progress = null, CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
         await document.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
@@ -58,7 +58,6 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
             OcrResult? structured = await TryStructuredAsync(bytes, mediaType, cancellationToken).ConfigureAwait(false);
             if (structured is not null)
             {
-                progress?.Report(new OcrProgress { PagesProcessed = structured.Pages.Count, TotalPages = structured.Pages.Count, Status = "completed" });
                 return structured;
             }
             // Model couldn't honor the schema — fall through to freeform transcription.
@@ -75,10 +74,8 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
             .ConfigureAwait(false);
 
         var page = new OcrPage(1, response.Text);
-        progress?.Report(new OcrProgress { PagesProcessed = 1, TotalPages = 1, Status = "completed" });
         return new OcrResult([page])
         {
-            OcrSource = "vision-llm",
             ModelId = response.ModelId,
             RawRepresentation = response,
         };
@@ -126,7 +123,6 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
 
             return new OcrResult(pages)
             {
-                OcrSource = "vision-llm",
                 ModelId = response.ModelId,
                 RawRepresentation = response,
             };
@@ -137,6 +133,10 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
             return null;
         }
     }
+
+    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
+        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this : chatClient.GetService(serviceType, serviceKey);

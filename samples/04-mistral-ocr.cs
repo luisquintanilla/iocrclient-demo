@@ -27,7 +27,6 @@ return 0;
 
 static void Report(OcrResult r)
 {
-    Console.WriteLine($"source : {r.OcrSource}");
     Console.WriteLine($"model  : {r.ModelId}");
     Console.WriteLine($"pages  : {r.Pages.Count}");
     Console.WriteLine();

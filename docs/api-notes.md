@@ -71,7 +71,7 @@ asymmetric.
 ```csharp
 public static Task<OcrResult> ExtractAsync(
     this IOcrClient client, UriContent document, OcrOptions? options = null,
-    IProgress<OcrProgress>? progress = null, CancellationToken cancellationToken = default);
+    CancellationToken cancellationToken = default);
 ```
 
 - Handles self-contained **`data:` URIs** by delegating to the `DataContent` overload.

@@ -55,7 +55,7 @@ var uriContent = new UriContent(dataUri, "application/pdf");
 using IOcrClient mistral = new FoundryMistralOcrClient(
     new Uri(Require("OCR:FoundryEndpoint")), new Azure.Identity.DefaultAzureCredential());
 OcrResult viaUri = await mistral.ExtractAsync(uriContent);
-Console.WriteLine($"UriContent -> {viaUri.OcrSource}: {viaUri.Pages.Count} page(s). " +
+Console.WriteLine($"UriContent -> {viaUri.ModelId}: {viaUri.Pages.Count} page(s). " +
     "Same result, reached through the ergonomic UriContent entry point.");
 
 // (C) Remote http URI via the opt-in ExtractFromUriAsync downloader (R2) -------------------------
@@ -79,7 +79,7 @@ using var http = new HttpClient();
 var remote = new UriContent($"{prefix}doc.pdf", "application/pdf");
 OcrResult viaRemote = await mistral.ExtractFromUriAsync(remote, http);
 await serve;
-Console.WriteLine($"UriContent(http) -> {viaRemote.OcrSource}: {viaRemote.Pages.Count} page(s). " +
+Console.WriteLine($"UriContent(http) -> {viaRemote.ModelId}: {viaRemote.Pages.Count} page(s). " +
     "Bytes fetched over http by ExtractFromUriAsync(httpClient), then extracted normally.");
 return 0;
 
@@ -97,9 +97,8 @@ async Task RunImages(string label, IOcrClient client)
             {
                 OcrImage img = page.Images[i];
                 string bbox = "bbox:none";
-                if (img.BoundingRegion is { } br)
+                if (img.BoundingRegion is { } br && br.GetBounds() is { } b)
                 {
-                    var b = br.GetBounds();
                     bbox = $"bbox[{b.Left},{b.Top},{b.Right},{b.Bottom}]";
                 }
                 string caption = string.IsNullOrEmpty(img.Caption) ? "" : $" caption=\"{img.Caption}\"";

@@ -38,7 +38,7 @@ public static class Harness
     {
         var sw = Stopwatch.StartNew();
         await using FileStream doc = File.OpenRead(pdfPath);
-        OcrResult result = await ocr.ExtractAsync(doc, mediaType, new OcrOptions { IncludeImages = true }, progress: null, ct);
+        OcrResult result = await ocr.ExtractAsync(doc, mediaType, new OcrOptions { IncludeImages = true }, ct);
         sw.Stop();
 
         string text = string.Join("\n\n", result.Pages.Select(p => p.Markdown));

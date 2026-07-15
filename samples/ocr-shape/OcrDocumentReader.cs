@@ -1,4 +1,5 @@
 using System.Text;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DataIngestion;
 
@@ -22,11 +23,11 @@ public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options 
         Stream source, string identifier, string mediaType, CancellationToken cancellationToken = default)
     {
         OcrResult result = await ocrClient
-            .ExtractAsync(source, mediaType, options, progress: null, cancellationToken)
+            .ExtractAsync(source, mediaType, options, cancellationToken)
             .ConfigureAwait(false);
 
         var document = new IngestionDocument(identifier);
-        string ocrSource = result.OcrSource ?? "ocr";
+        string ocrSource = result.ModelId ?? "ocr";
 
         foreach (OcrPage page in result.Pages)
         {
@@ -69,7 +70,7 @@ public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options 
                 blockPara.Metadata["ocr_source"] = ocrSource;
                 if (block.Kind is { } kind)
                 {
-                    blockPara.Metadata["element_type"] = kind;
+                    blockPara.Metadata["element_type"] = kind.Value;
                 }
                 if (block.Confidence is { } bc)
                 {
@@ -118,19 +119,54 @@ public sealed class OcrDocumentReader(IOcrClient ocrClient, OcrOptions? options 
         {
             return;
         }
-        (float left, float top, float right, float bottom) = r.GetBounds();
-        metadata["BoundingBox.Left"] = left;
-        metadata["BoundingBox.Top"] = top;
-        metadata["BoundingBox.Right"] = right;
-        metadata["BoundingBox.Bottom"] = bottom;
+        if (r.GetBounds() is { } bounds)
+        {
+            metadata["BoundingBox.Left"] = bounds.Left;
+            metadata["BoundingBox.Top"] = bounds.Top;
+            metadata["BoundingBox.Right"] = bounds.Right;
+            metadata["BoundingBox.Bottom"] = bounds.Bottom;
+        }
         metadata["BoundingBox.PageNumber"] = r.PageNumber;
         metadata["BoundingBox.Polygon"] = string.Join(",", r.Polygon.SelectMany(p => new[] { p.X, p.Y }));
     }
 }
 
-/// <summary>Small helpers over the real (sealed) OCR types the bridge needs.</summary>
+/// <summary>Small helpers over the real OCR types the bridge needs.</summary>
 public static class OcrShapeExtensions
 {
+    /// <summary>
+    /// Adapts a unary <see cref="IOcrClient.ExtractAsync"/> into the streaming shape: yields one
+    /// <see cref="OcrResponseUpdate"/> per completed page, then a terminal update carrying the
+    /// document-level <c>ModelId</c>/<c>Usage</c>. Providers whose engine returns the whole document in
+    /// one call reuse this so <see cref="IOcrClient.ExtractStreamingAsync"/> is a one-liner over the
+    /// tested unary path; <see cref="OcrResponseUpdateExtensions.ToOcrResultAsync"/> reassembles it.
+    /// </summary>
+    public static async IAsyncEnumerable<OcrResponseUpdate> StreamAsUpdates(
+        Func<CancellationToken, Task<OcrResult>> extract,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        OcrResult result = await extract(cancellationToken).ConfigureAwait(false);
+        int total = result.Pages.Count;
+        int processed = 0;
+        foreach (OcrPage page in result.Pages)
+        {
+            yield return new OcrResponseUpdate(page)
+            {
+                PagesProcessed = ++processed,
+                TotalPages = total,
+            };
+        }
+
+        yield return new OcrResponseUpdate(null)
+        {
+            PagesProcessed = processed,
+            TotalPages = total,
+            Status = "completed",
+            ModelId = result.ModelId,
+            Usage = result.Usage,
+        };
+    }
+
     /// <summary>The engine's markdown if present, else a GitHub table built from cells.</summary>
     public static string ToMarkdown(this OcrTable table)
     {

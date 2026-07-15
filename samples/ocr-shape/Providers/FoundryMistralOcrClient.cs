@@ -29,7 +29,6 @@ public sealed class FoundryMistralOcrClient(
         Stream document,
         string mediaType,
         OcrOptions? options = null,
-        IProgress<OcrProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
@@ -113,17 +112,19 @@ public sealed class FoundryMistralOcrClient(
             }
 
             pages.Add(new OcrPage(index + 1, markdown) { Tables = tables, Images = images });
-            progress?.Report(new OcrProgress { PagesProcessed = pages.Count, TotalPages = total, Status = "analyzing" });
         }
 
         return new OcrResult(pages)
         {
-            OcrSource = "mistral-ocr",
             ModelId = root.TryGetProperty("model", out var m) ? m.GetString() : model,
             Usage = new OcrUsage { PagesProcessed = total },
             RawRepresentation = root.Clone(),
         };
     }
+
+    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
+        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this : null;
