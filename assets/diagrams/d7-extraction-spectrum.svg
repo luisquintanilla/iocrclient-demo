@@ -26,7 +26,7 @@
   <!-- Composition banner -->
   <rect class="pill" x="60" y="128" width="1160" height="58" rx="10" stroke="#d600aa"/>
   <text class="label" x="84" y="154" fill="#d600aa">COMPOSITION over existing seams, not a built-in fallback type</text>
-  <text class="sub" x="84" y="176">Seam 1 = IPageSegmenter · Seam 2 = IOcrClient + OcrPolicy</text>
+  <text class="sub" x="84" y="176">Seam 1 = IPageSegmenter · Seam 2 = IDocumentExtractionClient + OcrPolicy</text>
 
   <!-- Spectrum cards -->
   <rect class="card" x="60" y="230" width="270" height="250" rx="12"/>
@@ -51,7 +51,7 @@
   <text class="ctitle" x="664" y="264">3. OCR scanned pages</text>
   <text class="sub" x="664" y="288">native text first</text>
   <rect class="pill" x="664" y="314" width="222" height="40" rx="8"/>
-  <text class="small mono" x="682" y="339">IOcrClient.ExtractAsync</text>
+  <text class="small mono" x="682" y="339">IDocumentExtractionClient.ExtractAsync</text>
   <rect class="pill" x="664" y="366" width="222" height="40" rx="8"/>
   <text class="small mono" x="682" y="391">OcrPolicy.Auto</text>
   <text class="small accent" x="664" y="438">only scanned / empty pages</text>

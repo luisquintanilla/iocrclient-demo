@@ -68,7 +68,7 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
         var imagesByPage = new Dictionary<int, List<DocumentImage>>();
 
         // Figures -> images: DI renders cropped bytes (fetched per figure id) + caption + native polygon.
-        // This is the SECOND document-native engine validating DocumentPage.Images (bytes + bbox + caption).
+        // This is the SECOND document-native engine validating DocumentImage elements (bytes + bbox + caption).
         if (includeImages && result.Figures is { Count: > 0 })
         {
             foreach (DocumentFigure figure in result.Figures)

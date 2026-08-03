@@ -7,10 +7,10 @@ today it locks you to one vendor. Mistral OCR, Azure Document Intelligence, Azur
 Understanding, and vision LLMs each solve the same job behind a different API, so switching engines is
 a rewrite instead of a config change.
 
-This talk introduces `IOcrClient`, a provider-neutral seam for document parsing that follows the exact
+This talk introduces `IDocumentExtractionClient`, a provider-neutral seam for document parsing that follows the exact
 pattern .NET already uses for `IChatClient` and `IEmbeddingGenerator`: one interface, any engine, swap
 with a line. We run four live engines through a single loop with identical code, then draw the line
-that matters — `IOcrClient` is a *capability*, `IngestionDocumentReader` is a *pipeline stage*, and one
+that matters — `IDocumentExtractionClient` is a *capability*, `IngestionDocumentReader` is a *pipeline stage*, and one
 small `OcrDocumentReader` bridges them into a real Microsoft.Extensions.DataIngestion (MEDI) pipeline.
 From there we carry the page number through chunking so answers cite their source page, show the same
 seam composed a second way by the PdfPig reader (digital text first, OCR only the pages that need it),

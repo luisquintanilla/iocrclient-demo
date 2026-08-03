@@ -37,7 +37,7 @@
 
   <!-- Client box -->
   <rect class="node" x="700" y="150" width="500" height="230" rx="12" stroke="#a78bfa"/>
-  <text class="ntext mono" x="724" y="188">IOcrClient</text>
+  <text class="ntext mono" x="724" y="188">IDocumentExtractionClient</text>
   <text class="pr" x="724" y="212">dotnet/extensions #7588</text>
   <text class="role" x="724" y="248">decides HOW — the provider</text>
   <rect class="pill" x="724" y="266" width="200" height="40" rx="20"/><text class="ptext" x="746" y="291">VisionLmOcrClient</text>
@@ -48,7 +48,7 @@
 
   <!-- the point -->
   <rect class="node" x="80" y="430" width="1120" height="90" rx="12" stroke="#d600aa" fill="#241a22"/>
-  <text class="ntext" x="104" y="466" fill="#f5b8e6">The reader depends on IOcrClient ONLY — zero IChatClient.</text>
+  <text class="ntext" x="104" y="466" fill="#f5b8e6">The reader depends on IDocumentExtractionClient ONLY — zero IChatClient.</text>
   <text class="sub" x="104" y="496" font-size="18">Swapping the OCR engine is one constructor argument. Swapping the policy never touches the provider. Neither knows the other's internals.</text>
 
   <!-- code line -->

@@ -4,14 +4,14 @@ Slides should not rest on vibes. Each sample is the smallest proof of one claim 
 capture the real output to `output/<name>.txt`, and cite it on a slide. Every output here is from a
 live run.
 
-The demo shows one interface, `IOcrClient`, in front of four very different OCR engines, then bridges
+The demo shows one interface, `IDocumentExtractionClient`, in front of four very different OCR engines, then bridges
 that capability into a real MEDI pipeline whose page structure makes the final answer citable.
 
 ## The real interface (not a vendored copy)
 
-`IOcrClient` is proposed in [dotnet/extensions #7588](https://github.com/dotnet/extensions/pull/7588)
+`IDocumentExtractionClient` is proposed in [dotnet/extensions #7588](https://github.com/dotnet/extensions/pull/7588)
 and is not on nuget.org yet. Rather than vendor a copy, `scripts/build-local-feed.sh` packs the REAL
-branch — `data-ingestion-preview2` + #7588 (IOcrClient) — into
+branch — `data-ingestion-preview2` + #7588 (IDocumentExtractionClient) — into
 `../local-feed/` at version `10.8.0-dev`. `nuget.config` resolves those `Microsoft.Extensions.*`
 packages from the local feed and everything else (Azure SDKs, OpenAI, PdfPig) from nuget.org.
 
@@ -19,33 +19,33 @@ So the samples `using Microsoft.Extensions.AI;` and `using Microsoft.Extensions.
 the actual types. When #7588 ships, delete the local feed and the `<clear/>` in `nuget.config`
 and bump to the published versions. `ocr-shape/` holds the four provider implementations
 (`VisionLlmOcrClient`, `FoundryMistralOcrClient`, `AzureDocumentIntelligenceClient`,
-`ContentUnderstandingClient`) plus `OcrDocumentReader` — the `IOcrClient` -> MEDI bridge.
+`ContentUnderstandingClient`) plus `OcrDocumentReader` — the `IDocumentExtractionClient` -> MEDI bridge.
 
 ## The boundary this demo draws
 
-- **`IOcrClient`** (`Microsoft.Extensions.AI`, #7588) — a *capability*: bytes -> `OcrResult`. Provider
+- **`IDocumentExtractionClient`** (`Microsoft.Extensions.AI`, #7588) — a *capability*: bytes -> `DocumentExtractionResult`. Provider
   implementations live in `ocr-shape/`.
 - **`IngestionDocumentReader`** (MEDI) — a *pipeline stage*: `ReadAsync -> IngestionDocument`.
 - **`OcrDocumentReader`** (`ocr-shape/OcrDocumentReader.cs`) — the *bridge*: one reader composing any
-  `IOcrClient`, stamping `page_number` / `ocr_source` / `confidence` / bbox with the same keys
+  `IDocumentExtractionClient`, stamping `page_number` / `ocr_source` / `confidence` / bbox with the same keys
   `PdfPigReader` uses.
 
 ## Files
 
 | Sample | Needs | What it shows |
 | --- | --- | --- |
-| `01-vision-ocr.cs` | Azure OpenAI (gpt-4.1-mini) | A vision LLM behind `IOcrClient`. Transcribe-by-seeing: one Markdown blob, no page model. |
+| `01-vision-ocr.cs` | Azure OpenAI (gpt-4.1-mini) | A vision LLM behind `IDocumentExtractionClient`. Transcribe-by-seeing: one Markdown blob, no page model. |
 | `02-document-intelligence.cs` | Azure Document Intelligence | Document-native engine, `prebuilt-layout`. Structured pages and tables. |
 | `03-content-understanding.cs` | Azure Content Understanding (CU region) | A third engine, third wire protocol, same result. |
 | `04-mistral-ocr.cs` | Mistral OCR on Azure AI Foundry | Purpose-built document AI: whole PDF in one call, per-page Markdown. |
 | `05-one-loop-four-clients.cs` | all four above | The payoff. Four engines, one loop, identical call. |
 | `06-medi-pipeline.cs` | Mistral OCR | The bridge: `OcrDocumentReader` -> `SectionChunker`. Page provenance survives the chunker with no new API — the reader emits one section per page, so chunking each page-section tags every chunk with its source page (whole-doc vs per-page shown). |
 | `07-e2e-rag.cs` | Mistral OCR + a chat model | End to end: OCR -> reader -> chunk (page provenance) -> retrieve -> page-cited answer. |
-| `08-pdfpig-reader.cs` | Mistral OCR (+ PdfPig from nuget) | The same seam a second way: PdfPig native text + per-page OCR fallback composing `IOcrClient` ([CommunityToolkit #14](https://github.com/CommunityToolkit/AI/pull/14)). |
-| `09-images-and-uris.cs` | Mistral OCR + Azure Document Intelligence | The result grows: `OcrPage.Images` (figure bytes + bbox + caption) via `IncludeImages`, and the `UriContent` overload — both proposed into [#7588](https://github.com/dotnet/extensions/pull/7588). Image bytes saved under `output/images/` (gitignored). |
+| `08-pdfpig-reader.cs` | Mistral OCR (+ PdfPig from nuget) | The same seam a second way: PdfPig native text + per-page OCR fallback composing `IDocumentExtractionClient` ([CommunityToolkit #14](https://github.com/CommunityToolkit/AI/pull/14)). |
+| `09-images-and-uris.cs` | Mistral OCR + Azure Document Intelligence | The result grows: `DocumentImage` elements (figure bytes + bbox + caption) surfaced via `Elements.OfType<DocumentImage>()`, and the `UriContent` overload — both proposed into [#7588](https://github.com/dotnet/extensions/pull/7588). Image bytes saved under `output/images/` (gitignored). |
 | `10-eval-ocr-vs-pdfpig.cs` | `bench/OcrBench/` + a judge model | Does OCR beat naive PdfPig? Same chunk→retrieve→answer pipeline, one variable (the extractor), scored by a custom deterministic `OcrExtractionEvaluator` + the built-in NLP F1. Writes `bench/report/leaderboard.md`. |
-| `11-vision-structured-output.cs` | Azure OpenAI (gpt-4.1-mini) | Opt-in structured transcription from the vision path (`GetResponseAsync<T>` over an OcrResult-shaped schema), plus typed POCO extraction via the inner `IChatClient` (`GetService<IChatClient>()`). Degrades to freeform when unsupported. |
-| `14-ollama-glm-ocr.cs` | Ollama + `glm-ocr` (local; no cloud, no `az login`) | A **local, open-weights** OCR engine behind `IOcrClient`. GLM-OCR (~0.9B) reached through OllamaSharp's native `IChatClient` and the repo's existing `VisionLlmOcrClient` — no new provider class. The page image is pulled with PdfPig (image *extraction*, not rasterization); the two glm-ocr prompt/stop quirks and Ollama's missing done-frame are patched by composition **on the Ollama client only** (`ocr-shape` untouched). |
+| `11-vision-structured-output.cs` | Azure OpenAI (gpt-4.1-mini) | Opt-in structured transcription from the vision path (`GetResponseAsync<T>` over an DocumentExtractionResult-shaped schema), plus typed POCO extraction via the inner `IChatClient` (`GetService<IChatClient>()`). Degrades to freeform when unsupported. |
+| `14-ollama-glm-ocr.cs` | Ollama + `glm-ocr` (local; no cloud, no `az login`) | A **local, open-weights** OCR engine behind `IDocumentExtractionClient`. GLM-OCR (~0.9B) reached through OllamaSharp's native `IChatClient` and the repo's existing `VisionLlmOcrClient` — no new provider class. The page image is pulled with PdfPig (image *extraction*, not rasterization); the two glm-ocr prompt/stop quirks and Ollama's missing done-frame are patched by composition **on the Ollama client only** (`ocr-shape` untouched). |
 | `15-ocr-engine-comparison.cs` | `bench/OcrBench/` + Azure DI + Mistral OCR + Ollama `glm-ocr` | Cloud vs local through one seam ([BlueGuardrails](https://blueguardrails.com/en/blog/high-throughput-vlm-ocr)'s cost/locality framing): Azure Document Intelligence vs Mistral OCR vs GLM-OCR (local) on the same scanned doc — latency (measured here), structure (tables/figures), and cited $/1k-page cost. An inline `PdfImageOcrClient` feeds the image-only local engine per page; missing cloud creds graceful-skip. |
 
 ## Configuration (no secrets in code)

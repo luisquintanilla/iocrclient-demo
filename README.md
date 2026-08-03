@@ -1,6 +1,6 @@
 # One interface for every OCR engine
 
-A grounded talk and runnable sample set showing `IOcrClient`, a provider-neutral seam for document
+A grounded talk and runnable sample set showing `IDocumentExtractionClient`, a provider-neutral seam for document
 parsing in .NET. Four OCR engines (a vision LLM, Mistral OCR, Azure Document Intelligence, and Azure
 Content Understanding) run through one interface; a thin `OcrDocumentReader` bridges that capability
 into a real Microsoft.Extensions.DataIngestion (MEDI) pipeline; the page model is carried through
@@ -21,13 +21,13 @@ second way (digital text first, OCR only the pages that need it).
   `dotnet/extensions` code (preview2 + #7588) into `local-feed/` — the samples run on the real
   types, not a vendored copy.
 - **The body of work this drives, across two repos:**
-  - dotnet/extensions [#7588](https://github.com/dotnet/extensions/pull/7588) (IOcrClient) — the live
+  - dotnet/extensions [#7588](https://github.com/dotnet/extensions/pull/7588) (IDocumentExtractionClient) — the live
     seam. Page provenance rides the shipping API (the reader emits one section per page; the samples
     chunk per page), so an earlier chunk-propagation proposal,
     [#7516](https://github.com/dotnet/extensions/pull/7516), closed unmerged and is no longer needed
   - CommunityToolkit/AI [#13](https://github.com/CommunityToolkit/AI/issues/13) (design),
     [#15](https://github.com/CommunityToolkit/AI/pull/15) (VisionLMOcrClient, closes #13),
-    [#14](https://github.com/CommunityToolkit/AI/pull/14) (PdfPig reader composing any IOcrClient)
+    [#14](https://github.com/CommunityToolkit/AI/pull/14) (PdfPig reader composing any IDocumentExtractionClient)
 
 Built on the reveal-presentation-template. The rest of this README is the template's operating
 manual: how the deck, themes, layouts, and grounding workflow fit together.
@@ -95,7 +95,7 @@ See [`AGENTS.md`](AGENTS.md) for the full map and conventions.
 want to try. See **[`docs/SETUP.md`](docs/SETUP.md)** for a per-engine walkthrough (with official
 Microsoft Learn links) and the `dotnet user-secrets` keys each one needs.
 
-The samples run on the real `IOcrClient` + MEDI bits. Those APIs aren't on nuget.org yet, so this
+The samples run on the real `IDocumentExtractionClient` + MEDI bits. Those APIs aren't on nuget.org yet, so this
 repo **ships them prebuilt in [`local-feed/`](local-feed/README.md)** — *unofficial* local dev
 builds; read that NOTICE — and `nuget.config` resolves them from there. Nothing to build first:
 `az login`, set your endpoints, run a sample. (To rebuild/refresh the feed from public GitHub refs,

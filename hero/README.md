@@ -1,6 +1,6 @@
 # Hero OCR RAG app
 
-This is the capstone app for the OCR -> MEDI ingestion pipeline -> RAG flow. It is scaffolded from the .NET `aichatweb` Aspire template, then swapped so PDFs go through the shared `IOcrClient` shape before they are chunked and written to a local vector store.
+This is the capstone app for the OCR -> MEDI ingestion pipeline -> RAG flow. It is scaffolded from the .NET `aichatweb` Aspire template, then swapped so PDFs go through the shared `IDocumentExtractionClient` shape before they are chunked and written to a local vector store.
 
 ## Secrets
 
@@ -39,7 +39,7 @@ The intended production shape is Qdrant as an Aspire-managed container. This env
 `hero.Web` references `../samples/ocr-shape/OcrShape.csproj` and uses:
 
 ```text
-VisionLlmOcrClient (IOcrClient)
+VisionLlmOcrClient (IDocumentExtractionClient)
   -> OcrDocumentReader
   -> IngestionPipeline<string>
   -> VectorStoreWriter<string>

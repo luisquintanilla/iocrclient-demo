@@ -59,16 +59,16 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 - .NET already made this move twice. "Talk to a model" became `IChatClient`. "Turn text into vectors"
   became `IEmbeddingGenerator`. One interface, many providers, swap with a line.
 - Reading a document is the same shape of problem and deserves the same seam. That seam is
-  `IOcrClient`, proposed in dotnet/extensions #7588, in `Microsoft.Extensions.AI`.
+  `IDocumentExtractionClient`, proposed in dotnet/extensions #7588, in `Microsoft.Extensions.AI`.
 
 ## 3. The interface + result shape (3 min) · *code: ocr-shape/*
-- `ExtractAsync(Stream, mediaType) -> OcrResult`. Stream in, normalized result out. `GetService` is
+- `ExtractAsync(Stream, mediaType) -> DocumentExtractionResult`. Stream in, normalized result out. `GetService` is
   the same escape hatch `IChatClient` has, so middleware and callers can still reach the concrete
   engine.
-- `OcrResult` is a list of `OcrPage`, each with a `PageNumber`, `Markdown`, and `Tables`. Point at
-  `OcrPage.PageNumber`. It looks minor now; it is the thread we pull in sections 6 and 7.
+- `DocumentExtractionResult` is a list of `DocumentPage`, each with a `PageNumber`, `Markdown`, and `Tables`. Point at
+  `DocumentPage.PageNumber`. It looks minor now; it is the thread we pull in sections 6 and 7.
 - Honesty note: #7588 is not on nuget.org yet, so `scripts/build-local-feed.sh` packs the real branch
-  into a local feed. The samples run on the actual `IOcrClient` type, not a hand-written copy.
+  into a local feed. The samples run on the actual `IDocumentExtractionClient` type, not a hand-written copy.
 
 ## 4. Payoff: four engines, one loop (4 min) · *sample: 05-one-loop-four-clients.cs*
 - This is the slide that has to land. Build four clients (vision LLM, Mistral OCR, Azure DI, Content
@@ -88,13 +88,13 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 
 ## 6. The boundary + where it lives (3 min) · *sample: 06-medi-pipeline.cs*
 - The question the demo is really about: **where does OCR stop and the pipeline begin?**
-  - `IOcrClient` = a **capability**: bytes -> `OcrResult`. Knows nothing about pipelines.
+  - `IDocumentExtractionClient` = a **capability**: bytes -> `DocumentExtractionResult`. Knows nothing about pipelines.
   - `IngestionDocumentReader` (MEDI) = a **pipeline stage**: `ReadAsync -> IngestionDocument`. Knows
     nothing about which engine — or whether OCR is used at all.
   - `OcrDocumentReader : IngestionDocumentReader` = the **bridge**: one reader that composes ANY
-    `IOcrClient` and stamps the same metadata keys `PdfPigReader` uses. No per-engine reader, no
+    `IDocumentExtractionClient` and stamps the same metadata keys `PdfPigReader` uses. No per-engine reader, no
     `VisionOnly` flag — the engine is injected.
-- Then the layering (Stack slide): the **abstractions** (`IOcrClient`, `IngestionDocumentReader`) live
+- Then the layering (Stack slide): the **abstractions** (`IDocumentExtractionClient`, `IngestionDocumentReader`) live
   in `dotnet/extensions`; the **concretes** (`VisionLMOcrClient`, `PdfPigReader`, processors) live
   in `CommunityToolkit/AI`. The core never privileges an engine.
 
@@ -105,7 +105,7 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
   `page_number` stamped; chunk each page-section on its own and every chunk carries its exact source
   page. Show whole-doc (page metadata lost) vs per-page (`page = 9` on each chunk) on the real MEDI
   `SectionChunker`.
-- This is why `OcrPage.PageNumber` mattered back in section 3 — the page model on the shipping `IOcrClient`
+- This is why `DocumentPage.PageNumber` mattered back in section 3 — the page model on the shipping `IDocumentExtractionClient`
   (#7588) is enough to stay citable. (We explored propagating element metadata through the chunker in
   #7516; it closed unmerged, and the demo doesn't need it.)
 
@@ -113,13 +113,13 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 - Most PDFs already carry a digital text layer — paying an OCR engine to re-read it is wasteful.
   PdfPig reads that native layer directly. The interesting shape is the hybrid: native text first,
   OCR **only** the pages that have none.
-- CommunityToolkit #14 replatforms the PdfPig reader to **compose any `IOcrClient`** for that per-page
-  fallback; #15 is `VisionLMOcrClient`, an `IOcrClient` over a vision chat model (it closes design
+- CommunityToolkit #14 replatforms the PdfPig reader to **compose any `IDocumentExtractionClient`** for that per-page
+  fallback; #15 is `VisionLMOcrClient`, an `IDocumentExtractionClient` over a vision chat model (it closes design
   issue #13). **The reader (#14) composes the client (#15)** — the boundary from section 6, in action.
 - `OcrPolicy` is WHEN to OCR, not WHICH model: `Never` / `FallbackForEmptyPages` / `AllPages`. Show the
   captured run: the born-digital USGS fact sheet needs 0 OCR calls under `Never` and `Fallback`, and 1
   whole-document call under `AllPages` — and every path feeds the SAME chunker.
-- Emphasize: the reader depends on `IOcrClient` only, never a chat model directly.
+- Emphasize: the reader depends on `IDocumentExtractionClient` only, never a chat model directly.
 
 ## 9. End to end: PDF to a cited answer (3 min) · *sample: 07-e2e-rag.cs*
 - Put it together: OCR the PDF (Mistral) -> `OcrDocumentReader` -> `SectionChunker` with page
@@ -131,10 +131,10 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
   point is the seam and the provenance.
 
 ## 10. The ask + close (1 min)
-- The work spans two repos. `dotnet/extensions`: **#7588** (the `IOcrClient` seam) — page provenance
+- The work spans two repos. `dotnet/extensions`: **#7588** (the `IDocumentExtractionClient` seam) — page provenance
   already rides the shipping API via per-page chunking, so the earlier chunk-propagation proposal
   (#7516) closed unmerged. `CommunityToolkit/AI`: **#13** (design), **#15** (`VisionLMOcrClient`,
-  closes #13), **#14** (PdfPig reader composing any `IOcrClient`).
+  closes #13), **#14** (PdfPig reader composing any `IDocumentExtractionClient`).
 - Every sample runs on the real preview2 + #7588 bits via `scripts/build-local-feed.sh` — this repo is
   the reproduction.
 - One action: clone it, build the feed, and run `05-one-loop-four-clients.cs` against your own

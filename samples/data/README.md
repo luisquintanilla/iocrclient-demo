@@ -10,8 +10,8 @@ A simple, born-digital, single-column document. The baseline case: text extracts
 ## `usgs-petroleum-assessment.pdf`
 
 The complex case: **tables + raster figures + a two-column layout**. Used to show where OCR earns its
-keep over naive text extraction, and to exercise the image/figure extraction path (`OcrOptions.IncludeImages`
--> `OcrPage.Images`) across the document-native engines.
+keep over naive text extraction, and to exercise the image/figure extraction path (`DocumentImage`
+elements via `Elements.OfType<DocumentImage>()`) across the document-native engines.
 
 - **Title:** *Assessment of Continuous Oil and Gas Resources of the Timan-Pechora Basin Province,
   Russia, 2018* (USGS National and Global Petroleum Assessment fact sheet, FS 2018-3050).

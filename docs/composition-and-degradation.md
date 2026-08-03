@@ -11,7 +11,7 @@ environment support.
 ```
 PdfPigReader : IngestionDocumentReader
   seam 1  IPageSegmenter          — HOW to segment a page
-  seam 2  IOcrClient + OcrPolicy   — WHEN / whether to OCR
+  seam 2  IDocumentExtractionClient + OcrPolicy   — WHEN / whether to OCR
 ```
 
 Both seams default to the cheapest, most local option, so the zero-argument reader is a pure
@@ -42,18 +42,18 @@ var reader = new PdfPigReader(pageSegmenter: new OnnxPageSegmenter(/* model */))
 `OnnxPageSegmenter` is the documented rung: PR 3 already built this exact seam. If the ONNX model is
 present in your environment, plug it in; if not, you **degrade inward** to `DefaultPageSegmenter`.
 
-## Seam 2 — `IOcrClient` + `OcrPolicy`: WHEN / whether to OCR
+## Seam 2 — `IDocumentExtractionClient` + `OcrPolicy`: WHEN / whether to OCR
 
 OCR is an injected *enrichment*, not the reader's identity (which is why the class stays
-`PdfPigReader`, not `PdfPigOcrReader`). `OcrPolicy` decides **when** the injected `IOcrClient` runs;
+`PdfPigReader`, not `PdfPigOcrReader`). `OcrPolicy` decides **when** the injected `IDocumentExtractionClient` runs;
 the client decides **how** (Mistral OCR, Azure DI, Content Understanding, a vision-LLM — swap on one
 line):
 
 | Policy | Behavior |
 | --- | --- |
-| `OcrPolicy.Never` | native PdfPig text only; the `IOcrClient` is never touched |
+| `OcrPolicy.Never` | native PdfPig text only; the `IDocumentExtractionClient` is never touched |
 | `OcrPolicy.FallbackForEmptyPages` | native first; OCR **only** pages with no digital text |
-| `OcrPolicy.AllPages` | hand the whole document to the `IOcrClient` (document-native archetype) |
+| `OcrPolicy.AllPages` | hand the whole document to the `IDocumentExtractionClient` (document-native archetype) |
 
 ---
 
@@ -65,8 +65,8 @@ Composing the two seams gives a single ordered spectrum:
 | --- | --- | --- | --- |
 | 1. native + heuristic layout | `DefaultPageSegmenter` | `Never` | nothing (local) |
 | 2. native + ML layout | `OnnxPageSegmenter` (PR 3) | `Never` | a local ONNX model |
-| 3. native + OCR the scanned pages | `DefaultPageSegmenter` | `FallbackForEmptyPages` | an `IOcrClient` (only where needed) |
-| 4. whole-document OCR | — | `AllPages` | an `IOcrClient` (every page) |
+| 3. native + OCR the scanned pages | `DefaultPageSegmenter` | `FallbackForEmptyPages` | an `IDocumentExtractionClient` (only where needed) |
+| 4. whole-document OCR | — | `AllPages` | an `IDocumentExtractionClient` (every page) |
 
 **"Degradation" is choosing the rung you can run and falling inward when a rung's model or service
 isn't available.** No ONNX model? Rung 2 → rung 1. No OCR endpoint? Rung 3 → rung 1. The reader is the
@@ -76,7 +76,7 @@ falls inward automatically when a rung's dependency is missing.
 ## Why composition, not a new type
 
 A `FallbackOcrClient` or a `PdfPigHeuristicOcrClient` would bake one policy into a type and hide the
-seams. Keeping the two seams open — `IPageSegmenter` and `IOcrClient` + `OcrPolicy` — means:
+seams. Keeping the two seams open — `IPageSegmenter` and `IDocumentExtractionClient` + `OcrPolicy` — means:
 
 - the **caller** owns the strategy (which rung), the **reader** owns the mechanism;
 - new layout models (PR 3's `OnnxPageSegmenter`) and new OCR engines drop into existing seams with
@@ -89,7 +89,7 @@ them.
 
 ## Recommendation for CommunityToolkit/AI #14
 
-Fold the OCR path into the shipped `PdfPigReader` as an **optional injected `IOcrClient` + `OcrPolicy`**
+Fold the OCR path into the shipped `PdfPigReader` as an **optional injected `IDocumentExtractionClient` + `OcrPolicy`**
 (replacing a `PdfReadingMode.VisionOnly`-style flag), and keep `IPageSegmenter` injectable so PR 3's
 `OnnxPageSegmenter` composes without a new reader type. One reader, two seams, OCR as enrichment — the
 name `PdfPigReader` stays accurate because under `OcrPolicy.Never` it is exactly that.

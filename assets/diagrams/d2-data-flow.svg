@@ -22,11 +22,11 @@
 
   <rect class="bg" x="0" y="0" width="1280" height="720"/>
   <text class="title" x="60" y="66">Data flow &amp; the boundary</text>
-  <text class="sub" x="60" y="94">IOcrClient owns "bytes → structured pages" and is usable directly. OcrDocumentReader WRAPS it — calls ExtractAsync, maps the result into a document.</text>
+  <text class="sub" x="60" y="94">IDocumentExtractionClient owns "bytes → structured pages" and is usable directly. OcrDocumentReader WRAPS it — calls ExtractAsync, maps the result into a document.</text>
 
   <!-- boundary regions -->
   <rect class="boundary" x="40" y="130" width="470" height="470" rx="16"/>
-  <text class="blabel" x="60" y="156">IOcrClient — a capability</text>
+  <text class="blabel" x="60" y="156">IDocumentExtractionClient — a capability</text>
   <rect class="boundary" x="540" y="130" width="700" height="470" rx="16" stroke="#512bd4"/>
   <text class="blabel" x="560" y="156" fill="#a78bfa">IngestionDocumentReader / MEDI — a pipeline</text>
 
@@ -37,11 +37,11 @@
 
   <!-- ocr client -->
   <rect class="node" x="80" y="300" width="390" height="60" rx="10"/>
-  <text class="ntext mono" x="100" y="336">IOcrClient.ExtractAsync</text>
+  <text class="ntext mono" x="100" y="336">IDocumentExtractionClient.ExtractAsync</text>
 
-  <!-- OcrResult with sinks -->
+  <!-- DocumentExtractionResult with sinks -->
   <rect class="node" x="80" y="404" width="390" height="176" rx="10"/>
-  <text class="ntext mono" x="100" y="434">OcrResult → OcrPage[]</text>
+  <text class="ntext mono" x="100" y="434">DocumentExtractionResult → DocumentPage[]</text>
   <rect class="sink" x="100" y="448" width="160" height="36" rx="7"/><text class="stext" x="116" y="472">Markdown text</text>
   <rect class="sink" x="272" y="448" width="176" height="36" rx="7"/><text class="stext" x="288" y="472">Tables (rows×cols)</text>
   <rect class="sink" x="100" y="494" width="160" height="36" rx="7"/><text class="stext" x="116" y="518">Blocks + bbox</text>
@@ -51,7 +51,7 @@
   <!-- reader (wraps the capability) -->
   <rect class="node" x="576" y="250" width="300" height="62" rx="10" stroke="#512bd4"/>
   <text class="ntext mono" x="596" y="280">OcrDocumentReader</text>
-  <text class="sub" x="596" y="300">wraps IOcrClient · maps → IngestionDocument</text>
+  <text class="sub" x="596" y="300">wraps IDocumentExtractionClient · maps → IngestionDocument</text>
 
   <rect class="node" x="576" y="344" width="300" height="62" rx="10" stroke="#512bd4"/>
   <text class="ntext mono" x="596" y="374">IngestionDocument</text>
@@ -76,7 +76,7 @@
   <text class="sub" x="596" y="567">→ optional enricher (caption, extract)</text>
 
   <!-- arrows -->
-  <!-- capability: PDF → ExtractAsync → OcrResult -->
+  <!-- capability: PDF → ExtractAsync → DocumentExtractionResult -->
   <line x1="170" y1="256" x2="170" y2="298" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
   <line x1="200" y1="360" x2="200" y2="402" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>
   <!-- composition: the reader WRAPS the capability (dependency, not a sequential step) -->

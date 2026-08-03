@@ -69,7 +69,7 @@
   <text class="lname" x="88" y="580">Microsoft.Extensions.AI abstractions <tspan class="tag">foundation</tspan> <tspan class="lsub">— three peer capability contracts</tspan></text>
   <rect class="comp" x="88" y="594" width="262" height="44"/><text class="clabel mono" x="108" y="622">IChatClient</text>
   <rect class="comp" x="370" y="594" width="262" height="44"/><text class="clabel mono" x="390" y="622">IEmbeddingGenerator</text>
-  <rect class="focus" x="652" y="594" width="262" height="44"/><text class="clabel mono" x="672" y="622" fill="#f5b8e6">IOcrClient</text>
+  <rect class="focus" x="652" y="594" width="262" height="44"/><text class="clabel mono" x="672" y="622" fill="#f5b8e6">IDocumentExtractionClient</text>
   <rect class="note" x="934" y="594" width="262" height="44"/><text class="nlabel" x="954" y="622">one capability shape</text>
   <rect class="note" x="88" y="650" width="1108" height="30" stroke="#d600aa" stroke-opacity="0.55"/>
   <text x="108" y="670" font-size="14" font-family="'Open Sans',sans-serif" fill="#f5b8e6"><tspan font-weight="700">OCR is a peer capability</tspan> <tspan fill="#cfcfd6">— it sits beside IChatClient &amp; IEmbeddingGenerator at the base, not bolted on per app.</tspan></text>

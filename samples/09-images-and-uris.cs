@@ -2,10 +2,10 @@
 #pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 // 09-images-and-uris.cs — two round-2 API prototypes, exercised live.
 //
-//  (A) DocumentExtractionOptions.IncludeImages -> DocumentPage.Images. A request flag (IncludeImages) shipped in #7588,
-//      but DocumentPage had no sink for the result. This adds DocumentImage + DocumentPage.Images and wires TWO
-//      document-native engines to fill it: Mistral OCR (inline base64 + bbox) and Azure Document
-//      Intelligence (cropped figure bytes + caption + bbox via output=figures). Same shape, two engines.
+//  (A) DocumentImage as a first-class element. Figures surface in the page's reading-order Elements list
+//      (no request toggle) via Elements.OfType<DocumentImage>(), and TWO document-native engines fill them:
+//      Mistral OCR (inline base64 + bbox) and Azure Document Intelligence (cropped figure bytes + caption
+//      + bbox via output=figures). Same shape, two engines.
 //
 //  (B) A UriContent overload for ExtractAsync. UriContent already exists in dotnet/extensions, so the
 //      overload is symmetric with the shipped DataContent one. It resolves self-contained data: URIs and
