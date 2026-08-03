@@ -2,12 +2,14 @@
 #:package Microsoft.ML.Tokenizers.Data.O200kBase@1.0.3
 #:package Microsoft.Extensions.Logging.Console@10.0.9
 #:package CommunityToolkit.VectorData.SqliteVec@1.0.0-preview.3
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
+using Microsoft.Extensions.DocumentExtraction;
 
 // 12-ingestion-pipeline.cs — the SAME OCR->RAG flow, but the REAL MEDI pipeline runs it end to end
 // into a REAL local vector store. Samples 06/07 hand-composed the stages to teach them; this one
 // hands them to IngestionPipeline and lets it drive:
 //
-//   IOcrClient (#7588) -> OcrDocumentReader -> IngestionPipeline{ SectionChunker -> VectorStoreWriter }
+//   IDocumentExtractionClient (#7588) -> OcrDocumentReader -> IngestionPipeline{ SectionChunker -> VectorStoreWriter }
 //                                                       |                                   |
 //                                              emits OTEL activities              SqliteVec (local file)
 //                                              + ILogger for free                 + real embeddings
@@ -50,7 +52,7 @@ var cred = new DefaultAzureCredential();
 using ILoggerFactory loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddConsole());
 
 // 1) OCR engine (#7588) behind the bridge — swap this one line to change engine.
-using IOcrClient ocr = new FoundryMistralOcrClient(
+using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(
     new Uri(DemoConfig.Require("OCR:FoundryEndpoint")),
     cred,
     DemoConfig.Get("OCR:MistralModel", "mistral-ocr-4-0"));

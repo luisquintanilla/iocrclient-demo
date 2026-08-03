@@ -1,15 +1,17 @@
 #:project ocr-shape/OcrShape.csproj
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 // 05-one-loop-four-clients.cs — the payoff. FOUR engines, FOUR wire protocols, ONE interface.
 //
 // Vision LLM, Mistral OCR, Azure Document Intelligence, Azure Content Understanding each speak a
-// completely different API. Behind IOcrClient they are IOcrClient. The loop below is the ENTIRE
-// consumer: same call, same OcrResult, swap the provider with one line. That is the whole point of
+// completely different API. Behind IDocumentExtractionClient they are IDocumentExtractionClient. The loop below is the ENTIRE
+// consumer: same call, same DocumentExtractionResult, swap the provider with one line. That is the whole point of
 // putting a seam here — your pipeline stops caring which engine read the page.
 //
 //   az login   # then set the endpoints (see .env header comments in the single-provider samples)
 //   dotnet run 05-one-loop-four-clients.cs -- data/usgs-petroleum-assessment.pdf
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using DemoOcr;
 
 string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
@@ -17,7 +19,7 @@ var cred = new Azure.Identity.DefaultAzureCredential();
 
 // The only provider-specific code in the whole program: constructing each client. After this line,
 // nothing downstream knows or cares which engine it is talking to.
-var clients = new (string Name, IOcrClient Client)[]
+var clients = new (string Name, IDocumentExtractionClient Client)[]
 {
     ("vision-llm (gpt-4.1-mini)", new VisionLlmOcrClient(
         new AzureOpenAIClient(new Uri(Require("OCR:OpenAIEndpoint")), cred)
@@ -38,11 +40,11 @@ foreach (var (name, client) in clients)
     {
         // Identical call for every engine. This block never changes when you add or swap a provider.
         using var stream = new MemoryStream(bytes, writable: false);
-        OcrResult r = await client.ExtractAsync(stream, "application/pdf");
+        DocumentExtractionResult r = await client.ExtractAsync(stream, "application/pdf");
 
-        int tables = r.Pages.Sum(p => p.Tables.Count);
-        int chars = r.Markdown.Length;
-        string heading = FirstHeading(r.Markdown);
+        int tables = r.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
+        int chars = r.Text.Length;
+        string heading = FirstHeading(r.Text);
         Console.WriteLine($"{name,-30} {r.Pages.Count,6} {tables,7} {chars,8}  {heading}");
     }
 }

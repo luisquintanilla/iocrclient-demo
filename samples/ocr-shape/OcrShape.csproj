@@ -13,12 +13,13 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <!-- IOcrClient / OCR types and MEDI chunkers are marked [Experimental]; opt in explicitly. -->
-    <NoWarn>$(NoWarn);MEAI001;MEAI002;MEAI003</NoWarn>
+    <NoWarn>$(NoWarn);MEAI001;MEDE0001;MEAI002;MEAI003</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Real abstractions + core middleware + OpenAI binding + MEDI pipeline (local-pack). -->
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.0-dev" />
+    <PackageReference Include="Microsoft.Extensions.DocumentExtraction" Version="10.8.0-dev" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.0-dev" />
     <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.8.0-dev" />
     <!-- Credentials for every sample come from user-secrets (id iocrclient-demo), env fallback. -->

@@ -1,5 +1,6 @@
 ﻿using DemoOcr;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
 using Microsoft.Extensions.DataIngestion.Chunkers;
 using Microsoft.Extensions.VectorData;
@@ -12,7 +13,7 @@ public class DataIngestor(
     ILoggerFactory loggerFactory,
     VectorStoreCollection<Guid, IngestedChunk> vectorCollection,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
-    IOcrClient ocrClient)
+    IDocumentExtractionClient ocrClient)
 {
     public async Task IngestDataAsync(DirectoryInfo directory, string searchPattern)
     {
@@ -25,10 +26,7 @@ public class DataIngestor(
             reader: new DocumentReader(directory, ocrClient),
             chunker: new SemanticSimilarityChunker(
                 embeddingGenerator.AsTextContentEmbeddingGenerator(),
-                new(TiktokenTokenizer.CreateForModel("gpt-4o"))
-                {
-                    MetadataKeysToPropagate = new HashSet<string> { "page_number", "ocr_source" },
-                }),
+                new(TiktokenTokenizer.CreateForModel("gpt-4o"))),
             writer: writer,
             loggerFactory: loggerFactory);
 

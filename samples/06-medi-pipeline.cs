@@ -1,16 +1,17 @@
 #:project ocr-shape/OcrShape.csproj
 #:package Microsoft.ML.Tokenizers.Data.O200kBase@1.0.3
 #:package Microsoft.Extensions.Logging.Console@10.0.9
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 
 // 06-medi-pipeline.cs — the document-AI engine as a MEDI reader, end to end. This is where the two
 // abstractions meet:
 //
-//   IOcrClient (a capability)  --OcrDocumentReader-->  IngestionDocumentReader (a pipeline stage)
+//   IDocumentExtractionClient (a capability)  --OcrDocumentReader-->  IngestionDocumentReader (a pipeline stage)
 //                                                          -> SectionChunker -> IngestionChunk[]
 //
-// The line (the demo's core question): IOcrClient turns bytes into a normalized OcrResult and knows
+// The line (the demo's core question): IDocumentExtractionClient turns bytes into a normalized DocumentExtractionResult and knows
 // nothing about pipelines. IngestionDocumentReader is the MEDI front door and knows nothing about
-// which engine. OcrDocumentReader is the ONE bridge — it composes ANY IOcrClient and never needs a
+// which engine. OcrDocumentReader is the ONE bridge — it composes ANY IDocumentExtractionClient and never needs a
 // per-engine subclass or a VisionOnly flag.
 //
 // It also shows how to keep page provenance end to end on the REAL chunker: the stock SectionChunker
@@ -25,6 +26,7 @@ using System.Runtime.CompilerServices;
 using Azure.Identity;
 using DemoOcr;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
 using Microsoft.Extensions.DataIngestion.Chunkers;
 using Microsoft.Extensions.Logging;
@@ -34,10 +36,10 @@ string endpoint = Require("OCR:FoundryEndpoint");
 string model = DemoOcr.DemoConfig.Config["OCR:MistralModel"] ?? "mistral-ocr-4-0";
 string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
 
-// --- 1. A real IOcrClient (#7588), wrapped in the real OCR middleware builder. Same shape as
+// --- 1. A real IDocumentExtractionClient (#7588), wrapped in the real OCR middleware builder. Same shape as
 //        ChatClientBuilder: you compose a client, you don't set flags. Swap the engine on one line. ---
 using ILoggerFactory loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Warning).AddConsole());
-IOcrClient ocr = new FoundryMistralOcrClient(new Uri(endpoint), new DefaultAzureCredential(), model)
+IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(endpoint), new DefaultAzureCredential(), model)
     .AsBuilder()
     .UseLogging(loggerFactory)
     .Build();

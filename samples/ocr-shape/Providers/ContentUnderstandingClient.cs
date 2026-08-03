@@ -3,14 +3,20 @@ using Azure.AI.ContentUnderstanding;
 using Azure.Core;
 
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
+using DocumentElement = Microsoft.Extensions.DocumentExtraction.DocumentElement;
+using DocumentPage = Microsoft.Extensions.DocumentExtraction.DocumentPage;
+using DocumentTable = Microsoft.Extensions.DocumentExtraction.DocumentTable;
+using DocumentTableCell = Microsoft.Extensions.DocumentExtraction.DocumentTableCell;
+using DocumentTableCellKind = Microsoft.Extensions.DocumentExtraction.DocumentTableCellKind;
 
 namespace DemoOcr;
 
 /// <summary>
-/// Azure AI Content Understanding behind the SAME <see cref="IOcrClient"/> contract (the markdown path).
+/// Azure AI Content Understanding behind the SAME <see cref="IDocumentExtractionClient"/> contract (the markdown path).
 ///
 /// CU is the widest-surface PEER in the provider matrix, not an apex: one CU service can emit EITHER
-/// Markdown (this client, <see cref="IOcrClient"/>) OR typed fields + grounding + confidence
+/// Markdown (this client, <see cref="IDocumentExtractionClient"/>) OR typed fields + grounding + confidence
 /// (<see cref="ContentUnderstandingAnalysisClient"/>, the sibling <see cref="IDocumentAnalysisClient"/>).
 /// That is exactly why CU is the strongest cross-provider conformance test — if the same polygon /
 /// confidence / builder primitives serve CU's two shapes AND Mistral OCR AND Azure DI AND a vision LLM,
@@ -18,11 +24,11 @@ namespace DemoOcr;
 ///
 /// Wire protocol: analyzer + async-poll (<c>AnalyzeBinary(WaitUntil.Completed, analyzerId, …)</c> →
 /// <c>AnalysisResult.Contents[]</c>). Different from Mistral (document→pages[]) and DI (AnalyzeResult),
-/// so it is a different class — but it normalizes onto the same <see cref="OcrResult"/>, so the
+/// so it is a different class — but it normalizes onto the same <see cref="DocumentExtractionResult"/>, so the
 /// <see cref="OcrDocumentReader"/> and the vector store never see the difference. Keyless via
 /// DefaultAzureCredential / any TokenCredential on a Foundry resource.
 /// </summary>
-public sealed class ContentUnderstandingClient : IOcrClient
+public sealed class ContentUnderstandingClient : IDocumentExtractionClient
 {
     /// <summary>The prebuilt analyzer that returns layout markdown (the RAG/reader path).</summary>
     public const string DefaultAnalyzerId = "prebuilt-document";
@@ -39,10 +45,10 @@ public sealed class ContentUnderstandingClient : IOcrClient
         _analyzerId = analyzerId;
     }
 
-    public async Task<OcrResult> ExtractAsync(
+    public async Task<DocumentExtractionResult> ExtractAsync(
         Stream document,
         string mediaType,
-        OcrOptions? options = null,
+        DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
@@ -61,7 +67,7 @@ public sealed class ContentUnderstandingClient : IOcrClient
             .ConfigureAwait(false);
 
         AnalysisResult result = op.Value;
-        var pages = new List<OcrPage>();
+        var pages = new List<DocumentPage>();
 
         // CU returns one or more content segments; the document path yields DocumentContent with markdown.
         foreach (AnalysisContent content in result.Contents)
@@ -71,24 +77,24 @@ public sealed class ContentUnderstandingClient : IOcrClient
                 continue;
             }
 
-            var tablesByPage = new Dictionary<int, List<OcrTable>>();
+            var tablesByPage = new Dictionary<int, List<DocumentTable>>();
             if (doc.Tables is { Count: > 0 })
             {
-                foreach (DocumentTable t in doc.Tables)
+                foreach (Azure.AI.ContentUnderstanding.DocumentTable t in doc.Tables)
                 {
-                    var cells = new List<OcrTableCell>(t.Cells.Count);
-                    foreach (DocumentTableCell c in t.Cells)
+                    var cells = new List<DocumentTableCell>(t.Cells.Count);
+                    foreach (Azure.AI.ContentUnderstanding.DocumentTableCell c in t.Cells)
                     {
-                        cells.Add(new OcrTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
+                        cells.Add(new DocumentTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
                         {
-                            Kind = c.Kind?.ToString() is { Length: > 0 } cellKind ? new OcrTableCellKind(cellKind) : null,
+                            Kind = c.Kind?.ToString() is { Length: > 0 } cellKind ? new DocumentTableCellKind(cellKind) : null,
                             RowSpan = c.RowSpan ?? 1,
                             ColumnSpan = c.ColumnSpan ?? 1,
                         });
                     }
                     // CU encodes geometry as a source string (not a polygon array); it rides in RawRepresentation.
                     (tablesByPage.TryGetValue(doc.StartPageNumber, out var list) ? list : tablesByPage[doc.StartPageNumber] = new())
-                        .Add(new OcrTable(t.RowCount, t.ColumnCount, cells));
+                        .Add(new DocumentTable(t.RowCount, t.ColumnCount, cells));
                 }
             }
 
@@ -96,35 +102,37 @@ public sealed class ContentUnderstandingClient : IOcrClient
             {
                 for (int i = 0; i < doc.Pages.Count; i++)
                 {
-                    DocumentPage page = doc.Pages[i];
+                    Azure.AI.ContentUnderstanding.DocumentPage page = doc.Pages[i];
                     bool first = pages.Count == 0;
-                    pages.Add(new OcrPage(page.PageNumber, first ? doc.Markdown ?? "" : "")
+                    pages.Add(new DocumentPage(page.PageNumber, first ? doc.Markdown ?? "" : "")
                     {
-                        Tables = tablesByPage.TryGetValue(page.PageNumber, out var tb) ? tb : [],
+                        Elements = tablesByPage.TryGetValue(page.PageNumber, out var tb)
+                            ? tb.Cast<DocumentElement>().ToList()
+                            : [],
                         AdditionalProperties = new() { ["cu.pageNumber"] = page.PageNumber },
                     });
                 }
             }
             else
             {
-                pages.Add(new OcrPage(1, doc.Markdown ?? ""));
+                pages.Add(new DocumentPage(1, doc.Markdown ?? ""));
             }
         }
 
         if (pages.Count == 0)
         {
-            pages.Add(new OcrPage(1, ""));
+            pages.Add(new DocumentPage(1, ""));
         }
 
-        return new OcrResult(pages)
+        return new DocumentExtractionResult(pages)
         {
-            ModelId = analyzerId,
             RawRepresentation = result,
+            AdditionalProperties = new() { ["modelId"] = analyzerId },
         };
     }
 
-    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
-        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
+        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
         => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)

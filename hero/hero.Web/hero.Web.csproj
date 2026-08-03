@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>iocrclient-demo</UserSecretsId>
-    <NoWarn>$(NoWarn);MEAI001;MEAI002;MEAI003;SKEXP0001;SKEXP0010;SKEXP0020;SKEXP0050</NoWarn>
+    <NoWarn>$(NoWarn);MEAI001;MEDE0001;MEAI002;MEAI003;SKEXP0001;SKEXP0010;SKEXP0020;SKEXP0050</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CommunityToolkit.VectorData.InMemory;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.VectorData;
 using UglyToad.PdfPig;
 
@@ -11,7 +12,7 @@ public sealed record ExtractionOutcome(
     string Provider, string Text, int PageCount, int TableCount, int ImageCount, long ElapsedMs);
 
 /// <summary>
-/// The shared harness: run an extractor (native PdfPig baseline OR any real <see cref="IOcrClient"/>),
+/// The shared harness: run an extractor (native PdfPig baseline OR any real <see cref="IDocumentExtractionClient"/>),
 /// then chunk / retrieve / answer with the same downstream pipeline so the ONLY variable is the
 /// extraction step. Deliberately minimal (lexical retrieval, window chunking) — the OCR seam is what we
 /// are measuring, not the retriever.
@@ -32,30 +33,34 @@ public static class Harness
         return new ExtractionOutcome("pdfpig-native", string.Join("\n\n", pages), pages.Count, 0, 0, sw.ElapsedMilliseconds);
     }
 
-    /// <summary>Any real IOcrClient. Requests images so TablesDetected/ImagesDetected are meaningful.</summary>
+    /// <summary>Any real IDocumentExtractionClient. Requests images so TablesDetected/ImagesDetected are meaningful.</summary>
     public static async Task<ExtractionOutcome> ExtractWithOcrAsync(
-        string provider, IOcrClient ocr, string pdfPath, string mediaType, CancellationToken ct = default)
+        string provider, IDocumentExtractionClient ocr, string pdfPath, string mediaType, CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
         await using FileStream doc = File.OpenRead(pdfPath);
-        OcrResult result = await ocr.ExtractAsync(doc, mediaType, new OcrOptions { IncludeImages = true }, ct);
+        DocumentExtractionResult result = await ocr.ExtractAsync(
+            doc,
+            mediaType,
+            new DocumentExtractionOptions { AdditionalProperties = new() { ["includeImages"] = true } },
+            ct);
         sw.Stop();
 
-        string text = string.Join("\n\n", result.Pages.Select(p => p.Markdown));
-        int tables = result.Pages.Sum(p => p.Tables.Count);
-        int images = result.Pages.Sum(p => p.Images.Count);
+        string text = string.Join("\n\n", result.Pages.Select(p => p.Text));
+        int tables = result.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
+        int images = result.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count());
         return new ExtractionOutcome(provider, text, result.Pages.Count, tables, images, sw.ElapsedMilliseconds);
     }
 
     /// <summary>
     /// The middle STRATEGY rung (CommunityToolkit/AI #14 "reader owns WHEN"): native PdfPig text first,
-    /// and fall back to the injected <see cref="IOcrClient"/> over the whole document only when the native
+    /// and fall back to the injected <see cref="IDocumentExtractionClient"/> over the whole document only when the native
     /// layer yields no usable text (a scanned / image-only PDF). On a born-digital doc this spends ZERO
     /// OCR calls (native suffices); on a scanned doc it falls back and OCR recovers the text the native
     /// layer can't. That is the honest strategy dimension — not just the two extremes.
     /// </summary>
     public static async Task<ExtractionOutcome> ExtractWithPdfPigFallbackAsync(
-        IOcrClient ocr, string pdfPath, string mediaType, int minNativeChars = 64, CancellationToken ct = default)
+        IDocumentExtractionClient ocr, string pdfPath, string mediaType, int minNativeChars = 64, CancellationToken ct = default)
     {
         ExtractionOutcome native = ExtractNative(pdfPath);
         int nativeChars = native.Text.Count(c => !char.IsWhiteSpace(c));

@@ -6,7 +6,8 @@ real projects, and do not redistribute them as if they were shipped Microsoft pa
 
 ## What these are
 
-`IOcrClient` shown in this demo is **proposed** in an open pull request against
+The `Microsoft.Extensions.DocumentExtraction` API shown in this demo (the
+`IDocumentExtractionClient` extraction surface) is **proposed** in an open pull request against
 [dotnet/extensions](https://github.com/dotnet/extensions) and is **not on nuget.org yet**.
 Rather than vendor a hand-copied snapshot, `../scripts/build-local-feed.sh` packs the *real*
 dotnet/extensions source into this folder at version `10.8.0-dev`, so the samples bind to the actual
@@ -15,11 +16,11 @@ dotnet/extensions source into this folder at version `10.8.0-dev`, so the sample
 
 ## Provenance (what went into the build)
 
-Packed **2026-07-13** at version `10.8.0-dev` from this composition:
+Packed **2026-08-03** at version `10.8.0-dev` from this composition:
 
-- base: `dotnet/extensions` branch **`data-ingestion-preview2`** (latest MEDI: non-generic `IngestionChunk`; the public upstream branch, no in-flight PRs merged in)
-- **+ PR [#7588](https://github.com/dotnet/extensions/pull/7588)** — `IOcrClient` (the OCR seam; additive `Ocr/` folders grafted from the PR head, since #7588 targets `main`)
-- two one-line const edits the grafted files depend on (an experimental diagnostic id and an OpenTelemetry const) — see the build script
+- base: `dotnet/extensions` branch **`data-ingestion-preview2`** at commit **`da091f9e`** (latest MEDI: non-generic `IngestionChunk` + `IngestionChunkVectorRecord`; the public upstream branch, no in-flight PRs merged in)
+- **+ PR [#7588](https://github.com/dotnet/extensions/pull/7588)** — `Microsoft.Extensions.DocumentExtraction(.Abstractions)` (the extraction peer library; the two self-contained DE project folders grafted from the PR head, since #7588 targets `main`)
+- one const the grafted `[Experimental]` attributes reference (`DiagnosticIds.Experiments.DocumentExtraction = "MEDE0001"`) — see the build script
 
 The exact recipe (and the branch/PR heads used) lives in
 [`../scripts/build-local-feed.sh`](../scripts/build-local-feed.sh); it reproduces this feed from

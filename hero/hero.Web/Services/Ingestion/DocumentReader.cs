@@ -1,12 +1,13 @@
 using DemoOcr;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
 
 namespace hero.Web.Services.Ingestion;
 
-internal sealed class DocumentReader(DirectoryInfo rootDirectory, IOcrClient ocrClient) : IngestionDocumentReader
+internal sealed class DocumentReader(DirectoryInfo rootDirectory, IDocumentExtractionClient ocrClient) : IngestionDocumentReader
 {
-    private readonly OcrDocumentReader _ocrReader = new(ocrClient, new OcrOptions
+    private readonly OcrDocumentReader _ocrReader = new(ocrClient, new DocumentExtractionOptions
     {
         AdditionalProperties = new()
         {

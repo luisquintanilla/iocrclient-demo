@@ -1,5 +1,7 @@
 #:project ocr-shape/OcrShape.csproj
 #:project bench/OcrBench/OcrBench.csproj
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
+using Microsoft.Extensions.DocumentExtraction;
 // 10-eval-ocr-vs-pdfpig.cs — do OCR engines actually beat "naive" PdfPig? Measure it, apples-to-apples.
 //
 // The fairest possible contrast: the SAME document content in two encodings —
@@ -67,7 +69,7 @@ Console.WriteLine(embedder is not null
     : "retriever : lexical (offline fallback — set OCR:EmbedDeployment for the real vector store)\n");
 
 // One OCR client drives the pdfpig+ocr-fallback strategy row (first configured provider wins).
-Func<IOcrClient>? fallbackClient =
+Func<IDocumentExtractionClient>? fallbackClient =
       Opt("OCR:FoundryEndpoint") is { } mf ? () => new FoundryMistralOcrClient(new Uri(mf), cred)
     : Opt("OCR:DocIntelEndpoint") is { } df ? () => new AzureDocumentIntelligenceClient(new Uri(df), cred)
     : Opt("OCR:OpenAIEndpoint") is not null ? () => new VisionLlmOcrClient(chat)

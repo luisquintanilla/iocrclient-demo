@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
@@ -10,7 +11,7 @@ public enum OcrPolicy
 {
     Never,                  // native PdfPig text only (the old TextOnly)
     FallbackForEmptyPages,  // native first; OCR only pages with no digital text (the old Hybrid)
-    AllPages,               // OCR the whole document via the injected IOcrClient (document-native)
+    AllPages,               // OCR the whole document via the injected IDocumentExtractionClient (document-native)
 }
 
 // Per-page telemetry the OCR predicate sees: policy in the caller's hands, mechanism in the reader.
@@ -21,15 +22,15 @@ public readonly record struct PageOcrContext(int PageNumber, int NativeElementCo
 
 // A PdfPig-backed MEDI reader with TWO clean pluggable seams. This is CommunityToolkit/AI PR #14 in
 // miniature: native text first, OCR composed in as an injected enrichment (not bolted on downstream),
-// depending on IOcrClient only. OCR is an injected capability, so the reader keeps the plain
+// depending on IDocumentExtractionClient only. OCR is an injected capability, so the reader keeps the plain
 // PdfPigReader name — under OcrPolicy.Never it is a pure native-text reader. Stamps the same metadata
 // keys (page_number/ocr_source) as the other readers, so per-page chunking carries provenance into
 // chunks identically.
 //   seam 1 — IPageSegmenter: HOW to segment a page (DefaultPageSegmenter heuristic; swap in
 //            OnnxPageSegmenter from CommunityToolkit/AI PR 3's PdfPig.OnnxLayoutAnalysis for ML layout).
-//   seam 2 — IOcrClient + OcrPolicy: WHEN/whether to OCR (Never / FallbackForEmptyPages / AllPages).
+//   seam 2 — IDocumentExtractionClient + OcrPolicy: WHEN/whether to OCR (Never / FallbackForEmptyPages / AllPages).
 public sealed class PdfPigReader(
-    IOcrClient? ocrClient = null,
+    IDocumentExtractionClient? ocrClient = null,
     OcrPolicy policy = OcrPolicy.Never,
     IPageSegmenter? pageSegmenter = null,
     Func<PageOcrContext, bool>? ocrPagePredicate = null) : IngestionDocumentReader
@@ -40,7 +41,7 @@ public sealed class PdfPigReader(
         Stream source, string identifier, string mediaType, CancellationToken cancellationToken = default)
     {
         if (policy != OcrPolicy.Never && ocrClient is null)
-            throw new ArgumentNullException(nameof(ocrClient), $"An {nameof(IOcrClient)} is required when policy is {policy}.");
+            throw new ArgumentNullException(nameof(ocrClient), $"An {nameof(IDocumentExtractionClient)} is required when policy is {policy}.");
 
         byte[] bytes;
         using (var buffer = new MemoryStream())
@@ -55,10 +56,10 @@ public sealed class PdfPigReader(
         if (policy == OcrPolicy.AllPages && ocrClient is not null)
         {
             using var docStream = new MemoryStream(bytes, writable: false);
-            OcrResult result = await ocrClient.ExtractAsync(docStream, mediaType, cancellationToken: cancellationToken);
+            DocumentExtractionResult result = await ocrClient.ExtractAsync(docStream, mediaType, cancellationToken: cancellationToken);
             OcrCalls++;
-            foreach (OcrPage page in result.Pages)
-                document.Sections.Add(OcrPageToSection(page, result.ModelId));
+            foreach (DocumentPage page in result.Pages)
+                document.Sections.Add(OcrPageToSection(page, result.GetModelId()));
             return document;
         }
 
@@ -99,9 +100,9 @@ public sealed class PdfPigReader(
                     // A scanned page: render it and OCR just this page. A born-digital PDF is fully
                     // digital, so this never fires. Rendering a page to an image needs a rasterizer
                     // (e.g. Docnet/PDFtoImage); wire one in for real scanned-PDF workloads. The seam —
-                    // per-page fallback into the injected IOcrClient — is what #14 formalizes.
+                    // per-page fallback into the injected IDocumentExtractionClient — is what #14 formalizes.
                     throw new NotSupportedException(
-                        $"Page {i} has no digital text and would route to the injected IOcrClient; " +
+                        $"Page {i} has no digital text and would route to the injected IDocumentExtractionClient; " +
                         "supply a page rasterizer to enable the scanned-page path.");
                 }
             }
@@ -112,14 +113,14 @@ public sealed class PdfPigReader(
         return document;
     }
 
-    private static IngestionDocumentSection OcrPageToSection(OcrPage page, string? ocrSource)
+    private static IngestionDocumentSection OcrPageToSection(DocumentPage page, string? ocrSource)
     {
         var section = new IngestionDocumentSection();
         section.Metadata["page_number"] = page.PageNumber;
         section.Metadata["ocr_source"] = ocrSource ?? "ocr";
-        if (!string.IsNullOrWhiteSpace(page.Markdown))
+        if (!string.IsNullOrWhiteSpace(page.Text))
         {
-            var para = new IngestionDocumentParagraph(page.Markdown) { Text = page.Markdown, PageNumber = page.PageNumber };
+            var para = new IngestionDocumentParagraph(page.Text) { Text = page.Text, PageNumber = page.PageNumber };
             para.Metadata["page_number"] = page.PageNumber;
             para.Metadata["ocr_source"] = ocrSource ?? "ocr";
             section.Elements.Add(para);

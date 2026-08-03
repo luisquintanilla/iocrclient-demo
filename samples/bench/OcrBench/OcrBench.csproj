@@ -13,7 +13,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <NoWarn>$(NoWarn);MEAI001;MEAI002;MEAI003</NoWarn>
+    <NoWarn>$(NoWarn);MEAI001;MEDE0001;MEAI002;MEAI003</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

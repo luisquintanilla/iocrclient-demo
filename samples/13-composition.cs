@@ -1,5 +1,7 @@
 #:project ocr-shape/OcrShape.csproj
 #:package Microsoft.ML.Tokenizers.Data.O200kBase@1.0.3
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
+using Microsoft.Extensions.DocumentExtraction;
 
 // 13-composition.cs — the extraction spectrum, as COMPOSITION (not a new type).
 //
@@ -9,7 +11,7 @@
 // exist; this sample composes them three ways over ONE document and prints the trade-offs.
 //
 //   seam 1  IPageSegmenter          — HOW to segment a page
-//   seam 2  IOcrClient + OcrPolicy   — WHEN/whether to OCR
+//   seam 2  IDocumentExtractionClient + OcrPolicy   — WHEN/whether to OCR
 //
 // The spectrum, cheapest/local -> richest/service:
 //
@@ -58,13 +60,13 @@ else
     Console.WriteLine("        Wire CommunityToolkit/AI PR 3 PdfPig.OnnxLayoutAnalysis into the SAME seam to enable.\n");
 }
 
-// --- Rung 3: native first, OCR only the scanned pages (the injected IOcrClient earns its keep). -----
+// --- Rung 3: native first, OCR only the scanned pages (the injected IDocumentExtractionClient earns its keep). -----
 // the USGS fact sheet is born-digital, so no page routes to OCR and OcrCalls stays 0 — the reader spends
-// nothing. Needs an IOcrClient; only constructed if a Foundry endpoint is configured.
+// nothing. Needs an IDocumentExtractionClient; only constructed if a Foundry endpoint is configured.
 string? foundry = DemoOcr.DemoConfig.Config["OCR:FoundryEndpoint"];
 if (foundry is not null)
 {
-    using IOcrClient ocr = new FoundryMistralOcrClient(new Uri(foundry), new Azure.Identity.DefaultAzureCredential());
+    using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(foundry), new Azure.Identity.DefaultAzureCredential());
     var rung3 = new PdfPigReader(ocr, OcrPolicy.FallbackForEmptyPages);
     await Report("3. native + OCR scanned pages  (FallbackForEmptyPages)", rung3, pdf, () => rung3.OcrCalls);
 }

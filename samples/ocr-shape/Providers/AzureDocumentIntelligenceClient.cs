@@ -3,18 +3,24 @@ using Azure.AI.DocumentIntelligence;
 using Azure.Core;
 
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
+using DocumentElement = Microsoft.Extensions.DocumentExtraction.DocumentElement;
+using DocumentPage = Microsoft.Extensions.DocumentExtraction.DocumentPage;
+using DocumentTable = Microsoft.Extensions.DocumentExtraction.DocumentTable;
+using DocumentTableCell = Microsoft.Extensions.DocumentExtraction.DocumentTableCell;
+using DocumentTableCellKind = Microsoft.Extensions.DocumentExtraction.DocumentTableCellKind;
 
 namespace DemoOcr;
 
 /// <summary>
-/// A SECOND engine behind the same <see cref="IOcrClient"/> contract — Azure Document Intelligence.
+/// A SECOND engine behind the same <see cref="IDocumentExtractionClient"/> contract — Azure Document Intelligence.
 ///
 /// Different wire protocol from Mistral OCR (async-poll AnalyzeResult, not document-&gt;pages[]), so it
-/// is a different class — but it normalizes onto the same OcrResult, so the OcrDocumentReader and the
+/// is a different class — but it normalizes onto the same DocumentExtractionResult, so the OcrDocumentReader and the
 /// vector store never see the difference. This is the whole point of the capability seam: swap the
 /// engine, keep the pipeline. Keyless via DefaultAzureCredential / any TokenCredential.
 /// </summary>
-public sealed class AzureDocumentIntelligenceClient : IOcrClient
+public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
 {
     private readonly DocumentIntelligenceClient _client;
     private readonly string _defaultModel;
@@ -28,17 +34,17 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
         _defaultModel = defaultModel;
     }
 
-    public async Task<OcrResult> ExtractAsync(
+    public async Task<DocumentExtractionResult> ExtractAsync(
         Stream document,
         string mediaType,
-        OcrOptions? options = null,
+        DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
         await document.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
 
         string model = options?.ModelId ?? _defaultModel;
-        bool includeImages = options?.IncludeImages ?? false;
+        bool includeImages = options.GetIncludeImages();
         var analyzeOptions = new AnalyzeDocumentOptions(model, BinaryData.FromBytes(ms.ToArray()))
         {
             OutputContentFormat = DocumentContentFormat.Markdown,
@@ -55,21 +61,21 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
 
         AnalyzeResult result = op.Value;
 
-        // DI returns one markdown string + a flat list of pages. Map onto OcrResult pages.
-        var pages = new List<OcrPage>();
-        var blocksByPage = new Dictionary<int, List<OcrBlock>>();
-        var tablesByPage = new Dictionary<int, List<OcrTable>>();
-        var imagesByPage = new Dictionary<int, List<OcrImage>>();
+        // DI returns one markdown string + a flat list of pages. Map onto DocumentExtractionResult pages.
+        var pages = new List<DocumentPage>();
+        var blocksByPage = new Dictionary<int, List<DocumentBlock>>();
+        var tablesByPage = new Dictionary<int, List<DocumentTable>>();
+        var imagesByPage = new Dictionary<int, List<DocumentImage>>();
 
         // Figures -> images: DI renders cropped bytes (fetched per figure id) + caption + native polygon.
-        // This is the SECOND document-native engine validating OcrPage.Images (bytes + bbox + caption).
+        // This is the SECOND document-native engine validating DocumentPage.Images (bytes + bbox + caption).
         if (includeImages && result.Figures is { Count: > 0 })
         {
             foreach (DocumentFigure figure in result.Figures)
             {
-                OcrBoundingRegion? region = ToRegion(figure.BoundingRegions);
+                DocumentBoundingRegion? region = ToRegion(figure.BoundingRegions);
                 int pageNo = region?.PageNumber ?? 1;
-                var image = new OcrImage
+                var image = new DocumentImage
                 {
                     BoundingRegion = region,
                     Caption = figure.Caption?.Content,
@@ -92,12 +98,12 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
         {
             foreach (DocumentParagraph para in result.Paragraphs)
             {
-                OcrBoundingRegion? region = ToRegion(para.BoundingRegions);
+                DocumentBoundingRegion? region = ToRegion(para.BoundingRegions);
                 int pageNo = region?.PageNumber ?? 1;
                 (blocksByPage.TryGetValue(pageNo, out var list) ? list : blocksByPage[pageNo] = new())
-                    .Add(new OcrBlock(para.Content ?? "")
+                    .Add(new DocumentBlock(para.Content ?? "")
                     {
-                        Kind = para.Role?.ToString() is { Length: > 0 } role ? new OcrBlockKind(role) : null,
+                        Kind = para.Role?.ToString() is { Length: > 0 } role ? new DocumentBlockKind(role) : null,
                         BoundingRegion = region,
                     });
             }
@@ -106,22 +112,22 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
         // Tables -> structured cells (the Azure DI shape: indices + spans + kind) + native polygon.
         if (result.Tables is { Count: > 0 })
         {
-            foreach (DocumentTable t in result.Tables)
+            foreach (Azure.AI.DocumentIntelligence.DocumentTable t in result.Tables)
             {
-                OcrBoundingRegion? region = ToRegion(t.BoundingRegions);
+                DocumentBoundingRegion? region = ToRegion(t.BoundingRegions);
                 int pageNo = region?.PageNumber ?? 1;
-                var cells = new List<OcrTableCell>(t.Cells.Count);
-                foreach (DocumentTableCell c in t.Cells)
+                var cells = new List<DocumentTableCell>(t.Cells.Count);
+                foreach (Azure.AI.DocumentIntelligence.DocumentTableCell c in t.Cells)
                 {
-                    cells.Add(new OcrTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
+                    cells.Add(new DocumentTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
                     {
-                        Kind = c.Kind.ToString() is { Length: > 0 } cellKind ? new OcrTableCellKind(cellKind) : null,
+                        Kind = c.Kind.ToString() is { Length: > 0 } cellKind ? new DocumentTableCellKind(cellKind) : null,
                         RowSpan = c.RowSpan ?? 1,
                         ColumnSpan = c.ColumnSpan ?? 1,
                     });
                 }
                 (tablesByPage.TryGetValue(pageNo, out var list) ? list : tablesByPage[pageNo] = new())
-                    .Add(new OcrTable(t.RowCount, t.ColumnCount, cells) { BoundingRegion = region });
+                    .Add(new DocumentTable(t.RowCount, t.ColumnCount, cells) { BoundingRegion = region });
             }
         }
 
@@ -129,55 +135,72 @@ public sealed class AzureDocumentIntelligenceClient : IOcrClient
         {
             for (int i = 0; i < result.Pages.Count; i++)
             {
-                DocumentPage page = result.Pages[i];
+                Azure.AI.DocumentIntelligence.DocumentPage page = result.Pages[i];
                 int pageNo = page.PageNumber;
-                pages.Add(new OcrPage(pageNo, i == 0 ? result.Content ?? "" : "")
+                var elements = new List<DocumentElement>();
+                if (blocksByPage.TryGetValue(pageNo, out var b))
                 {
-                    Confidence = null,
-                    Width = page.Width,
-                    Height = page.Height,
-                    CoordinateUnit = page.Unit?.ToString() is { Length: > 0 } unit ? new OcrCoordinateUnit(unit) : null,
-                    Blocks = blocksByPage.TryGetValue(pageNo, out var b) ? b : [],
-                    Tables = tablesByPage.TryGetValue(pageNo, out var tb) ? tb : [],
-                    Images = imagesByPage.TryGetValue(pageNo, out var im) ? im : [],
+                    elements.AddRange(b);
+                }
+                if (tablesByPage.TryGetValue(pageNo, out var tb))
+                {
+                    elements.AddRange(tb.Cast<DocumentElement>());
+                }
+                if (imagesByPage.TryGetValue(pageNo, out var im))
+                {
+                    elements.AddRange(im);
+                }
+                pages.Add(new DocumentPage(pageNo, i == 0 ? result.Content ?? "" : "")
+                {
+                    Dimensions = page.Width is { } w && page.Height is { } h ? new DocumentPageDimensions((float)w, (float)h) : null,
+                    CoordinateUnit = ToCoordinateUnit(page.Unit),
+                    Elements = elements,
                     AdditionalProperties = new() { ["di.pageNumber"] = pageNo },
                 });
             }
         }
         else
         {
-            pages.Add(new OcrPage(1, result.Content ?? ""));
+            pages.Add(new DocumentPage(1, result.Content ?? ""));
         }
 
         var tableCount = result.Tables?.Count ?? 0;
 
-        return new OcrResult(pages)
+        return new DocumentExtractionResult(pages)
         {
-            ModelId = model,
-            Usage = new OcrUsage { PagesProcessed = result.Pages?.Count },
+            Usage = new DocumentExtractionUsage { PagesProcessed = result.Pages?.Count },
             RawRepresentation = result,
-            AdditionalProperties = new() { ["di.tableCount"] = tableCount },
+            AdditionalProperties = new() { ["modelId"] = model, ["di.tableCount"] = tableCount },
         };
     }
 
+    private static DocumentCoordinateUnit? ToCoordinateUnit(object? unit)
+        => unit?.ToString() switch
+        {
+            "Pixel" => DocumentCoordinateUnit.Pixel,
+            "Point" => DocumentCoordinateUnit.Point,
+            "Inch" => DocumentCoordinateUnit.Inch,
+            _ => null,
+        };
+
     /// <summary>Map a DI BoundingRegions list onto the SHARED region primitive, keeping the native polygon.</summary>
-    private static OcrBoundingRegion? ToRegion(IReadOnlyList<BoundingRegion>? regions)
+    private static DocumentBoundingRegion? ToRegion(IReadOnlyList<BoundingRegion>? regions)
     {
         if (regions is not { Count: > 0 })
         {
             return null;
         }
         BoundingRegion r = regions[0];
-        var polygon = new List<OcrPoint>(r.Polygon.Count / 2);
+        var polygon = new List<DocumentPoint>(r.Polygon.Count / 2);
         for (int i = 0; i + 1 < r.Polygon.Count; i += 2)
         {
-            polygon.Add(new OcrPoint(r.Polygon[i], r.Polygon[i + 1]));
+            polygon.Add(new DocumentPoint((float)r.Polygon[i], (float)r.Polygon[i + 1]));
         }
-        return new OcrBoundingRegion(r.PageNumber, polygon);
+        return new DocumentBoundingRegion(r.PageNumber, polygon);
     }
 
-    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
-        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
+        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
         => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)

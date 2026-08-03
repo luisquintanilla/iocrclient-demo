@@ -5,6 +5,7 @@ using hero.Web.Components;
 using hero.Web.Services;
 using hero.Web.Services.Ingestion;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
 using Microsoft.Extensions.VectorData;
 
@@ -27,7 +28,7 @@ builder.Services.AddChatClient(azureOpenAIClient.GetChatClient(chatDeployment).A
 builder.Services.AddEmbeddingGenerator(azureOpenAIClient.GetEmbeddingClient(embeddingDeployment).AsIEmbeddingGenerator())
     .UseOpenTelemetry(configure: c =>
         c.EnableSensitiveData = builder.Environment.IsDevelopment());
-builder.Services.AddSingleton<IOcrClient>(sp =>
+builder.Services.AddSingleton<IDocumentExtractionClient>(sp =>
     new VisionLlmOcrClient(sp.GetRequiredService<IChatClient>()));
 
 var configuredVectorStorePath = builder.Configuration["VectorStore:Path"] ?? "vector-store.db";

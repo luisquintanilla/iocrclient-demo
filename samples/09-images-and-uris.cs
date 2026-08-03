@@ -1,8 +1,9 @@
 #:project ocr-shape/OcrShape.csproj
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 // 09-images-and-uris.cs — two round-2 API prototypes, exercised live.
 //
-//  (A) OcrOptions.IncludeImages -> OcrPage.Images. A request flag (IncludeImages) shipped in #7588,
-//      but OcrPage had no sink for the result. This adds OcrImage + OcrPage.Images and wires TWO
+//  (A) DocumentExtractionOptions.IncludeImages -> DocumentPage.Images. A request flag (IncludeImages) shipped in #7588,
+//      but DocumentPage had no sink for the result. This adds DocumentImage + DocumentPage.Images and wires TWO
 //      document-native engines to fill it: Mistral OCR (inline base64 + bbox) and Azure Document
 //      Intelligence (cropped figure bytes + caption + bbox via output=figures). Same shape, two engines.
 //
@@ -23,6 +24,7 @@
 // Config comes from env vars only (never committed). Image bytes are written to output/images/
 // (gitignored); only counts + bbox + captions are printed.
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using DemoOcr;
 
 string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
@@ -33,7 +35,7 @@ Directory.CreateDirectory(outDir);
 Console.WriteLine($"document : {pdf}  ({bytes.Length:N0} bytes)\n");
 
 // (A) Images across two document-native engines -------------------------------------------------
-var options = new OcrOptions { IncludeImages = true };
+var options = new DocumentExtractionOptions { AdditionalProperties = new() { ["includeImages"] = true } };
 
 await RunImages(
     "mistral-ocr",
@@ -52,10 +54,10 @@ await RunImages(
 Console.WriteLine("--- UriContent overload (data: URI) ---");
 string dataUri = $"data:application/pdf;base64,{Convert.ToBase64String(bytes)}";
 var uriContent = new UriContent(dataUri, "application/pdf");
-using IOcrClient mistral = new FoundryMistralOcrClient(
+using IDocumentExtractionClient mistral = new FoundryMistralOcrClient(
     new Uri(Require("OCR:FoundryEndpoint")), new Azure.Identity.DefaultAzureCredential());
-OcrResult viaUri = await mistral.ExtractAsync(uriContent);
-Console.WriteLine($"UriContent -> {viaUri.ModelId}: {viaUri.Pages.Count} page(s). " +
+DocumentExtractionResult viaUri = await mistral.ExtractAsync(uriContent);
+Console.WriteLine($"UriContent -> {viaUri.GetModelId()}: {viaUri.Pages.Count} page(s). " +
     "Same result, reached through the ergonomic UriContent entry point.");
 
 // (C) Remote http URI via the opt-in ExtractFromUriAsync downloader (R2) -------------------------
@@ -77,25 +79,26 @@ Task serve = Task.Run(async () =>
 
 using var http = new HttpClient();
 var remote = new UriContent($"{prefix}doc.pdf", "application/pdf");
-OcrResult viaRemote = await mistral.ExtractFromUriAsync(remote, http);
+DocumentExtractionResult viaRemote = await mistral.ExtractFromUriAsync(remote, http);
 await serve;
-Console.WriteLine($"UriContent(http) -> {viaRemote.ModelId}: {viaRemote.Pages.Count} page(s). " +
+Console.WriteLine($"UriContent(http) -> {viaRemote.GetModelId()}: {viaRemote.Pages.Count} page(s). " +
     "Bytes fetched over http by ExtractFromUriAsync(httpClient), then extracted normally.");
 return 0;
 
-async Task RunImages(string label, IOcrClient client)
+async Task RunImages(string label, IDocumentExtractionClient client)
 {
     using (client as IDisposable)
     {
         await using var doc = new MemoryStream(bytes);
-        OcrResult r = await client.ExtractAsync(doc, "application/pdf", options);
-        int imgCount = r.Pages.Sum(p => p.Images.Count);
+        DocumentExtractionResult r = await client.ExtractAsync(doc, "application/pdf", options);
+        int imgCount = r.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count());
         Console.WriteLine($"--- {label}: {r.Pages.Count} page(s), {imgCount} image(s) ---");
-        foreach (OcrPage page in r.Pages)
+        foreach (DocumentPage page in r.Pages)
         {
-            for (int i = 0; i < page.Images.Count; i++)
+            List<DocumentImage> images = page.Elements.OfType<DocumentImage>().ToList();
+            for (int i = 0; i < images.Count; i++)
             {
-                OcrImage img = page.Images[i];
+                DocumentImage img = images[i];
                 string bbox = "bbox:none";
                 if (img.BoundingRegion is { } br && br.GetBounds() is { } b)
                 {

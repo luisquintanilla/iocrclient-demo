@@ -4,11 +4,12 @@ using System.Text.Json.Nodes;
 using Azure.Core;
 
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 
 namespace DemoOcr;
 
 /// <summary>
-/// An <see cref="IOcrClient"/> backed by Mistral OCR on Azure AI Foundry — a purpose-built
+/// An <see cref="IDocumentExtractionClient"/> backed by Mistral OCR on Azure AI Foundry — a purpose-built
 /// document-AI model. Document-native archetype: the whole PDF goes up in one call and comes back
 /// as an ordered list of pages (per-page Markdown + tables), no client-side page splitting.
 ///
@@ -18,17 +19,17 @@ namespace DemoOcr;
 public sealed class FoundryMistralOcrClient(
     Uri endpoint,
     TokenCredential credential,
-    string defaultModel = "mistral-ocr-4-0") : IOcrClient
+    string defaultModel = "mistral-ocr-4-0") : IDocumentExtractionClient
 {
     private static readonly TokenRequestContext s_scope =
         new(["https://cognitiveservices.azure.com/.default"]);
 
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(5) };
 
-    public async Task<OcrResult> ExtractAsync(
+    public async Task<DocumentExtractionResult> ExtractAsync(
         Stream document,
         string mediaType,
-        OcrOptions? options = null,
+        DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
@@ -40,7 +41,7 @@ public sealed class FoundryMistralOcrClient(
         {
             ["model"] = model,
             ["document"] = new JsonObject { ["type"] = "document_url", ["document_url"] = dataUrl },
-            ["include_image_base64"] = options?.IncludeImages ?? false,
+            ["include_image_base64"] = options.GetIncludeImages(),
         };
 
         AccessToken token = await credential.GetTokenAsync(s_scope, cancellationToken).ConfigureAwait(false);
@@ -48,7 +49,7 @@ public sealed class FoundryMistralOcrClient(
         var url = $"{endpoint.ToString().TrimEnd('/')}/providers/mistral/azure/ocr";
 
         // Cold-start / capacity returns transient 503 (code 3700). Retrying is exactly the
-        // cross-cutting concern IOcrClient middleware (a DelegatingOcrClient) is designed to own.
+        // cross-cutting concern IDocumentExtractionClient middleware (a DelegatingOcrClient) is designed to own.
         HttpResponseMessage resp = null!;
         for (int attempt = 1; attempt <= 5; attempt++)
         {
@@ -69,7 +70,7 @@ public sealed class FoundryMistralOcrClient(
             await resp.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false));
         JsonElement root = doc.RootElement;
 
-        var pages = new List<OcrPage>();
+        var pages = new List<DocumentPage>();
         JsonElement pageArray = root.GetProperty("pages");
         int total = pageArray.GetArrayLength();
         foreach (JsonElement page in pageArray.EnumerateArray())
@@ -78,20 +79,20 @@ public sealed class FoundryMistralOcrClient(
             string markdown = page.TryGetProperty("markdown", out var md) ? md.GetString() ?? "" : "";
             int tableCount = page.TryGetProperty("tables", out var t) && t.ValueKind == JsonValueKind.Array
                 ? t.GetArrayLength() : 0;
-            var tables = new List<OcrTable>(tableCount);
+            var tables = new List<DocumentTable>(tableCount);
             for (int i = 0; i < tableCount; i++)
             {
-                tables.Add(new OcrTable(0, 0)); // Mistral reports tables inline in the page markdown.
+                tables.Add(new DocumentTable(0, 0)); // Mistral reports tables inline in the page markdown.
             }
 
             // Figures: Mistral returns page.images[] with a bbox and (when include_image_base64=true) the
-            // rendered bytes. This is the document-native archetype filling OcrImage.Content + bbox.
-            var images = new List<OcrImage>();
+            // rendered bytes. This is the document-native archetype filling DocumentImage.Content + bbox.
+            var images = new List<DocumentImage>();
             if (page.TryGetProperty("images", out var imgs) && imgs.ValueKind == JsonValueKind.Array)
             {
                 foreach (JsonElement img in imgs.EnumerateArray())
                 {
-                    var image = new OcrImage();
+                    var image = new DocumentImage();
                     if (img.TryGetProperty("image_base64", out var b64) && b64.ValueKind == JsonValueKind.String)
                     {
                         string raw = b64.GetString()!;
@@ -103,27 +104,30 @@ public sealed class FoundryMistralOcrClient(
                     if (img.TryGetProperty("top_left_x", out var tlx) && img.TryGetProperty("top_left_y", out var tly)
                         && img.TryGetProperty("bottom_right_x", out var brx) && img.TryGetProperty("bottom_right_y", out var bry))
                     {
-                        image.BoundingRegion = OcrBoundingRegion.FromRectangle(
-                            index + 1, tlx.GetDouble(), tly.GetDouble(), brx.GetDouble(), bry.GetDouble());
+                        image.BoundingRegion = DocumentBoundingRegion.FromRectangle(
+                            index + 1, (float)tlx.GetDouble(), (float)tly.GetDouble(), (float)brx.GetDouble(), (float)bry.GetDouble());
                     }
 
                     images.Add(image);
                 }
             }
 
-            pages.Add(new OcrPage(index + 1, markdown) { Tables = tables, Images = images });
+            pages.Add(new DocumentPage(index + 1, markdown)
+            {
+                Elements = tables.Cast<DocumentElement>().Concat(images).ToList(),
+            });
         }
 
-        return new OcrResult(pages)
+        return new DocumentExtractionResult(pages)
         {
-            ModelId = root.TryGetProperty("model", out var m) ? m.GetString() : model,
-            Usage = new OcrUsage { PagesProcessed = total },
+            Usage = new DocumentExtractionUsage { PagesProcessed = total },
             RawRepresentation = root.Clone(),
+            AdditionalProperties = new() { ["modelId"] = root.TryGetProperty("model", out var m) ? m.GetString() ?? model : model },
         };
     }
 
-    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
-        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
+        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
         => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)

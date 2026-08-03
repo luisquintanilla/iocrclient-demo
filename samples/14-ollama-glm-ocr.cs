@@ -1,7 +1,8 @@
 #:project ocr-shape/OcrShape.csproj
 #:package OllamaSharp@5.4.25
 #:property JsonSerializerIsReflectionEnabledByDefault=true
-// 14-ollama-glm-ocr.cs — a LOCAL, open-weights OCR engine behind IOcrClient (GLM-OCR on Ollama).
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
+// 14-ollama-glm-ocr.cs — a LOCAL, open-weights OCR engine behind IDocumentExtractionClient (GLM-OCR on Ollama).
 //
 // The fifth engine, and the first that costs nothing and never leaves the machine. GLM-OCR (~0.9B,
 // tops OmniDocBench) runs on Ollama and speaks the SAME IChatClient the cloud vision engines do — so
@@ -27,6 +28,7 @@
 //   dotnet run 14-ollama-glm-ocr.cs -- data/some-scan.png   # or any image / PDF path
 using System.Diagnostics;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using OllamaSharp;
 using UglyToad.PdfPig;
 using DemoOcr;
@@ -56,14 +58,14 @@ IChatClient chat = ((IChatClient)new OllamaApiClient(new Uri(host), model))
     .Build();
 
 // glm-ocr REQUIRES a task-prefix prompt; a generic prompt returns empty. The client is UNCHANGED.
-using IOcrClient ocr = new VisionLlmOcrClient(chat, "Text Recognition:");
+using IDocumentExtractionClient ocr = new VisionLlmOcrClient(chat, "Text Recognition:");
 
 var sw = Stopwatch.StartNew();
-OcrResult result = await ocr.ExtractAsync(new MemoryStream(imageBytes), mediaType);
+DocumentExtractionResult result = await ocr.ExtractAsync(new MemoryStream(imageBytes), mediaType);
 sw.Stop();
 
-string md = result.Pages.Count > 0 ? result.Pages[0].Markdown : "";
-Console.WriteLine($"model  : {result.ModelId}");
+string md = result.Pages.Count > 0 ? result.Pages[0].Text : "";
+Console.WriteLine($"model  : {result.GetModelId()}");
 Console.WriteLine($"chars  : {md.Length}   [{sw.ElapsedMilliseconds} ms on local GPU, first call includes model load]");
 Console.WriteLine();
 Console.WriteLine("--- transcribed page (markdown) ---");

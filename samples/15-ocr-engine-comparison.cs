@@ -2,12 +2,13 @@
 #:project bench/OcrBench/OcrBench.csproj
 #:package OllamaSharp@5.4.25
 #:property JsonSerializerIsReflectionEnabledByDefault=true
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 // 15-ocr-engine-comparison.cs — cloud vs local OCR through ONE interface (the blog's cost/locality cut).
 //
 // Azure Document Intelligence vs Mistral OCR vs GLM-OCR (Ollama, local) on the SAME scanned document,
-// all reached through the same IOcrClient seam and the same bench Harness. The point isn't a winner —
+// all reached through the same IDocumentExtractionClient seam and the same bench Harness. The point isn't a winner —
 // it's that swapping a cloud engine for a free, offline, local model is a one-line change of which
-// IOcrClient you construct. GLM-OCR (~0.9B, tops OmniDocBench) runs on your GPU at ~$0/page; the cloud
+// IDocumentExtractionClient you construct. GLM-OCR (~0.9B, tops OmniDocBench) runs on your GPU at ~$0/page; the cloud
 // engines are document-native and structured. Same call site, three very different tradeoffs.
 //   (motivation: BlueGuardrails, "High-Throughput VLM OCR" — GLM-OCR ~$0.04 vs Mistral ~$4 vs DI ~$10 / 1k pages)
 //
@@ -24,6 +25,7 @@
 using System.Text;
 using Azure.Identity;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using OllamaSharp;
 using UglyToad.PdfPig;
 using DemoOcr;
@@ -34,13 +36,13 @@ const string mediaType = "application/pdf";
 var cred = new DefaultAzureCredential();
 
 Console.WriteLine($"document : {Path.GetFileName(pdf)}  (scanned / image-only — OCR's home turf)");
-Console.WriteLine("interface: Microsoft.Extensions.AI.IOcrClient — one seam, three engines\n");
+Console.WriteLine("interface: Microsoft.Extensions.AI.IDocumentExtractionClient — one seam, three engines\n");
 
 string host = DemoConfig.Get("OCR:OllamaEndpoint", "http://localhost:11434");
 string glmModel = DemoConfig.Get("OCR:OllamaOcrModel", "glm-ocr");
 
 // engine name | locality | cited list $/1k pages | factory (null => not configured, graceful skip)
-var engines = new List<(string Name, string Locality, double ListPer1k, Func<IOcrClient>? Make)>
+var engines = new List<(string Name, string Locality, double ListPer1k, Func<IDocumentExtractionClient>? Make)>
 {
     ("azure-di", "cloud", 10.00,
         Opt("OCR:DocIntelEndpoint") is { } di ? () => new AzureDocumentIntelligenceClient(new Uri(di), cred) : null),
@@ -51,7 +53,7 @@ var engines = new List<(string Name, string Locality, double ListPer1k, Func<IOc
 };
 
 var rows = new List<(string Name, string Locality, double ListPer1k, ExtractionOutcome? Outcome)>();
-foreach ((string name, string locality, double per1k, Func<IOcrClient>? make) in engines)
+foreach ((string name, string locality, double per1k, Func<IDocumentExtractionClient>? make) in engines)
 {
     if (make is null)
     {
@@ -63,7 +65,7 @@ foreach ((string name, string locality, double per1k, Func<IOcrClient>? make) in
     Console.WriteLine($"--- {name} ({locality}) ---");
     try
     {
-        using IOcrClient ocr = make();
+        using IDocumentExtractionClient ocr = make();
         ExtractionOutcome o = await Harness.ExtractWithOcrAsync(name, ocr, pdf, mediaType);
         Console.WriteLine($"  pages={o.PageCount}  tables={o.TableCount}  figures={o.ImageCount}  chars={o.Text.Length}  [{o.ElapsedMs} ms]");
         Console.WriteLine($"  \"{Snippet(o.Text)}\"\n");
@@ -90,7 +92,7 @@ foreach ((string name, string locality, double per1k, ExtractionOutcome? o) in r
     table.AppendLine($"| {name} | {locality} | {o.ElapsedMs} ms | {o.PageCount} | {o.TableCount} | {o.ImageCount} | ${per1k:0.00} | ${est:0.0000} |");
 }
 
-Console.WriteLine("=== comparison (same IOcrClient, same Harness) ===");
+Console.WriteLine("=== comparison (same IDocumentExtractionClient, same Harness) ===");
 Console.WriteLine(table.ToString());
 Console.WriteLine("notes:");
 Console.WriteLine("  - latency is wall-clock on THIS machine (local GPU vs cloud round-trip on different hardware),");
@@ -99,7 +101,7 @@ Console.WriteLine("  - list $/1k pages are published/cited prices (BlueGuardrail
 Console.WriteLine("    vendor pricing. GLM-OCR's cost is self-hosted GPU amortization, effectively ~$0 at the margin.");
 Console.WriteLine("  - the document-native cloud engines return structured tables/figures; GLM-OCR is a vision LLM");
 Console.WriteLine("    returning freeform Markdown (0 tables/figures is honest for that path — it transcribes, it");
-Console.WriteLine("    doesn't parse structure). Same OcrResult, different fidelity — the tradeoff the one seam unlocks.");
+Console.WriteLine("    doesn't parse structure). Same DocumentExtractionResult, different fidelity — the tradeoff the one seam unlocks.");
 return 0;
 
 static string Snippet(string text)
@@ -125,23 +127,23 @@ static IChatClient BuildOllamaChat(string host, string model) =>
 static string? Opt(string key) => DemoConfig.Config[key];
 
 /// <summary>
-/// PDF -> per-page-image adapter so an image-only engine (Ollama glm-ocr) fits the same PDF-in IOcrClient
+/// PDF -> per-page-image adapter so an image-only engine (Ollama glm-ocr) fits the same PDF-in IDocumentExtractionClient
 /// call the cloud engines take. Pulls each page's embedded raster image out with PdfPig (image EXTRACTION,
 /// not rasterization — no new dependency), runs the inner image-only VisionLlmOcrClient per page, and
-/// aggregates into one OcrResult with correct page indices. Freeform vision output => 0 tables/figures.
+/// aggregates into one DocumentExtractionResult with correct page indices. Freeform vision output => 0 tables/figures.
 /// </summary>
-sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IOcrClient
+sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtractionClient
 {
     private readonly VisionLlmOcrClient _inner = new(chat, prompt);
 
-    public async Task<OcrResult> ExtractAsync(
-        Stream document, string mediaType, OcrOptions? options = null,
+    public async Task<DocumentExtractionResult> ExtractAsync(
+        Stream document, string mediaType, DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         using var buffer = new MemoryStream();
         await document.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
 
-        var pages = new List<OcrPage>();
+        var pages = new List<DocumentPage>();
         string? modelId = null;
         using PdfDocument pdf = PdfDocument.Open(buffer.ToArray());
         int total = pdf.NumberOfPages;
@@ -150,22 +152,25 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IOcrClient
             var img = pdf.GetPage(i).GetImages().FirstOrDefault();
             if (img is null || !img.TryGetPng(out byte[]? png) || png is null)
             {
-                pages.Add(new OcrPage(i, ""));   // no extractable image on this page
+                pages.Add(new DocumentPage(i, ""));   // no extractable image on this page
                 continue;
             }
 
-            OcrResult one = await _inner
+            DocumentExtractionResult one = await _inner
                 .ExtractAsync(new MemoryStream(png), "image/png", options, cancellationToken)
                 .ConfigureAwait(false);
-            modelId ??= one.ModelId;
-            pages.Add(new OcrPage(i, one.Pages.Count > 0 ? one.Pages[0].Markdown : ""));
+            modelId ??= one.GetModelId();
+            pages.Add(new DocumentPage(i, one.Pages.Count > 0 ? one.Pages[0].Text : ""));
         }
 
-        return new OcrResult(pages) { ModelId = modelId };
+        return new DocumentExtractionResult(pages)
+        {
+            AdditionalProperties = modelId is { Length: > 0 } ? new() { ["modelId"] = modelId } : null,
+        };
     }
 
-    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
-        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
+        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
         => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null) =>

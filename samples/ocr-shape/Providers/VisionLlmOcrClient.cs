@@ -2,30 +2,31 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 
 namespace DemoOcr;
 
 /// <summary>
-/// An IOcrClient backed by ANY IChatClient vision LLM (gpt-4o, Gemini, Qwen-VL, …) — the Docling
+/// An IDocumentExtractionClient backed by ANY IChatClient vision LLM (gpt-4o, Gemini, Qwen-VL, …) — the Docling
 /// ApiVlmModel analog. This is the clean replacement for PdfReadingMode.VisionOnly: "use a vision LLM
 /// to transcribe" becomes a swappable PROVIDER behind the OCR contract, not a flag on the reader.
 ///
 /// Insight 3, role 1/3: a vision LLM CAN transcribe, but it is the LOWEST-fidelity option (no native
-/// tables/bbox/confidence, nondeterministic, token-expensive). It belongs behind IOcrClient as the
+/// tables/bbox/confidence, nondeterministic, token-expensive). It belongs behind IDocumentExtractionClient as the
 /// hybrid fallback — NOT as a first-class document reader, and NOT confused with the vision LLM's real
 /// value, which is *understanding* (captioning/field-extraction) via an enricher over IChatClient.
 ///
 /// Round-2 spike (current-repo, not #7588): when the model supports structured output, this client can
-/// ask for OcrResult-SHAPED JSON instead of freeform markdown, so it fills tables + figure captions +
+/// ask for DocumentExtractionResult-SHAPED JSON instead of freeform markdown, so it fills tables + figure captions +
 /// language + confidence reliably rather than by parsing prose. Opt in via
-/// <c>OcrOptions.AdditionalProperties["vision.structured"] = true</c>; it degrades to the freeform path
+/// <c>DocumentExtractionOptions.AdditionalProperties["vision.structured"] = true</c>; it degrades to the freeform path
 /// if the model can't honor a schema. The vision LLM cannot emit image BYTES, so figures are
-/// caption-only (OcrImage.Content stays null) — exactly the archetype the nullable Content shape serves.
+/// caption-only (DocumentImage.Content stays null) — exactly the archetype the nullable Content shape serves.
 /// For arbitrary typed extraction, reach the inner client via <c>GetService&lt;IChatClient&gt;()</c>.
 /// </summary>
-public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = null) : IOcrClient
+public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = null) : IDocumentExtractionClient
 {
-    /// <summary>Opt-in key: set <c>OcrOptions.AdditionalProperties["vision.structured"] = true</c> to request structured output.</summary>
+    /// <summary>Opt-in key: set <c>DocumentExtractionOptions.AdditionalProperties["vision.structured"] = true</c> to request structured output.</summary>
     public const string StructuredKey = "vision.structured";
 
     // Reflection-based resolver so arbitrary DTOs (like VisionDocument) get a schema without source-gen.
@@ -42,8 +43,8 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
         "rowCount, columnCount, and a markdown rendering; a list of figures each with a short caption " +
         "describing the image or chart; the detected language; and a confidence in [0,1].";
 
-    public async Task<OcrResult> ExtractAsync(
-        Stream document, string mediaType, OcrOptions? options = null,
+    public async Task<DocumentExtractionResult> ExtractAsync(
+        Stream document, string mediaType, DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
@@ -55,7 +56,7 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
 
         if (wantStructured)
         {
-            OcrResult? structured = await TryStructuredAsync(bytes, mediaType, cancellationToken).ConfigureAwait(false);
+            DocumentExtractionResult? structured = await TryStructuredAsync(bytes, mediaType, cancellationToken).ConfigureAwait(false);
             if (structured is not null)
             {
                 return structured;
@@ -73,15 +74,15 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
             .GetResponseAsync(message, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        var page = new OcrPage(1, response.Text);
-        return new OcrResult([page])
+        var page = new DocumentPage(1, response.Text);
+        return new DocumentExtractionResult([page])
         {
-            ModelId = response.ModelId,
             RawRepresentation = response,
+            AdditionalProperties = new() { ["modelId"] = response.ModelId },
         };
     }
 
-    private async Task<OcrResult?> TryStructuredAsync(byte[] bytes, string mediaType, CancellationToken cancellationToken)
+    private async Task<DocumentExtractionResult?> TryStructuredAsync(byte[] bytes, string mediaType, CancellationToken cancellationToken)
     {
         var message = new ChatMessage(ChatRole.User,
         [
@@ -100,31 +101,28 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
                 return null;
             }
 
-            var pages = new List<OcrPage>(parsed.Pages.Count);
+            var pages = new List<DocumentPage>(parsed.Pages.Count);
             foreach (VisionPage vp in parsed.Pages)
             {
                 var tables = (vp.Tables ?? []).Select(t =>
-                    new OcrTable(t.RowCount, t.ColumnCount, markdownRepresentation: t.Markdown)).ToList();
+                    new DocumentTable(t.RowCount, t.ColumnCount, markdownRepresentation: t.Markdown)).ToList();
 
-                // The VLM archetype: figures are CAPTION-ONLY (no bytes) — OcrImage.Content stays null.
+                // The VLM archetype: figures are CAPTION-ONLY (no bytes) — DocumentImage.Content stays null.
                 var images = (vp.Figures ?? [])
                     .Where(f => !string.IsNullOrWhiteSpace(f.Caption))
-                    .Select(f => new OcrImage { Caption = f.Caption }).ToList();
+                    .Select(f => new DocumentImage { Caption = f.Caption }).ToList();
 
-                pages.Add(new OcrPage(vp.Index + 1, vp.Markdown ?? "")
+                pages.Add(new DocumentPage(vp.Index + 1, vp.Markdown ?? "")
                 {
-                    Tables = tables,
-                    Images = images,
-                    Confidence = vp.Confidence,
-                    AdditionalProperties = vp.Language is { Length: > 0 }
-                        ? new() { ["language"] = vp.Language } : null,
+                    Elements = tables.Cast<DocumentElement>().Concat(images).ToList(),
+                    AdditionalProperties = BuildPageProperties(vp.Language, vp.Confidence),
                 });
             }
 
-            return new OcrResult(pages)
+            return new DocumentExtractionResult(pages)
             {
-                ModelId = response.ModelId,
                 RawRepresentation = response,
+                AdditionalProperties = new() { ["modelId"] = response.ModelId },
             };
         }
         catch (Exception)
@@ -134,8 +132,23 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
         }
     }
 
-    public IAsyncEnumerable<OcrResponseUpdate> ExtractStreamingAsync(
-        Stream document, string mediaType, OcrOptions? options = null, CancellationToken cancellationToken = default)
+    private static AdditionalPropertiesDictionary? BuildPageProperties(string? language, double? confidence)
+    {
+        AdditionalPropertiesDictionary? properties = null;
+        if (language is { Length: > 0 })
+        {
+            properties = new() { ["language"] = language };
+        }
+        if (confidence is { } c)
+        {
+            properties ??= new();
+            properties["confidence"] = c;
+        }
+        return properties;
+    }
+
+    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
+        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
         => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
@@ -143,7 +156,7 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
 
     public void Dispose() => chatClient.Dispose();
 
-    // OcrResult-shaped DTO the vision model is asked to return.
+    // DocumentExtractionResult-shaped DTO the vision model is asked to return.
     private sealed class VisionDocument
     {
         [JsonPropertyName("pages")]

@@ -1,12 +1,13 @@
 #:project ocr-shape/OcrShape.csproj
 #:package Microsoft.ML.Tokenizers.Data.O200kBase@1.0.3
 #:package CommunityToolkit.VectorData.InMemory@1.0.0-preview.3
+#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 
 // 07-e2e-rag.cs — the whole point, end to end, on the REAL MEDI pipeline:
 //
-//   IOcrClient (#7588)  ->  OcrDocumentReader  ->  SectionChunker (per page)  ->  vector retrieve  ->  cited answer
+//   IDocumentExtractionClient (#7588)  ->  OcrDocumentReader  ->  SectionChunker (per page)  ->  vector retrieve  ->  cited answer
 //
-// Both abstractions pay off together. IOcrClient turns the PDF into page-structured Markdown; the
+// Both abstractions pay off together. IDocumentExtractionClient turns the PDF into page-structured Markdown; the
 // OcrDocumentReader bridges it into MEDI (one section per OCR page, each stamped with its page). The
 // SectionChunker is section-bounded, so chunking each page-section on its own tags every chunk with its
 // exact source page — the answer cites [page N] with zero cross-page bleed and no framework opt-in.
@@ -26,6 +27,7 @@ using Azure.Identity;
 using CommunityToolkit.VectorData.InMemory;
 using DemoOcr;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
 using Microsoft.Extensions.DataIngestion.Chunkers;
 using Microsoft.Extensions.VectorData;
@@ -36,7 +38,7 @@ string question = args.Length > 1 ? args[1] : "What is the mean estimate of undi
 var cred = new DefaultAzureCredential();
 
 // 1) OCR — swap this one line to change engine. Everything below is provider-agnostic.
-using IOcrClient ocr = new FoundryMistralOcrClient(new Uri(Require("OCR:FoundryEndpoint")), cred);
+using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(Require("OCR:FoundryEndpoint")), cred);
 var reader = new OcrDocumentReader(ocr);
 
 IngestionDocument document;
