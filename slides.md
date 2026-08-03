@@ -128,7 +128,8 @@ a rewrite, not a config change. That is the problem worth removing.
 line. Embeddings did it with `IEmbeddingGenerator`.
 
 Reading a document is the same shape of problem. It deserves the same seam — and that seam is
-dotnet/extensions **#7588**, in `Microsoft.Extensions.AI`.
+dotnet/extensions **#7588**: `Microsoft.Extensions.DocumentExtraction`, its own provider-neutral
+library beside `Microsoft.Extensions.AI`.
 
 </div>
 <div class="col-left">
@@ -443,12 +444,13 @@ between them. Draw that line once and every engine drops in without touching the
 
 ## One contract, top to bottom
 
-<img class="diagram" src="assets/diagrams/d1-stack.svg" alt="A foundation-up four-layer .NET AI dependency stack, with a legend distinguishing solid boxes (components) from dashed boxes (notes). Bottom layer, Microsoft.Extensions.AI abstractions: three equal-width peer capability contracts — IChatClient, IEmbeddingGenerator, and IDocumentExtractionClient (highlighted) — with a callout that OCR is a peer capability sitting beside chat and embeddings at the base, not bolted on per app. Next layer up, Microsoft.Extensions.DataIngestion (MEDI): IngestionDocumentReader, chunkers, IngestionPipeline, IngestionChunkWriter. Next, CommunityToolkit concretes: vision-LLM OCR providers, Mistral / Azure DI / Content Understanding, PdfPigReader, OcrDocumentReader. Top, the application: Aspire AppHost, hero web app, ingest-retrieve-answer, provider-agnostic UX. Each layer is marked BUILT ON the one below; every inner block is the same width.">
+<img class="diagram" src="assets/diagrams/d1-stack.svg" alt="A foundation-up four-layer .NET AI dependency stack, with a legend distinguishing solid boxes (components) from dashed boxes (notes). Bottom layer, dotnet/extensions foundation abstractions: two provider-neutral capability libraries side by side — Microsoft.Extensions.AI (IChatClient, IEmbeddingGenerator) and Microsoft.Extensions.DocumentExtraction (IDocumentExtractionClient, highlighted) — with a note that OCR is its own foundation library beside Microsoft.Extensions.AI, building on its content primitives, not bolted on per app. Next layer up, Microsoft.Extensions.DataIngestion (MEDI): IngestionDocumentReader, chunkers, IngestionPipeline, IngestionChunkWriter. Next, CommunityToolkit concretes: vision-LLM OCR providers, Mistral / Azure DI / Content Understanding, PdfPigReader, OcrDocumentReader. Top, the application: Aspire AppHost, hero web app, ingest-retrieve-answer, provider-agnostic UX. Each layer is marked BUILT ON the one below; every inner block is the same width.">
 
 Note:
 A single visual to hold in your head — and the whole argument in one picture. At the base,
-`IDocumentExtractionClient` is a **peer capability** sitting right beside `IChatClient` and `IEmbeddingGenerator`:
-OCR earns a seat at the foundation, not a vendor SDK bolted on per app. Above it, everything is
+`Microsoft.Extensions.DocumentExtraction` is its **own provider-neutral library** sitting right beside
+`Microsoft.Extensions.AI` and building on its content primitives: OCR earns a seat at the foundation,
+not a vendor SDK bolted on per app. Above it, everything is
 **built on** that base — MEDI's pipeline abstractions, the CommunityToolkit concretes that compose the
 contracts, and the Aspire app on top. Solid boxes are components; dashed boxes are notes. Swap any one
 box on its row and the rows above and below don't move.
@@ -465,6 +467,7 @@ box on its row and the rows above and below don't move.
 dotnet/extensions          ── ABSTRACTIONS (provider-neutral) ──────────────
   Microsoft.Extensions.AI
     IChatClient · IEmbeddingGenerator
+  Microsoft.Extensions.DocumentExtraction
     IDocumentExtractionClient                         (#7588)  bytes -> DocumentExtractionResult
   Microsoft.Extensions.DataIngestion (MEDI)
     IngestionDocumentReader                     the pipeline front door

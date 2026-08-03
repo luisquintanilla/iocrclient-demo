@@ -24,7 +24,7 @@
 
   <rect class="bg" x="0" y="0" width="1280" height="720"/>
   <text class="title" x="60" y="60">The .NET AI dependency stack</text>
-  <text class="sub" x="60" y="88">foundation-up: OCR is a peer capability at the base; pipeline, concretes, and app build on top</text>
+  <text class="sub" x="60" y="88">foundation-up: OCR is its own capability library beside Microsoft.Extensions.AI; pipeline, concretes, and app build on top</text>
   <!-- legend: component vs note -->
   <rect class="comp" x="908" y="46" width="20" height="16" rx="4"/>
   <text class="legend" x="934" y="59">solid = component</text>
@@ -64,13 +64,15 @@
   <line x1="640" y1="546" x2="640" y2="514" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowUp)"/>
   <text class="arrowText" x="666" y="532">BUILT ON</text>
 
-  <!-- Foundation: MEAI abstractions (peers) -->
+  <!-- Foundation: two provider-neutral abstraction libraries side by side -->
   <rect class="layer" x="60" y="546" width="1160" height="140" rx="12" stroke="#512bd4"/>
-  <text class="lname" x="88" y="580">Microsoft.Extensions.AI abstractions <tspan class="tag">foundation</tspan> <tspan class="lsub">— three peer capability contracts</tspan></text>
-  <rect class="comp" x="88" y="594" width="262" height="44"/><text class="clabel mono" x="108" y="622">IChatClient</text>
-  <rect class="comp" x="370" y="594" width="262" height="44"/><text class="clabel mono" x="390" y="622">IEmbeddingGenerator</text>
-  <rect class="focus" x="652" y="594" width="262" height="44"/><text class="clabel mono" x="672" y="622" fill="#f5b8e6">IDocumentExtractionClient</text>
-  <rect class="note" x="934" y="594" width="262" height="44"/><text class="nlabel" x="954" y="622">one capability shape</text>
-  <rect class="note" x="88" y="650" width="1108" height="30" stroke="#d600aa" stroke-opacity="0.55"/>
-  <text x="108" y="670" font-size="14" font-family="'Open Sans',sans-serif" fill="#f5b8e6"><tspan font-weight="700">OCR is a peer capability</tspan> <tspan fill="#cfcfd6">— it sits beside IChatClient &amp; IEmbeddingGenerator at the base, not bolted on per app.</tspan></text>
+  <text class="lname" x="88" y="580">dotnet/extensions foundation abstractions <tspan class="tag">foundation</tspan> <tspan class="lsub">— two provider-neutral capability libraries</tspan></text>
+  <rect class="comp" x="88" y="592" width="546" height="52"/>
+  <text class="clabel" x="108" y="614">Microsoft.Extensions.AI</text>
+  <text class="clabel mono" x="108" y="635" fill="#9a9aa4">IChatClient · IEmbeddingGenerator</text>
+  <rect class="focus" x="660" y="592" width="536" height="52"/>
+  <text class="clabel" x="680" y="614" fill="#f5b8e6">Microsoft.Extensions.DocumentExtraction <tspan class="tag">#7588</tspan></text>
+  <text class="clabel mono" x="680" y="635" fill="#f5b8e6">IDocumentExtractionClient</text>
+  <rect class="note" x="88" y="656" width="1108" height="28" stroke="#d600aa" stroke-opacity="0.55"/>
+  <text x="108" y="674" font-size="14" font-family="'Open Sans',sans-serif" fill="#f5b8e6"><tspan font-weight="700">OCR is its own foundation library</tspan> <tspan fill="#cfcfd6">— Microsoft.Extensions.DocumentExtraction sits beside Microsoft.Extensions.AI, not bolted on per app.</tspan></text>
 </svg>

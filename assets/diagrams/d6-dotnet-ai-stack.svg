@@ -23,7 +23,7 @@
 
   <rect class="bg" x="0" y="0" width="1280" height="720"/>
   <text class="title" x="60" y="66">The whole .NET AI stack</text>
-  <text class="sub" x="60" y="94">IDocumentExtractionClient is not an app helper. It sits beside chat and embeddings as a base capability contract.</text>
+  <text class="sub" x="60" y="94">IDocumentExtractionClient is not an app helper. Microsoft.Extensions.DocumentExtraction is its own foundation library beside Microsoft.Extensions.AI.</text>
 
   <!-- Top app -->
   <rect class="layer" x="230" y="130" width="820" height="82" rx="12" stroke="#512bd4"/>
@@ -50,18 +50,15 @@
   <rect class="box" x="616" y="448" width="528" height="30" rx="8"/>
   <text class="btext" x="636" y="469">Microsoft.Extensions.DataRetrieval</text>
 
-  <!-- Foundation -->
+  <!-- Foundation: two provider-neutral abstraction libraries side by side -->
   <rect class="layer" x="60" y="540" width="1160" height="106" rx="12" stroke="#512bd4"/>
-  <text class="lname" x="84" y="572">Microsoft.Extensions.AI abstractions <tspan class="tag">foundation</tspan></text>
-  <rect class="box" x="84" y="592" width="240" height="36" rx="8"/>
-  <text class="btext mono" x="104" y="615">IChatClient</text>
-  <rect class="box" x="350" y="592" width="310" height="36" rx="8"/>
-  <text class="btext mono" x="370" y="615">IEmbeddingGenerator</text>
-  <rect class="focus" x="686" y="584" width="310" height="52" rx="8"/>
-  <text class="btext mono" x="706" y="608" fill="#ffffff">IDocumentExtractionClient</text>
-  <text class="sub" x="706" y="629">ExtractAsync → DocumentExtractionResult</text>
-  <rect class="box" x="1022" y="592" width="174" height="36" rx="8"/>
-  <text class="btext" x="1042" y="615">common patterns</text>
+  <text class="lname" x="84" y="572">dotnet/extensions foundation abstractions <tspan class="tag">foundation</tspan></text>
+  <rect class="box" x="84" y="584" width="560" height="54" rx="8"/>
+  <text class="btext" x="104" y="606">Microsoft.Extensions.AI</text>
+  <text class="btext mono" x="104" y="628" font-size="14" fill="#9a9aa4">IChatClient · IEmbeddingGenerator</text>
+  <rect class="focus" x="676" y="584" width="520" height="54" rx="8"/>
+  <text class="btext" x="696" y="606" fill="#ffffff">Microsoft.Extensions.DocumentExtraction <tspan class="tag">#7588</tspan></text>
+  <text class="btext mono" x="696" y="628" font-size="14" fill="#f5b8e6">IDocumentExtractionClient</text>
 
   <!-- Layer arrows -->
   <line x1="640" y1="540" x2="640" y2="496" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow)"/>

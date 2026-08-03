@@ -59,7 +59,8 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 - .NET already made this move twice. "Talk to a model" became `IChatClient`. "Turn text into vectors"
   became `IEmbeddingGenerator`. One interface, many providers, swap with a line.
 - Reading a document is the same shape of problem and deserves the same seam. That seam is
-  `IDocumentExtractionClient`, proposed in dotnet/extensions #7588, in `Microsoft.Extensions.AI`.
+  `IDocumentExtractionClient`, proposed in dotnet/extensions #7588, in its own library
+  `Microsoft.Extensions.DocumentExtraction` (beside `Microsoft.Extensions.AI`).
 
 ## 3. The interface + result shape (3 min) · *code: ocr-shape/*
 - `ExtractAsync(Stream, mediaType) -> DocumentExtractionResult`. Stream in, normalized result out. `GetService` is
