@@ -3,9 +3,9 @@
 // 16-streaming.cs — ExtractPagesAsync: pages arrive as updates, not one big result.
 //
 // The family idiom. Just as IChatClient.GetStreamingResponseAsync yields ChatResponseUpdates,
-// IDocumentExtractionClient.ExtractPagesAsync yields OcrResponseUpdates — one per page as the engine finishes
+// IDocumentExtractionClient.ExtractPagesAsync yields DocumentExtractionPageResult values, one per page as the engine finishes
 // it. A RAG pipeline can chunk/embed page 1 while page 100 is still being read. Progress
-// (PagesProcessed / TotalPages / Status) now rides ON the update, replacing the old
+// (page plus TotalPages) now rides on the update, replacing the old
 // IProgress<OcrProgress> parameter that used to hang off ExtractAsync.
 //
 // Then DocumentExtractionPageResultExtensions reduces the very same updates back into one DocumentExtractionResult —
@@ -19,7 +19,7 @@
 // Config comes from env vars only (never committed): OCR_FOUNDRY_ENDPOINT (required),
 // OCR_MISTRAL_MODEL (optional, defaults to mistral-ocr-4-0).
 //
-// NOTE (honest framing): these demo IOcrClients wrap a single ExtractAsync call and re-emit its
+// NOTE (honest framing): these demo IDocumentExtractionClient implementations wrap a single ExtractAsync call and re-emit its
 // pages as updates (OcrShapeExtensions.StreamAsUpdates) — the update *shape* is real, the
 // incrementality is simulated. A polling engine (e.g. Azure Document Intelligence) would emit
 // genuinely incremental page updates behind this exact same API.
@@ -42,7 +42,8 @@ await foreach (DocumentExtractionPageResult update in ocr.ExtractPagesAsync(doc,
     updates.Add(update);
     if (update.Page is { } page)
     {
-        Console.WriteLine($"  page {page.PageNumber,3}  ({update.PagesProcessed}/{update.TotalPages})  {page.Text.Length,6} chars");
+        int providerOutputLength = page.GetProviderMarkdownOrCanonicalText().Length;
+        Console.WriteLine($"  page {page.PageNumber,3}  ({updates.Count}/{update.TotalPages})  {providerOutputLength,6} chars");
     }
 }
 

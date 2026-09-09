@@ -74,7 +74,11 @@ if (inner is null)
     return 0;
 }
 
-string transcript = string.Join("\n\n", structured.Pages.Select(p => p.Text));
+// Typed extraction consumes the provider's transcript. Prefer its exact Markdown and fall back to
+// canonical element text only when the provider did not supply Markdown.
+string transcript = string.Join(
+    "\n\n",
+    structured.Pages.Select(page => page.GetProviderMarkdownOrCanonicalText()));
 ChatResponse<DocumentSummary> extracted = await inner.GetResponseAsync<DocumentSummary>(
     [new ChatMessage(ChatRole.User, $"Extract a structured summary from this document text:\n\n{transcript}")],
     VisionLlmOcrClient.SchemaJson);

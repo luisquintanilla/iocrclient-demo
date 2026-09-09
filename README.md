@@ -1,36 +1,92 @@
-# One interface for every OCR engine
+# DO NOT MERGE: explicit bridge consumer validation
 
-A grounded talk and runnable sample set showing `IDocumentExtractionClient`, a provider-neutral seam for document
-parsing in .NET. Four OCR engines (a vision LLM, Mistral OCR, Azure Document Intelligence, and Azure
-Content Understanding) run through one interface; a thin `OcrDocumentReader` bridges that capability
-into a real Microsoft.Extensions.DataIngestion (MEDI) pipeline; the page model is carried through
-chunking so answers cite their source page; and the PdfPig reader shows the same seam composed a
-second way (digital text first, OCR only the pages that need it).
+This draft is the Preview 2 consumer-evidence companion to
+[`luisquintanilla/extensions` PR #1](https://github.com/luisquintanilla/extensions/pull/1) at
+presentation head `a1eb56c4c497738ef06c557f63cdc071082a4536`. Packages are pinned to the
+evaluated implementation commit
+[`c1913907f05148370a84824b669d73249bb502e4`](https://github.com/luisquintanilla/extensions/commit/c1913907f05148370a84824b669d73249bb502e4),
+not the later presentation-only head.
+
+```csharp
+using IDocumentExtractionClient extractionClient = new FixtureDocumentExtractionClient();
+var reader = new DocumentExtractionReader(
+    extractionClient,
+    new() { MarkdownOnlyPagePolicy = MarkdownOnlyPagePolicy.PreserveAsMarkdown });
+IngestionDocument document = await reader.ReadAsync(
+    new MemoryStream([0x25, 0x50, 0x44, 0x46]),
+    "quarterly-review.pdf",
+    "application/pdf");
+
+IngestionChunker chunker = new SectionChunker(new(TiktokenTokenizer.CreateForModel("gpt-4o"))
+{
+    MaxTokensPerChunk = 256,
+    OverlapTokens = 0,
+});
+IAsyncEnumerable<IngestionChunk> chunks = chunker.ProcessAsync(document);
+VectorStoreCollection<Guid, Preview2ChunkRecord> records =
+    store.GetIngestionRecordCollection<Preview2ChunkRecord>("chunks", dimensions);
+using var writer = new VectorStoreWriter<Preview2ChunkRecord>(records);
+await writer.WriteAsync(chunks);
+```
+
+Run the credential-free proof with `dotnet run samples/17-explicit-bridge-validation.cs`. The
+[sample](samples/17-explicit-bridge-validation.cs) uses a realistic two-page fake result with a
+heading, text, structured table, image, provider-specific block kind, geometry, confidence, raw
+objects, and canonical-plus-Markdown input. A separate deterministic subcase proves the default
+Markdown-only failure and explicit preservation policy. Its
+[captured output](samples/output/17-explicit-bridge-validation.txt)
+comes from an actual run against the six hash-verified packages at
+`10.8.0-preview2bridge.c191390`.
+
+**What this proves:** the built-in bridge maps canonical structure into Preview 2 MEDI; non-generic
+`IngestionChunk` carries polymorphic `AIContent`, required `TokenCount`, and pages; the stock typed
+writer persists `TextContent` and `DataContent`; and configured VectorData embedding runs during
+upsert and retrieval. **What it does not prove:** merge readiness, production performance, provider
+quality, reproducible package archives across arbitrary environments, or exhaustive live-provider
+behavior. Sample
+[`06-medi-pipeline.cs`](samples/06-medi-pipeline.cs) keeps the optional Mistral-backed path, but it
+requires existing local user-secrets and Azure login and was not needed for the deterministic proof.
+All four provider implementations are compile-only evidence for this pinned head. None was executed
+against a live provider during this comparison validation.
+The current structured Vision and Content Understanding demos can emit partial canonical elements
+alongside provider Markdown. Because the explicit bridge intentionally gives canonical elements
+precedence, those modes remain direct-extraction demos rather than validated bridge paths. The hero
+uses its Markdown-only Vision mode, and sample 06 leaves image extraction disabled.
+
+## Existing talk and provider samples
+
+The repository remains a grounded talk and runnable sample set showing `IDocumentExtractionClient`
+across four OCR engines. This draft only compares the explicit bridge architecture and must not merge
+until Adam selects an architecture. The existing slide deck describes the earlier app-owned bridge
+and is historical context, not evidence for this comparison draft.
 
 - **Slides:** [`slides.md`](slides.md) (message-first, every claim grounded on a real run)
 - **Speaker outline + abstract + primer:** [`talk/`](talk/) — the deck opens with a 90-second
   [primer](talk/primer.md) (what OCR is, the extract→structure→chunk→retrieve→answer vocabulary, and
   the two engine archetypes) so the payoff lands for everyone.
-- **Runnable proof:** [`samples/`](samples/) with captured output in `samples/output/` — including
-  `09-images-and-uris.cs` (figures + `UriContent`), `10-eval-ocr-vs-pdfpig.cs` (an eval harness
-  measuring OCR engines vs naive PdfPig), and `11-vision-structured-output.cs` (structured
-  transcription from the vision path).
+- **Runnable proof:** [`samples/`](samples/). The current comparison evidence is
+  [`17-explicit-bridge-validation.cs`](samples/17-explicit-bridge-validation.cs) with its executed
+  capture in [`samples/output/`](samples/output/). Provider samples remain available for credentialed
+  runs, but their earlier captures were removed after the API change.
 - **Diagrams:** [`assets/diagrams/`](assets/diagrams/) — four hand-authored branded SVGs (stack,
   data-flow/boundary, composition, eval harness) embedded in the deck and reusable standalone.
-- **Reproducible feed:** [`scripts/build-local-feed.sh`](scripts/build-local-feed.sh) packs the real
-  `dotnet/extensions` code (preview2 + #7588) into `local-feed/` — the samples run on the real
-  types, not a vendored copy.
+- **Pinned feed:** [`scripts/build-local-feed.sh`](scripts/build-local-feed.sh) validates, installs,
+  or explicitly rebuilds exactly six packages from `c1913907f05148370a84824b669d73249bb502e4`, then verifies package
+  SHA-256, ID, version, repository, and commit. Consumer restore caches are repo-local.
 - **The body of work this drives, across two repos:**
-  - dotnet/extensions [#7588](https://github.com/dotnet/extensions/pull/7588) (IDocumentExtractionClient) — the live
-    seam. Page provenance rides the shipping API (the reader emits one section per page; the samples
-    chunk per page), so an earlier chunk-propagation proposal,
-    [#7516](https://github.com/dotnet/extensions/pull/7516), closed unmerged and is no longer needed
+  - [`luisquintanilla/extensions` PR #1](https://github.com/luisquintanilla/extensions/pull/1) is
+    the explicit bridge architecture under comparison.
   - CommunityToolkit/AI [#13](https://github.com/CommunityToolkit/AI/issues/13) (design),
     [#15](https://github.com/CommunityToolkit/AI/pull/15) (VisionLMOcrClient, closes #13),
     [#14](https://github.com/CommunityToolkit/AI/pull/14) (PdfPig reader composing any IDocumentExtractionClient)
 
 Built on the reveal-presentation-template. The rest of this README is the template's operating
 manual: how the deck, themes, layouts, and grounding workflow fit together.
+
+## Superseded consumer history
+
+Heads `604b6ee950074bf3ddb8fba8500bb974f6c744cf` and earlier validated the historical
+generic-main experiment. They are retained only as immutable history and are not Preview 2 evidence.
 
 ---
 
@@ -95,18 +151,19 @@ See [`AGENTS.md`](AGENTS.md) for the full map and conventions.
 want to try. See **[`docs/SETUP.md`](docs/SETUP.md)** for a per-engine walkthrough (with official
 Microsoft Learn links) and the `dotnet user-secrets` keys each one needs.
 
-The samples run on the real `IDocumentExtractionClient` + MEDI bits. Those APIs aren't on nuget.org yet, so this
-repo **ships them prebuilt in [`local-feed/`](local-feed/README.md)** — *unofficial* local dev
-builds; read that NOTICE — and `nuget.config` resolves them from there. Nothing to build first:
-`az login`, set your endpoints, run a sample. (To rebuild/refresh the feed from public GitHub refs,
-run `scripts/build-local-feed.sh`.)
+The samples run on the exact Preview 2 bridge `IDocumentExtractionClient` + MEDI bits. Those APIs
+aren't on nuget.org yet, so this
+repo commits an unofficial, hash-pinned [`local-feed/`](local-feed/README.md) from the exact source.
+Run `scripts/build-local-feed.sh` to validate it before restoring or running samples.
 
 ```bash
+scripts/build-local-feed.sh
 az login                                            # keyless DefaultAzureCredential
 # set endpoints once via user-secrets (UserSecretsId iocrclient-demo) — see docs/SETUP.md
 dotnet run samples/05-one-loop-four-clients.cs                     # defaults to the complex USGS fact sheet
 dotnet run samples/05-one-loop-four-clients.cs -- samples/data/survival-kit.pdf  # the simple born-digital baseline
-dotnet run samples/06-medi-pipeline.cs              # OcrDocumentReader -> MEDI chunker; per-page provenance
+dotnet run samples/17-explicit-bridge-validation.cs # deterministic built-in bridge proof, no credentials
+dotnet run samples/06-medi-pipeline.cs              # optional live Mistral -> built-in bridge path
 dotnet run samples/07-e2e-rag.cs                    # USGS default + its oil-estimate question
 dotnet run samples/08-pdfpig-reader.cs              # native text + OCR fallback on USGS
 dotnet run samples/09-images-and-uris.cs            # figures + UriContent overload

@@ -4,7 +4,7 @@
 
 // 08-pdfpig-reader.cs — the OTHER kind of IngestionDocumentReader, and why the boundary matters.
 //
-// Sample 06/07 used OcrDocumentReader: a reader that is ALWAYS OCR (the whole document goes to an
+// Samples 06/07 use DocumentExtractionReader: a reader that is ALWAYS OCR (the whole document goes to an
 // IDocumentExtractionClient). But most PDFs already carry a digital text layer — paying an OCR engine to re-read text
 // that's already there is wasteful. PdfPig reads that native layer directly. The interesting shape is
 // the hybrid: read native text first, and OCR ONLY the pages that have none (the scanned/image pages).

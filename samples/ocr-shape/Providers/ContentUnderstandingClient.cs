@@ -18,14 +18,15 @@ namespace DemoOcr;
 /// CU is the widest-surface PEER in the provider matrix, not an apex: one CU service can emit EITHER
 /// Markdown (this client, <see cref="IDocumentExtractionClient"/>) OR typed fields + grounding + confidence
 /// (<see cref="ContentUnderstandingAnalysisClient"/>, the sibling <see cref="IDocumentAnalysisClient"/>).
-/// That is exactly why CU is the strongest cross-provider conformance test — if the same polygon /
-/// confidence / builder primitives serve CU's two shapes AND Mistral OCR AND Azure DI AND a vision LLM,
-/// provider-neutrality is proven. But CU is a peer behind the contract, never privileged over the others.
+/// CU exercises the same polygon, confidence, and builder primitives as Mistral OCR, Azure DI, and a
+/// vision LLM. It is a peer behind the contract, never privileged over the others.
 ///
 /// Wire protocol: analyzer + async-poll (<c>AnalyzeBinary(WaitUntil.Completed, analyzerId, …)</c> →
 /// <c>AnalysisResult.Contents[]</c>). Different from Mistral (document→pages[]) and DI (AnalyzeResult),
-/// so it is a different class — but it normalizes onto the same <see cref="DocumentExtractionResult"/>, so the
-/// <see cref="OcrDocumentReader"/> and the vector store never see the difference. Keyless via
+/// so it is a different class, but it normalizes onto the same <see cref="DocumentExtractionResult"/>.
+/// CU can return full provider Markdown plus a partial canonical element set. Direct displays select
+/// exact Markdown deliberately. The explicit bridge gives canonical elements precedence, so this
+/// provider's mixed representation is not a validated bridge path in this comparison. Keyless via
 /// DefaultAzureCredential / any TokenCredential on a Foundry resource.
 /// </summary>
 public sealed class ContentUnderstandingClient : IDocumentExtractionClient
@@ -85,7 +86,10 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                     var cells = new List<DocumentTableCell>(t.Cells.Count);
                     foreach (Azure.AI.ContentUnderstanding.DocumentTableCell c in t.Cells)
                     {
-                        cells.Add(new DocumentTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
+                        cells.Add(new DocumentTableCell(
+                            c.RowIndex,
+                            c.ColumnIndex,
+                            [new DocumentBlock(c.Content ?? "")])
                         {
                             Kind = c.Kind?.ToString() is { Length: > 0 } cellKind ? new DocumentTableCellKind(cellKind) : null,
                             RowSpan = c.RowSpan ?? 1,
@@ -104,24 +108,27 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                 {
                     Azure.AI.ContentUnderstanding.DocumentPage page = doc.Pages[i];
                     bool first = pages.Count == 0;
-                    pages.Add(new DocumentPage(page.PageNumber, first ? doc.Markdown ?? "" : "")
+                    IReadOnlyList<DocumentElement> elements = tablesByPage.TryGetValue(page.PageNumber, out var tb)
+                        ? tb.Cast<DocumentElement>().ToList()
+                        : [];
+                    pages.Add(new DocumentPage(
+                        page.PageNumber,
+                        elements,
+                        first ? doc.Markdown ?? "" : "")
                     {
-                        Elements = tablesByPage.TryGetValue(page.PageNumber, out var tb)
-                            ? tb.Cast<DocumentElement>().ToList()
-                            : [],
                         AdditionalProperties = new() { ["cu.pageNumber"] = page.PageNumber },
                     });
                 }
             }
             else
             {
-                pages.Add(new DocumentPage(1, doc.Markdown ?? ""));
+                pages.Add(new DocumentPage(1, [], doc.Markdown ?? ""));
             }
         }
 
         if (pages.Count == 0)
         {
-            pages.Add(new DocumentPage(1, ""));
+            pages.Add(new DocumentPage(1, []));
         }
 
         return new DocumentExtractionResult(pages)

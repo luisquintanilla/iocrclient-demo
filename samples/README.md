@@ -1,34 +1,39 @@
 # Samples
 
 Slides should not rest on vibes. Each sample is the smallest proof of one claim in the deck. Run it,
-capture the real output to `output/<name>.txt`, and cite it on a slide. Every output here is from a
-live run.
+capture the real output to `output/<name>.txt`, and cite it on a slide. For this comparison head,
+only the deterministic sample was executed. Earlier provider captures were removed rather than
+presented as current evidence without credentials.
 
-The demo shows one interface, `IDocumentExtractionClient`, in front of four very different OCR engines, then bridges
-that capability into a real MEDI pipeline whose page structure makes the final answer citable.
+The four provider implementations are compile-only on this comparison head. Run them only with your
+existing local credentials, then capture fresh output if you want provider-backed evidence.
+
+The demo shows one interface, `IDocumentExtractionClient`, in front of four different OCR engines,
+then uses MEDI's built-in `DocumentExtractionReader` explicit bridge.
 
 ## The real interface (not a vendored copy)
 
-`IDocumentExtractionClient` is proposed in [dotnet/extensions #7588](https://github.com/dotnet/extensions/pull/7588)
-and is not on nuget.org yet. Rather than vendor a copy, `scripts/build-local-feed.sh` packs the REAL
-branch — `data-ingestion-preview2` + #7588 (IDocumentExtractionClient) — into
-`../local-feed/` at version `10.8.0-dev`. `nuget.config` resolves those `Microsoft.Extensions.*`
-packages from the local feed and everything else (Azure SDKs, OpenAI, PdfPig) from nuget.org.
+The comparison API is not on nuget.org. `scripts/build-local-feed.sh` installs or rebuilds the
+six-package Preview 2 feed from exact implementation commit
+`c1913907f05148370a84824b669d73249bb502e4` at version
+`10.8.0-preview2bridge.c191390`, then checks all package hashes and nuspec provenance.
 
-So the samples `using Microsoft.Extensions.AI;` and `using Microsoft.Extensions.DataIngestion;` bind to
-the actual types. When #7588 ships, delete the local feed and the `<clear/>` in `nuget.config`
-and bump to the published versions. `ocr-shape/` holds the four provider implementations
-(`VisionLlmOcrClient`, `FoundryMistralOcrClient`, `AzureDocumentIntelligenceClient`,
-`ContentUnderstandingClient`) plus `OcrDocumentReader` — the `IDocumentExtractionClient` -> MEDI bridge.
+`ocr-shape/` holds the four provider implementations. The bridge itself comes from
+`Microsoft.Extensions.DataIngestion.DocumentExtraction`; the app-owned reader was removed.
+
+Provider-output displays and text evals call
+`GetProviderMarkdownOrCanonicalText`: exact `DocumentPage.Markdown` wins when supplied, otherwise
+the code uses text derived from canonical `Elements`. Structured element traversal calls
+`GetCanonicalElementText` instead. Ingestion never uses either display helper; it goes through
+`DocumentExtractionReader` with an explicit `MarkdownOnlyPagePolicy`.
 
 ## The boundary this demo draws
 
-- **`IDocumentExtractionClient`** (`Microsoft.Extensions.AI`, #7588) — a *capability*: bytes -> `DocumentExtractionResult`. Provider
+- **`IDocumentExtractionClient`** (`Microsoft.Extensions.DocumentExtraction`): a *capability*: bytes -> `DocumentExtractionResult`. Provider
   implementations live in `ocr-shape/`.
-- **`IngestionDocumentReader`** (MEDI) — a *pipeline stage*: `ReadAsync -> IngestionDocument`.
-- **`OcrDocumentReader`** (`ocr-shape/OcrDocumentReader.cs`) — the *bridge*: one reader composing any
-  `IDocumentExtractionClient`, stamping `page_number` / `ocr_source` / `confidence` / bbox with the same keys
-  `PdfPigReader` uses.
+- **`IngestionDocumentReader`** (MEDI): a *pipeline stage*: `ReadAsync -> IngestionDocument`.
+- **`DocumentExtractionReader`** (`Microsoft.Extensions.DataIngestion.DocumentExtraction`): the
+  explicit built-in mapping and loss boundary.
 
 ## Files
 
@@ -39,14 +44,15 @@ and bump to the published versions. `ocr-shape/` holds the four provider impleme
 | `03-content-understanding.cs` | Azure Content Understanding (CU region) | A third engine, third wire protocol, same result. |
 | `04-mistral-ocr.cs` | Mistral OCR on Azure AI Foundry | Purpose-built document AI: whole PDF in one call, per-page Markdown. |
 | `05-one-loop-four-clients.cs` | all four above | The payoff. Four engines, one loop, identical call. |
-| `06-medi-pipeline.cs` | Mistral OCR | The bridge: `OcrDocumentReader` -> `SectionChunker`. Page provenance survives the chunker with no new API — the reader emits one section per page, so chunking each page-section tags every chunk with its source page (whole-doc vs per-page shown). |
+| `06-medi-pipeline.cs` | Mistral OCR | Optional live PDF through `DocumentExtractionReader`, then Preview 2's non-generic `SectionChunker`. |
 | `07-e2e-rag.cs` | Mistral OCR + a chat model | End to end: OCR -> reader -> chunk (page provenance) -> retrieve -> page-cited answer. |
 | `08-pdfpig-reader.cs` | Mistral OCR (+ PdfPig from nuget) | The same seam a second way: PdfPig native text + per-page OCR fallback composing `IDocumentExtractionClient` ([CommunityToolkit #14](https://github.com/CommunityToolkit/AI/pull/14)). |
-| `09-images-and-uris.cs` | Mistral OCR + Azure Document Intelligence | The result grows: `DocumentImage` elements (figure bytes + bbox + caption) surfaced via `Elements.OfType<DocumentImage>()`, and the `UriContent` overload — both proposed into [#7588](https://github.com/dotnet/extensions/pull/7588). Image bytes saved under `output/images/` (gitignored). |
+| `09-images-and-uris.cs` | Mistral OCR + Azure Document Intelligence | `DocumentImage` elements (figure bytes + bbox + caption) surfaced via `Elements.OfType<DocumentImage>()`, plus the `UriContent` overload. Image bytes save under `output/images/` (gitignored). |
 | `10-eval-ocr-vs-pdfpig.cs` | `bench/OcrBench/` + a judge model | Does OCR beat naive PdfPig? Same chunk→retrieve→answer pipeline, one variable (the extractor), scored by a custom deterministic `OcrExtractionEvaluator` + the built-in NLP F1. Writes `bench/report/leaderboard.md`. |
 | `11-vision-structured-output.cs` | Azure OpenAI (gpt-4.1-mini) | Opt-in structured transcription from the vision path (`GetResponseAsync<T>` over an DocumentExtractionResult-shaped schema), plus typed POCO extraction via the inner `IChatClient` (`GetService<IChatClient>()`). Degrades to freeform when unsupported. |
 | `14-ollama-glm-ocr.cs` | Ollama + `glm-ocr` (local; no cloud, no `az login`) | A **local, open-weights** OCR engine behind `IDocumentExtractionClient`. GLM-OCR (~0.9B) reached through OllamaSharp's native `IChatClient` and the repo's existing `VisionLlmOcrClient` — no new provider class. The page image is pulled with PdfPig (image *extraction*, not rasterization); the two glm-ocr prompt/stop quirks and Ollama's missing done-frame are patched by composition **on the Ollama client only** (`ocr-shape` untouched). |
 | `15-ocr-engine-comparison.cs` | `bench/OcrBench/` + Azure DI + Mistral OCR + Ollama `glm-ocr` | Cloud vs local through one seam ([BlueGuardrails](https://blueguardrails.com/en/blog/high-throughput-vlm-ocr)'s cost/locality framing): Azure Document Intelligence vs Mistral OCR vs GLM-OCR (local) on the same scanned doc — latency (measured here), structure (tables/figures), and cited $/1k-page cost. An inline `PdfImageOcrClient` feeds the image-only local engine per page; missing cloud creds graceful-skip. |
+| `17-explicit-bridge-validation.cs` | Nothing external | Deterministic Preview 2 proof: non-generic chunker/processor/pipeline, `AIContent` + `TokenCount`, typed `VectorStoreWriter<TRecord>`, provider embeddings, text/binary serialization, pages, retrieval, Markdown policy, mapping/loss, and captured output. |
 
 ## Configuration (no secrets in code)
 
@@ -77,7 +83,8 @@ tables, raster figures, two-column layout — the document where OCR earns its k
 `-- data/survival-kit.pdf` to any of them to see the **simple born-digital baseline** it graduates from.
 
 ```bash
-../scripts/build-local-feed.sh            # once: pack the real bits into ../local-feed
+../scripts/build-local-feed.sh            # validate the committed six-package feed
+dotnet run 17-explicit-bridge-validation.cs
 az login
 
 # one engine at a time (USGS default)

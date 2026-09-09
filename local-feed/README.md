@@ -1,47 +1,52 @@
-# `local-feed/` — unofficial local dev packages (READ THIS)
+# `local-feed/`: Preview 2 bridge packages
 
-**These are NOT official Microsoft packages.** They are local, unofficial builds produced solely so
-this demo is clone-and-run while the APIs it showcases are still in review. Do not depend on them in
-real projects, and do not redistribute them as if they were shipped Microsoft packages.
+**These are unofficial local builds for architecture validation.** Do not use them as shipped
+Microsoft packages.
 
-## What these are
+## Immutable source
 
-The `Microsoft.Extensions.DocumentExtraction` API shown in this demo (the
-`IDocumentExtractionClient` extraction surface) is **proposed** in an open pull request against
-[dotnet/extensions](https://github.com/dotnet/extensions) and is **not on nuget.org yet**.
-Rather than vendor a hand-copied snapshot, `../scripts/build-local-feed.sh` packs the *real*
-dotnet/extensions source into this folder at version `10.8.0-dev`, so the samples bind to the actual
-`Microsoft.Extensions.*` types. `../nuget.config` resolves these from `local-feed`; everything else
-(Azure SDKs, OpenAI, PdfPig, vector-store connectors) resolves from nuget.org.
+- architecture: explicit Document Extraction-to-Preview 2 MEDI bridge
+- architecture PR presentation head:
+  [`a1eb56c4c497738ef06c557f63cdc071082a4536`](https://github.com/luisquintanilla/extensions/commit/a1eb56c4c497738ef06c557f63cdc071082a4536)
+- evaluated package source:
+  [`c1913907f05148370a84824b669d73249bb502e4`](https://github.com/luisquintanilla/extensions/commit/c1913907f05148370a84824b669d73249bb502e4)
+- corrected common base: `f6ba2df16275bfc5eaf50aeb9327e2ec34ee8129`
+- authoritative Preview 2 ancestor: `e124c123afeeda2f271f3b99a70eb3cfe187a471`
+- package version: `10.8.0-preview2bridge.c191390`
+- repository in every nuspec: `https://github.com/luisquintanilla/extensions.git`
 
-## Provenance (what went into the build)
+Do not repin packages to the later presentation head. It includes architecture documentation after
+the evaluated code.
 
-Packed **2026-08-03** at version `10.8.0-dev` from this composition:
+## Six-package feed
 
-- base: `dotnet/extensions` branch **`data-ingestion-preview2`** at commit **`da091f9e`** (latest MEDI: non-generic `IngestionChunk` + `IngestionChunkVectorRecord`; the public upstream branch, no in-flight PRs merged in)
-- **+ PR [#7588](https://github.com/dotnet/extensions/pull/7588)** — `Microsoft.Extensions.DocumentExtraction(.Abstractions)` (the extraction peer library; the two self-contained DE project folders grafted from the PR head, since #7588 targets `main`)
-- one const the grafted `[Experimental]` attributes reference (`DiagnosticIds.Experiments.DocumentExtraction = "MEDE0001"`) — see the build script
+| Package | SHA-256 |
+| --- | --- |
+| `Microsoft.Extensions.AI` | `a8192d63fa45ad84cfb018107c8431290e1aee6f7cd8454c1fac4302c3f085ad` |
+| `Microsoft.Extensions.AI.Abstractions` | `13ec6febf70c77f7352e736b6e54e469706be435895271fb05fa0a91b6e3fecb` |
+| `Microsoft.Extensions.DataIngestion` | `569c315c3f8fc5d80140db53fb5f13046d6535967d61f4061f6029cbc73caa81` |
+| `Microsoft.Extensions.DataIngestion.Abstractions` | `06a201a6687b5abfb3e593f1557614e2071cba7cecdb2d3d5d2383459d61acff` |
+| `Microsoft.Extensions.DataIngestion.DocumentExtraction` | `904f50db70912c45230e55c52446e3dc776d3a4eb79eaff11345c859d516f95a` |
+| `Microsoft.Extensions.DocumentExtraction.Abstractions` | `79dc4282564a82a2a21c6347d9a964d2e05be49308d11644e27a47152ae58c2c` |
 
-The exact recipe (and the branch/PR heads used) lives in
-[`../scripts/build-local-feed.sh`](../scripts/build-local-feed.sh); it reproduces this feed from
-public GitHub refs so these binaries are verifiable, not opaque.
+These six runtime packages are committed so a clone restores the exact evaluated bytes. Symbol
+packages remain gitignored. To replace them from the corrected architecture-session artifact:
 
-## Committed contents
+```bash
+PREBUILT_FEED=/path/to/preview2-feed ../scripts/build-local-feed.sh
+```
 
-Only the **runtime** `*.nupkg` files are committed. `*.symbols.nupkg` are intentionally left out
-(`.gitignore`) — they are not needed to run the samples.
+Set `REBUILD_FROM_SOURCE=1` to reconstruct from the immutable commit. The default validation, artifact
+install, and explicit rebuild all fail unless exactly six packages match every hash, ID, version,
+repository, and commit. Validated replacements use same-directory atomic file renames, so the
+existing feed remains available. A byte-different rebuilt archive is not silently accepted.
+
+External provider SDKs, vector providers, and evaluation helpers resolve from nuget.org. The six
+architecture packages resolve from this feed at unique prerelease versions. Restore caches live under
+the repository through `nuget.config`.
 
 ## License
 
 The packaged code is from `dotnet/extensions`, licensed under the
-**[MIT License](https://github.com/dotnet/extensions/blob/main/LICENSE)**
-(Copyright (c) .NET Foundation and Contributors). The MIT license text and copyright are retained
-inside each `.nupkg`. This repository's own sample code is likewise MIT (see `../LICENSE`).
-
-## When to delete this feed
-
-The moment #7588 ships on nuget.org, this whole folder becomes unnecessary:
-
-1. delete `local-feed/`,
-2. remove the `<clear/>` + `local-feed` source from `../nuget.config`,
-3. bump the samples to the published package versions.
+[MIT License](https://github.com/dotnet/extensions/blob/main/LICENSE). Each package retains its
+license metadata.

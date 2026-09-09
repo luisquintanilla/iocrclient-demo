@@ -1,5 +1,8 @@
 # Abstract
 
+> Historical talk abstract from `main@fd4bf7e`. It describes the removed app-owned bridge and is
+> not Preview 2 consumer evidence. The current bridge proof is `samples/17-explicit-bridge-validation.cs`.
+
 **One interface for every OCR engine: provider-neutral document parsing for .NET**
 
 Getting a PDF into clean, structured text is the messiest part of any RAG or document pipeline, and

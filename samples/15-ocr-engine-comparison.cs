@@ -36,7 +36,7 @@ const string mediaType = "application/pdf";
 var cred = new DefaultAzureCredential();
 
 Console.WriteLine($"document : {Path.GetFileName(pdf)}  (scanned / image-only — OCR's home turf)");
-Console.WriteLine("interface: Microsoft.Extensions.AI.IDocumentExtractionClient — one seam, three engines\n");
+Console.WriteLine("interface: Microsoft.Extensions.DocumentExtraction.IDocumentExtractionClient: one seam, three engines\n");
 
 string host = DemoConfig.Get("OCR:OllamaEndpoint", "http://localhost:11434");
 string glmModel = DemoConfig.Get("OCR:OllamaOcrModel", "glm-ocr");
@@ -152,7 +152,7 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
             var img = pdf.GetPage(i).GetImages().FirstOrDefault();
             if (img is null || !img.TryGetPng(out byte[]? png) || png is null)
             {
-                pages.Add(new DocumentPage(i, ""));   // no extractable image on this page
+                pages.Add(new DocumentPage(i, []));   // no extractable image on this page
                 continue;
             }
 
@@ -160,7 +160,8 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
                 .ExtractAsync(new MemoryStream(png), "image/png", options, cancellationToken)
                 .ConfigureAwait(false);
             modelId ??= one.GetModelId();
-            pages.Add(new DocumentPage(i, one.Pages.Count > 0 ? one.Pages[0].Text : ""));
+            DocumentPage sourcePage = one.Pages[0];
+            pages.Add(new DocumentPage(i, sourcePage.Elements, sourcePage.Markdown));
         }
 
         return new DocumentExtractionResult(pages)

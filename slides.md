@@ -7,13 +7,9 @@ date: TODO Date
 repo: TODO repo URL after publishing
 -->
 
-<!-- Message-first deck. Every technical claim is grounded on a real run captured under
-     samples/output/, and the samples run on the REAL dotnet/extensions code (preview2 +
-     #7588), packed into a local feed, not a vendored copy. The through-line: document parsing is
-     fragmented and vendor-locked; a provider-neutral capability (IDocumentExtractionClient) fixes it; a thin reader
-     (OcrDocumentReader) bridges it into the MEDI pipeline; per-page chunking keeps the answers
-     citable on the shipping API; and the PdfPig reader (CommunityToolkit #14) shows the same
-     seam composed a second way. The work spans two repos. -->
+<!-- Historical talk deck inherited from main commit fd4bf7edfd5f3330dbb0ba73938ada20e282e111.
+     Its provider captures and app-owned bridge narrative were not rerun against the explicit bridge
+     comparison head. Current Preview 2 executable evidence is samples/17-explicit-bridge-validation.cs. -->
 
 <div class="title-slide">
 
@@ -26,6 +22,8 @@ repo: TODO repo URL after publishing
 <div class="title-rule"></div>
 
 <p class="byline">Luis Quintanilla</p>
+
+<p class="small muted">Historical deck and provider captures: main@fd4bf7e. Current Preview 2 bridge evidence: sample 17.</p>
 
 </div>
 
