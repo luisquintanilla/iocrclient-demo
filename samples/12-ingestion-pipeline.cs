@@ -9,19 +9,17 @@ using Microsoft.Extensions.DocumentExtraction;
 // into a REAL local vector store. Samples 06/07 hand-composed the stages to teach them; this one
 // hands them to IngestionPipeline and lets it drive:
 //
-//   IDocumentExtractionClient (#7588) -> OcrDocumentReader -> IngestionPipeline{ SectionChunker -> VectorStoreWriter }
-//                                                       |                                   |
-//                                              emits OTEL activities              SqliteVec (local file)
-//                                              + ILogger for free                 + real embeddings
+//   IDocumentExtractionClient -> DocumentExtractionReader -> IngestionPipeline
+//                                                          -> SectionChunker
+//                                                          -> VectorStoreWriter<PageChunkRecord>
 //
 // Two things become real here that were faked before:
 //   1. The PIPELINE runs it (not hand-wired steps), so it emits OpenTelemetry + logs the hero app shows.
 //   2. Retrieval is a real vector search over SqliteVec with real Azure OpenAI embeddings — not the
 //      lexical keyword overlap the earlier samples used as a stand-in.
 //
-// Provenance note: the STOCK IngestionPipeline hides the chunks from the consumer, so there is no place
-// to hand-roll per-chunk page tags here (that path is sample 07, which drives the stages itself). This
-// sample's job is the pipeline + REAL vector retrieval end to end; page citation lives in sample 07.
+// Preview 2 chunks are non-generic AIContent values with required TokenCount. The typed stock writer
+// persists polymorphic content and page numbers, then the configured vector provider embeds on upsert.
 //
 //   dotnet user-secrets set "OCR:FoundryEndpoint"  "https://<account>.services.ai.azure.com" --id iocrclient-demo
 //   dotnet user-secrets set "OCR:OpenAIEndpoint"   "https://<account>.openai.azure.com"      --id iocrclient-demo
@@ -43,7 +41,7 @@ using Microsoft.Extensions.VectorData;
 using Microsoft.ML.Tokenizers;
 using CommunityToolkit.VectorData.SqliteVec;
 
-const int EmbeddingDimensions = PageChunkRecord.Dim; // text-embedding-3-small
+const int EmbeddingDimensions = 1536; // text-embedding-3-small
 
 string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
 string question = args.Length > 1 ? args[1] : "What is the mean estimate of undiscovered technically recoverable oil in the province?";
@@ -51,19 +49,16 @@ var cred = new DefaultAzureCredential();
 
 using ILoggerFactory loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddConsole());
 
-// 1) OCR engine (#7588) behind the bridge — swap this one line to change engine.
+// 1) OCR engine behind the built-in bridge. Swap this one line to change engine.
 using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(
     new Uri(DemoConfig.Require("OCR:FoundryEndpoint")),
     cred,
     DemoConfig.Get("OCR:MistralModel", "mistral-ocr-4-0"));
-var reader = new OcrDocumentReader(ocr);
+var reader = new DocumentExtractionReader(
+    ocr,
+    new() { MarkdownOnlyPagePolicy = MarkdownOnlyPagePolicy.PreserveAsMarkdown });
 
-// 2) Real embeddings: Azure OpenAI -> IEmbeddingGenerator<string> -> adapted to AIContent input.
-//    GetIngestionRecordCollection declares the vector property as VectorStoreVectorProperty<AIContent>,
-//    so the store's generator must accept AIContent (the library's own writer/pipeline tests wire it as
-//    IEmbeddingGenerator<AIContent, Embedding<float>>). AsTextContentEmbeddingGenerator yields a
-//    <TextContent,...> generator, which does NOT satisfy the <AIContent> vector property — so we adapt
-//    the string generator to AIContent input via the small AsAIContentEmbeddingGenerator helper below.
+// 2) Real embeddings: Azure OpenAI, adapted at the provider boundary from AIContent to text.
 IEmbeddingGenerator<AIContent, Embedding<float>> embeddingGenerator =
     new AzureOpenAIClient(new Uri(DemoConfig.Require("OCR:OpenAIEndpoint")), cred)
         .GetEmbeddingClient(DemoConfig.Get("OCR:EmbedDeployment", "text-embedding-3-small"))
@@ -77,12 +72,11 @@ using var vectorStore = new SqliteVectorStore(
     $"Data Source={dbPath};Pooling=false",
     new SqliteVectorStoreOptions { EmbeddingGenerator = embeddingGenerator });
 
-VectorStoreCollection<Guid, PageChunkRecord> collection =
-    vectorStore.GetIngestionRecordCollection<PageChunkRecord>("chunks", EmbeddingDimensions);
-
 // 4) The pipeline. Reader -> chunker -> writer into the vector store.
 //    IngestionPipeline drives it and emits OpenTelemetry + logs — nothing hand-wired.
 Tokenizer tokenizer = TiktokenTokenizer.CreateForModel("gpt-4o");
+VectorStoreCollection<Guid, PageChunkRecord> collection =
+    vectorStore.GetIngestionRecordCollection<PageChunkRecord>("chunks", EmbeddingDimensions);
 using var writer = new VectorStoreWriter<PageChunkRecord>(collection);
 using var pipeline = new IngestionPipeline(
     reader: reader,
@@ -99,15 +93,17 @@ await foreach (IngestionResult result in pipeline.ProcessAsync(new[] { new FileI
 // 5) REAL vector retrieval (not lexical). The collection embeds the query with the same generator.
 Console.WriteLine($"\nVector search: \"{question}\"");
 var top = new List<PageChunkRecord>();
-await foreach (VectorSearchResult<PageChunkRecord> hit in collection.SearchAsync(new TextContent(question), top: 4))
+await foreach (VectorSearchResult<PageChunkRecord> hit in
+    writer.VectorStoreCollection.SearchAsync(new TextContent(question), top: 4))
 {
     top.Add(hit.Record);
-    Console.WriteLine($"  score {hit.Score:F3}  {Preview(hit.Record)}");
+    Console.WriteLine($"  score {hit.Score:F3}  pages {string.Join(",", hit.Record.PageNumbers)}: {Preview(hit.Record)}");
 }
 
-// 6) Answer grounded ONLY on the retrieved chunks. (Per-chunk page citation is shown in sample 07;
-//    the stock pipeline here hides the chunks, so there is no per-chunk provenance seam.)
-string context = string.Join("\n\n", top.Select(Text));
+// 6) Answer grounded only on the retrieved chunks and their persisted page numbers.
+string context = string.Join(
+    "\n\n",
+    top.Select(record => $"[page {string.Join(",", record.PageNumbers)}] {Text(record)}"));
 IChatClient chat = new AzureOpenAIClient(new Uri(DemoConfig.Require("OCR:OpenAIEndpoint")), cred)
     .GetChatClient(DemoConfig.Get("OCR:VisionDeployment", "gpt-4.1-mini"))
     .AsIChatClient();
@@ -119,45 +115,44 @@ ChatResponse answer = await chat.GetResponseAsync(
 Console.WriteLine($"\nQ: {question}\nA: {answer.Text}");
 return 0;
 
-static string Text(PageChunkRecord r) => (r.Content as TextContent)?.Text ?? r.Content?.ToString() ?? "";
-static string Preview(PageChunkRecord r)
+static string Text(PageChunkRecord record) => (record.Content as TextContent)?.Text ?? "";
+static string Preview(PageChunkRecord record)
 {
-    string t = Text(r).Replace('\n', ' ').Trim();
+    string t = Text(record).Replace('\n', ' ').Trim();
     return t.Length <= 70 ? t : t[..70] + "…";
 }
 
-// The minimal vector record the MEDI pipeline writes: a known embedding dimension so the collection can
-// be created up front. GetIngestionRecordCollection declares the vector property as
-// VectorStoreVectorProperty<AIContent>, so Embedding is AIContent and the store's generator must accept
-// AIContent input (see step 2). The stock VectorStoreWriter<PageChunkRecord> persists it — no override.
 sealed class PageChunkRecord : IngestionChunkVectorRecord
 {
-    public const int Dim = 1536; // text-embedding-3-small
-
-    [VectorStoreVector(Dim)]
+    [VectorStoreVector(1536)]
     public override AIContent? Embedding => Content;
 }
 
-// Adapts an IEmbeddingGenerator<string,...> to accept AIContent input, extracting text from TextContent.
-// Mirrors the library's AsTextContentEmbeddingGenerator, but targets AIContent so it matches the
-// VectorStoreVectorProperty<AIContent> that GetIngestionRecordCollection declares (see step 2).
 static class AIContentEmbeddingGeneratorExtensions
 {
     public static IEmbeddingGenerator<AIContent, Embedding<float>> AsAIContentEmbeddingGenerator(
         this IEmbeddingGenerator<string, Embedding<float>> inner) => new Adapter(inner);
 
-    sealed class Adapter : IEmbeddingGenerator<AIContent, Embedding<float>>
+    private sealed class Adapter(IEmbeddingGenerator<string, Embedding<float>> inner)
+        : IEmbeddingGenerator<AIContent, Embedding<float>>
     {
-        readonly IEmbeddingGenerator<string, Embedding<float>> _inner;
-        public Adapter(IEmbeddingGenerator<string, Embedding<float>> inner) => _inner = inner;
-
         public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(
-            IEnumerable<AIContent> values, EmbeddingGenerationOptions? options = null, CancellationToken ct = default)
-            => _inner.GenerateAsync(values.Select(v => (v as TextContent)?.Text ?? v.ToString() ?? string.Empty), options, ct);
+            IEnumerable<AIContent> values,
+            EmbeddingGenerationOptions? options = null,
+            CancellationToken cancellationToken = default)
+            => inner.GenerateAsync(
+                values.Select(value => value is TextContent text
+                    ? text.Text
+                    : throw new NotSupportedException(
+                        $"Sample 12 only embeds text; received {value.GetType().Name}.")),
+                options,
+                cancellationToken);
 
         public object? GetService(Type serviceType, object? serviceKey = null)
-            => serviceKey is null && serviceType.IsInstanceOfType(this) ? this : _inner.GetService(serviceType, serviceKey);
+            => serviceKey is null && serviceType.IsInstanceOfType(this)
+                ? this
+                : inner.GetService(serviceType, serviceKey);
 
-        public void Dispose() => _inner.Dispose();
+        public void Dispose() => inner.Dispose();
     }
 }

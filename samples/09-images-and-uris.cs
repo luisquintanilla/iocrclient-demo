@@ -108,10 +108,10 @@ async Task RunImages(string label, IDocumentExtractionClient client)
                 string saved = "no-bytes";
                 if (img.Content is { } content)
                 {
-                    string ext = content.MediaType?.Split('/').Last() ?? "bin";
+                    string ext = img.MediaType?.Split('/').Last() ?? "bin";
                     string file = Path.Combine(outDir, $"{label}-p{page.PageNumber}-{i}.{ext}");
-                    await File.WriteAllBytesAsync(file, content.Data.ToArray());
-                    saved = $"{content.Data.Length:N0}B -> {file}";
+                    await File.WriteAllBytesAsync(file, content.ToArray());
+                    saved = $"{content.Length:N0}B -> {file}";
                 }
 
                 Console.WriteLine($"  p{page.PageNumber} img{i}: {bbox}{caption}  ({saved})");

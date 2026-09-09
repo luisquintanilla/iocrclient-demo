@@ -22,14 +22,15 @@ using IDocumentExtractionClient ocr = new AzureDocumentIntelligenceClient(
 await using FileStream doc = File.OpenRead(pdf);
 DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf");
 
+Console.WriteLine("source : azure-document-intelligence");
 Console.WriteLine($"model  : {result.GetModelId()}");
 Console.WriteLine($"pages  : {result.Pages.Count}");
 int tables = result.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
 int blocks = result.Pages.Sum(p => p.Elements.OfType<DocumentBlock>().Count());
 Console.WriteLine($"tables : {tables}   blocks : {blocks}");
 Console.WriteLine();
-string md = result.Pages[0].Text;
-Console.WriteLine("--- page 0 (markdown) ---");
+string md = result.Pages[0].GetProviderMarkdownOrCanonicalText();
+Console.WriteLine($"--- page {result.Pages[0].PageNumber} (provider markdown or canonical text) ---");
 Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 return 0;
 

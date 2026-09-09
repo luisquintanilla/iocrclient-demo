@@ -17,10 +17,7 @@ public class DataIngestor(
 {
     public async Task IngestDataAsync(DirectoryInfo directory, string searchPattern)
     {
-        using var writer = new VectorStoreWriter<IngestedChunk>(vectorCollection, new()
-        {
-            IncrementalIngestion = false,
-        });
+        using var writer = new VectorStoreWriter<IngestedChunk>(vectorCollection);
 
         using var pipeline = new IngestionPipeline(
             reader: new DocumentReader(directory, ocrClient),

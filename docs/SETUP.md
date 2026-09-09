@@ -22,10 +22,9 @@ dotnet --version
 
 ## 2. Get the code and the packages
 
-The `IDocumentExtractionClient` (#7588) API is **not on nuget.org yet**, so the
-repo ships it prebuilt in [`local-feed/`](../local-feed/README.md) and `nuget.config` resolves it
-from there — nothing to build. (To rebuild/refresh the feed from public GitHub refs:
-`scripts/build-local-feed.sh`.)
+The comparison-head `IDocumentExtractionClient` API is **not on nuget.org yet**. Run
+`scripts/build-local-feed.sh` before restoring samples. It validates the six committed packages from
+exact implementation commit `c1913907f05148370a84824b669d73249bb502e4`.
 
 ## 3. Authentication (keyless)
 
@@ -74,7 +73,8 @@ Prefer environment variables? The same values are read from `OCR_OPENAI_ENDPOINT
 ## 5. Run
 
 ```bash
-dotnet run samples/05-one-loop-four-clients.cs      # four engines, one loop (skips any you didn't configure)
+dotnet run samples/17-explicit-bridge-validation.cs # deterministic, no credentials
+dotnet run samples/05-one-loop-four-clients.cs      # optional providers; skips unconfigured engines
 ```
 
 See [`samples/README.md`](../samples/README.md) for the full sample table and what each one proves.
@@ -84,7 +84,8 @@ See [`samples/README.md`](../samples/README.md) for the full sample table and wh
 This repo exists to gather feedback on the **proposed** building blocks while they're still in
 review. If you have thoughts on the shape, that's the point:
 
-- **`IDocumentExtractionClient`** — the provider-neutral OCR seam — [dotnet/extensions #7588](https://github.com/dotnet/extensions/pull/7588)
-- **`OcrDocumentReader`** — the `IDocumentExtractionClient` → MEDI bridge (in `samples/ocr-shape/`)
+- **`IDocumentExtractionClient`**: the provider-neutral extraction seam
+- **`DocumentExtractionReader`**: the built-in explicit bridge under comparison in
+  [`luisquintanilla/extensions` PR #1](https://github.com/luisquintanilla/extensions/pull/1)
 
 Open an issue here for demo/repro problems, or comment on the PRs for API-shape feedback.

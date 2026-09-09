@@ -1,5 +1,9 @@
 # API notes — Round 2 proposals for `IDocumentExtractionClient` (#7588)
 
+> Historical note: this document records the earlier #7588 spike and is not current evidence for the
+> explicit bridge comparison. Current executable evidence starts in
+> [`samples/17-explicit-bridge-validation.cs`](../samples/17-explicit-bridge-validation.cs).
+
 These notes back two small, PR-ready additions to the `IDocumentExtractionClient` abstraction in
 `dotnet/extensions` (#7588) plus one naming refinement, and one implementation-side pattern for our
 vision-LLM provider that is **not** a #7588 ask. Each was prototyped in the demo graft, validated

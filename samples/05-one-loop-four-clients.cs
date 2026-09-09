@@ -43,8 +43,11 @@ foreach (var (name, client) in clients)
         DocumentExtractionResult r = await client.ExtractAsync(stream, "application/pdf");
 
         int tables = r.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
-        int chars = r.Text.Length;
-        string heading = FirstHeading(r.Text);
+        string providerOutput = string.Join(
+            "\n\n",
+            r.Pages.Select(page => page.GetProviderMarkdownOrCanonicalText()));
+        int chars = providerOutput.Length;
+        string heading = FirstHeading(providerOutput);
         Console.WriteLine($"{name,-30} {r.Pages.Count,6} {tables,7} {chars,8}  {heading}");
     }
 }

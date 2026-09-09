@@ -1,5 +1,8 @@
 # Speaker outline + talking points
 
+> Historical outline from `main@fd4bf7e`. Its app-owned bridge narrative and provider captures were
+> not rerun on Preview 2. Use `samples/17-explicit-bridge-validation.cs` for current evidence.
+
 **One interface for every OCR engine: provider-neutral document parsing for .NET**
 Luis Quintanilla · ~24 minutes (talk) or a 10-minute lightning cut
 

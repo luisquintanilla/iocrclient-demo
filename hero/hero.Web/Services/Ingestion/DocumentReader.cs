@@ -7,13 +7,9 @@ namespace hero.Web.Services.Ingestion;
 
 internal sealed class DocumentReader(DirectoryInfo rootDirectory, IDocumentExtractionClient ocrClient) : IngestionDocumentReader
 {
-    private readonly OcrDocumentReader _ocrReader = new(ocrClient, new DocumentExtractionOptions
-    {
-        AdditionalProperties = new()
-        {
-            [VisionLlmOcrClient.StructuredKey] = true,
-        },
-    });
+    private readonly DocumentExtractionReader _ocrReader = new(
+        ocrClient,
+        new() { MarkdownOnlyPagePolicy = MarkdownOnlyPagePolicy.PreserveAsMarkdown });
 
     public override Task<IngestionDocument> ReadAsync(FileInfo source, string identifier, string? mediaType = null, CancellationToken cancellationToken = default)
     {

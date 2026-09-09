@@ -23,6 +23,9 @@ namespace DemoOcr;
 /// if the model can't honor a schema. The vision LLM cannot emit image BYTES, so figures are
 /// caption-only (DocumentImage.Content stays null) — exactly the archetype the nullable Content shape serves.
 /// For arbitrary typed extraction, reach the inner client via <c>GetService&lt;IChatClient&gt;()</c>.
+/// Freeform transcription is preserved as exact <see cref="DocumentPage.Markdown"/>. It is not
+/// canonical element text, so direct displays must select Markdown deliberately and ingestion must
+/// opt into <c>MarkdownOnlyPagePolicy.PreserveAsMarkdown</c>.
 /// </summary>
 public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = null) : IDocumentExtractionClient
 {
@@ -74,7 +77,7 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
             .GetResponseAsync(message, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        var page = new DocumentPage(1, response.Text);
+        var page = new DocumentPage(1, [], response.Text);
         return new DocumentExtractionResult([page])
         {
             RawRepresentation = response,
@@ -112,9 +115,11 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
                     .Where(f => !string.IsNullOrWhiteSpace(f.Caption))
                     .Select(f => new DocumentImage { Caption = f.Caption }).ToList();
 
-                pages.Add(new DocumentPage(vp.Index + 1, vp.Markdown ?? "")
+                pages.Add(new DocumentPage(
+                    vp.Index + 1,
+                    tables.Cast<DocumentElement>().Concat(images).ToList(),
+                    vp.Markdown ?? "")
                 {
-                    Elements = tables.Cast<DocumentElement>().Concat(images).ToList(),
                     AdditionalProperties = BuildPageProperties(vp.Language, vp.Confidence),
                 });
             }

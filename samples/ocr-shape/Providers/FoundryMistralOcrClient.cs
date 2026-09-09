@@ -11,7 +11,8 @@ namespace DemoOcr;
 /// <summary>
 /// An <see cref="IDocumentExtractionClient"/> backed by Mistral OCR on Azure AI Foundry — a purpose-built
 /// document-AI model. Document-native archetype: the whole PDF goes up in one call and comes back
-/// as an ordered list of pages (per-page Markdown + tables), no client-side page splitting.
+/// as an ordered list of pages with exact provider Markdown and optional images, no client-side page
+/// splitting. Markdown is not copied into canonical elements.
 ///
 /// Keyless (Entra ID) via any <see cref="TokenCredential"/>. The Foundry route is vendor-namespaced:
 /// <c>{endpoint}/providers/mistral/azure/ocr</c> and accepts a base64 data URL (no public-URL fetch).
@@ -77,14 +78,6 @@ public sealed class FoundryMistralOcrClient(
         {
             int index = page.GetProperty("index").GetInt32();
             string markdown = page.TryGetProperty("markdown", out var md) ? md.GetString() ?? "" : "";
-            int tableCount = page.TryGetProperty("tables", out var t) && t.ValueKind == JsonValueKind.Array
-                ? t.GetArrayLength() : 0;
-            var tables = new List<DocumentTable>(tableCount);
-            for (int i = 0; i < tableCount; i++)
-            {
-                tables.Add(new DocumentTable(0, 0)); // Mistral reports tables inline in the page markdown.
-            }
-
             // Figures: Mistral returns page.images[] with a bbox and (when include_image_base64=true) the
             // rendered bytes. This is the document-native archetype filling DocumentImage.Content + bbox.
             var images = new List<DocumentImage>();
@@ -96,9 +89,11 @@ public sealed class FoundryMistralOcrClient(
                     if (img.TryGetProperty("image_base64", out var b64) && b64.ValueKind == JsonValueKind.String)
                     {
                         string raw = b64.GetString()!;
-                        image.Content = raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
-                            ? new DataContent(raw)
-                            : new DataContent(Convert.FromBase64String(raw), "image/png");
+                        int comma = raw.IndexOf(',');
+                        image.Content = Convert.FromBase64String(comma >= 0 ? raw[(comma + 1)..] : raw);
+                        image.MediaType = raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                            ? raw[5..raw.IndexOf(';')]
+                            : "image/png";
                     }
 
                     if (img.TryGetProperty("top_left_x", out var tlx) && img.TryGetProperty("top_left_y", out var tly)
@@ -112,15 +107,11 @@ public sealed class FoundryMistralOcrClient(
                 }
             }
 
-            pages.Add(new DocumentPage(index + 1, markdown)
-            {
-                Elements = tables.Cast<DocumentElement>().Concat(images).ToList(),
-            });
+            pages.Add(new DocumentPage(index + 1, images, markdown));
         }
 
         return new DocumentExtractionResult(pages)
         {
-            Usage = new DocumentExtractionUsage { PagesProcessed = total },
             RawRepresentation = root.Clone(),
             AdditionalProperties = new() { ["modelId"] = root.TryGetProperty("model", out var m) ? m.GetString() ?? model : model },
         };

@@ -64,7 +64,7 @@ var sw = Stopwatch.StartNew();
 DocumentExtractionResult result = await ocr.ExtractAsync(new MemoryStream(imageBytes), mediaType);
 sw.Stop();
 
-string md = result.Pages.Count > 0 ? result.Pages[0].Text : "";
+string md = result.Pages.Count > 0 ? result.Pages[0].GetProviderMarkdownOrCanonicalText() : "";
 Console.WriteLine($"model  : {result.GetModelId()}");
 Console.WriteLine($"chars  : {md.Length}   [{sw.ElapsedMilliseconds} ms on local GPU, first call includes model load]");
 Console.WriteLine();

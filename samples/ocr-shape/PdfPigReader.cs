@@ -56,11 +56,20 @@ public sealed class PdfPigReader(
         if (policy == OcrPolicy.AllPages && ocrClient is not null)
         {
             using var docStream = new MemoryStream(bytes, writable: false);
-            DocumentExtractionResult result = await ocrClient.ExtractAsync(docStream, mediaType, cancellationToken: cancellationToken);
+            DocumentExtractionResult extraction = await ocrClient
+                .ExtractAsync(docStream, mediaType, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
             OcrCalls++;
-            foreach (DocumentPage page in result.Pages)
-                document.Sections.Add(OcrPageToSection(page, result.GetModelId()));
-            return document;
+            var reader = new DocumentExtractionReader(
+                new FixedResultDocumentExtractionClient(extraction),
+                new() { MarkdownOnlyPagePolicy = MarkdownOnlyPagePolicy.PreserveAsMarkdown });
+            IngestionDocument extractedDocument = await reader.ReadAsync(
+                new MemoryStream(bytes, writable: false),
+                identifier,
+                mediaType,
+                cancellationToken).ConfigureAwait(false);
+            AddOcrMetadata(extractedDocument, extraction.GetModelId() ?? "ocr");
+            return extractedDocument;
         }
 
         // Native PdfPig text, with image-per-page OCR only for pages that need it.
@@ -113,18 +122,56 @@ public sealed class PdfPigReader(
         return document;
     }
 
-    private static IngestionDocumentSection OcrPageToSection(DocumentPage page, string? ocrSource)
+    private static void AddOcrMetadata(IngestionDocument document, string ocrSource)
     {
-        var section = new IngestionDocumentSection();
-        section.Metadata["page_number"] = page.PageNumber;
-        section.Metadata["ocr_source"] = ocrSource ?? "ocr";
-        if (!string.IsNullOrWhiteSpace(page.Text))
+        foreach (IngestionDocumentSection section in document.Sections)
         {
-            var para = new IngestionDocumentParagraph(page.Text) { Text = page.Text, PageNumber = page.PageNumber };
-            para.Metadata["page_number"] = page.PageNumber;
-            para.Metadata["ocr_source"] = ocrSource ?? "ocr";
-            section.Elements.Add(para);
+            section.Metadata["page_number"] = section.PageNumber;
+            section.Metadata["ocr_source"] = ocrSource;
         }
-        return section;
+
+        foreach (IngestionDocumentElement element in document.EnumerateContent())
+        {
+            AddElementMetadata(element, ocrSource);
+        }
+    }
+
+    private static void AddElementMetadata(IngestionDocumentElement element, string ocrSource)
+    {
+        element.Metadata["page_number"] = element.PageNumber;
+        element.Metadata["ocr_source"] = ocrSource;
+
+        if (element is IngestionDocumentTable { StructuredCells: { } cells })
+        {
+            foreach (IngestionDocumentElement nested in cells.SelectMany(cell => cell.Elements))
+            {
+                AddElementMetadata(nested, ocrSource);
+            }
+        }
+    }
+
+    private sealed class FixedResultDocumentExtractionClient(DocumentExtractionResult result)
+        : IDocumentExtractionClient
+    {
+        public Task<DocumentExtractionResult> ExtractAsync(
+            Stream document,
+            string mediaType,
+            DocumentExtractionOptions? options = null,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(result);
+
+        public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
+            Stream document,
+            string mediaType,
+            DocumentExtractionOptions? options = null,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null)
+            => serviceKey is null && serviceType.IsInstanceOfType(this) ? this : null;
+
+        public void Dispose()
+        {
+        }
     }
 }

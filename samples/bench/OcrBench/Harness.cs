@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CommunityToolkit.VectorData.InMemory;
+using DemoOcr;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.VectorData;
@@ -46,7 +47,11 @@ public static class Harness
             ct);
         sw.Stop();
 
-        string text = string.Join("\n\n", result.Pages.Select(p => p.Text));
+        // This eval measures the provider's textual artifact. Prefer exact provider Markdown and
+        // fall back to text derived only from canonical elements when no Markdown was supplied.
+        string text = string.Join(
+            "\n\n",
+            result.Pages.Select(page => page.GetProviderMarkdownOrCanonicalText()));
         int tables = result.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
         int images = result.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count());
         return new ExtractionOutcome(provider, text, result.Pages.Count, tables, images, sw.ElapsedMilliseconds);

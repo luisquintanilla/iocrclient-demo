@@ -7,6 +7,7 @@ public/
 # .NET local build output
 bin/
 obj/
+.nuget/
 
 # Local captures you are still editing
 samples/output/*.draft.txt
@@ -20,7 +21,5 @@ samples/.env.grounding
 # Internal reconciliation notes (never publish)
 DEMO-RECONCILIATION-NOTES.md
 
-# Local-feed: the runtime nupkgs ARE committed so the repo is clone-and-run.
-# They are unofficial local dev builds — see local-feed/README.md for provenance.
-# Symbols packages are not needed to run, so keep them out.
+# The six hash-pinned runtime packages are committed; symbol packages are not.
 local-feed/*.symbols.nupkg

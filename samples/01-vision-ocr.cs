@@ -31,10 +31,11 @@ using IDocumentExtractionClient ocr = new VisionLlmOcrClient(chat);
 await using FileStream doc = File.OpenRead(image);
 DocumentExtractionResult result = await ocr.ExtractAsync(doc, mediaType);
 
+Console.WriteLine("source : vision-llm");
 Console.WriteLine($"model  : {result.GetModelId()}");
 Console.WriteLine($"pages  : {result.Pages.Count}");
 Console.WriteLine();
-string md = result.Pages[0].Text;
+string md = result.Pages[0].GetProviderMarkdownOrCanonicalText();
 Console.WriteLine("--- transcribed page (markdown) ---");
 Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 return 0;

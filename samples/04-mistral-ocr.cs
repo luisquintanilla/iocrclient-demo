@@ -29,12 +29,13 @@ return 0;
 
 static void Report(DocumentExtractionResult r)
 {
+    Console.WriteLine("source : mistral-ocr");
     Console.WriteLine($"model  : {r.GetModelId()}");
     Console.WriteLine($"pages  : {r.Pages.Count}");
     Console.WriteLine();
     DocumentPage first = r.Pages[0];
-    Console.WriteLine($"--- page {first.PageNumber}  ({first.Elements.OfType<DocumentTable>().Count()} table(s)) ---");
-    string md = first.Text;
+    Console.WriteLine($"--- page {first.PageNumber} provider markdown  ({first.Elements.OfType<DocumentTable>().Count()} table(s)) ---");
+    string md = first.GetProviderMarkdownOrCanonicalText();
     Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 }
 

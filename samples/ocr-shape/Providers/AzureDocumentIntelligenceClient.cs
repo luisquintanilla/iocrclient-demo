@@ -16,7 +16,7 @@ namespace DemoOcr;
 /// A SECOND engine behind the same <see cref="IDocumentExtractionClient"/> contract — Azure Document Intelligence.
 ///
 /// Different wire protocol from Mistral OCR (async-poll AnalyzeResult, not document-&gt;pages[]), so it
-/// is a different class — but it normalizes onto the same DocumentExtractionResult, so the OcrDocumentReader and the
+/// is a different class, but it normalizes onto the same DocumentExtractionResult, so DocumentExtractionReader and the
 /// vector store never see the difference. This is the whole point of the capability seam: swap the
 /// engine, keep the pipeline. Keyless via DefaultAzureCredential / any TokenCredential.
 /// </summary>
@@ -85,7 +85,8 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                     Response<BinaryData> figResp = await _client
                         .GetAnalyzeResultFigureAsync(model, op.Id, figure.Id, cancellationToken)
                         .ConfigureAwait(false);
-                    image.Content = new DataContent(figResp.Value.ToArray(), "image/png");
+                    image.Content = figResp.Value.ToArray();
+                    image.MediaType = "image/png";
                 }
 
                 (imagesByPage.TryGetValue(pageNo, out var imgList) ? imgList : imagesByPage[pageNo] = new())
@@ -119,7 +120,10 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                 var cells = new List<DocumentTableCell>(t.Cells.Count);
                 foreach (Azure.AI.DocumentIntelligence.DocumentTableCell c in t.Cells)
                 {
-                    cells.Add(new DocumentTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
+                    cells.Add(new DocumentTableCell(
+                        c.RowIndex,
+                        c.ColumnIndex,
+                        [new DocumentBlock(c.Content ?? "")])
                     {
                         Kind = c.Kind.ToString() is { Length: > 0 } cellKind ? new DocumentTableCellKind(cellKind) : null,
                         RowSpan = c.RowSpan ?? 1,
@@ -150,25 +154,23 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                 {
                     elements.AddRange(im);
                 }
-                pages.Add(new DocumentPage(pageNo, i == 0 ? result.Content ?? "" : "")
+                pages.Add(new DocumentPage(pageNo, elements, i == 0 ? result.Content ?? "" : "")
                 {
                     Dimensions = page.Width is { } w && page.Height is { } h ? new DocumentPageDimensions((float)w, (float)h) : null,
                     CoordinateUnit = ToCoordinateUnit(page.Unit),
-                    Elements = elements,
                     AdditionalProperties = new() { ["di.pageNumber"] = pageNo },
                 });
             }
         }
         else
         {
-            pages.Add(new DocumentPage(1, result.Content ?? ""));
+            pages.Add(new DocumentPage(1, [], result.Content ?? ""));
         }
 
         var tableCount = result.Tables?.Count ?? 0;
 
         return new DocumentExtractionResult(pages)
         {
-            Usage = new DocumentExtractionUsage { PagesProcessed = result.Pages?.Count },
             RawRepresentation = result,
             AdditionalProperties = new() { ["modelId"] = model, ["di.tableCount"] = tableCount },
         };

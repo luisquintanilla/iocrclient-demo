@@ -1,0 +1,12 @@
+Source: c1913907f05148370a84824b669d73249bb502e4
+Feed: 6/6 hashes+id+version+repo+commit
+Client/pipeline: calls=1 processors=1 processed_chunks=2
+Mapped: pages=1,2 types=IngestionDocumentHeader,IngestionDocumentParagraph,IngestionDocumentTable,IngestionDocumentImage,IngestionDocumentParagraph,IngestionDocumentHeader,IngestionDocumentParagraph
+Chunks: count=2 types=TextContent|TextContent tokens=101|8 pages=1|2
+Writer: typed=Preview2ChunkRecord stored=2 pages=1|2 embeddings=TextContent,TextContent
+Retrieval: revenue=page1:$12M retention=page2:unchanged
+Mixed: chunks=TextContent(2)|DataContent(0) stored=2 roundtrip=true embeddings=TextContent,DataContent
+Markdown: source Text=empty default=error(page4) preserve=exact
+PdfPig: pages=1|2 metadata=page_number,ocr_source
+Loss: extraction evidence retained; ingestion/chunks/records isolated
+PASS: Preview2 non-generic bridge -> chunker -> processor -> typed writer -> provider embedding -> retrieval
