@@ -4,13 +4,12 @@
 //
 // A vision LLM behind IDocumentExtractionClient normally hands back one blob of freeform Markdown (sample 01). But
 // MEAI ships first-class structured output (IChatClient.GetResponseAsync<T> + ForJsonSchema<T>), so a
-// vision provider can do better. Two provider-neutral patterns — NEITHER genericizes IDocumentExtractionClient:
+// vision provider can ask for a schema. Two provider-neutral patterns follow; neither genericizes
+// IDocumentExtractionClient:
 //
-//   (A) Structured TRANSCRIPTION (opt-in, inside the client). Ask the model for DocumentExtractionResult-SHAPED JSON
-//       instead of prose, so tables / figure captions / language / confidence come back reliably rather
-//       than parsed out of markdown. Opt in with DocumentExtractionOptions.AdditionalProperties["vision.structured"].
-//       Degrades to the freeform path when the model can't honor a schema. Figures are caption-only
-//       (DocumentImage.Content stays null) — the VLM archetype the nullable Content shape was designed for.
+//   (A) Structured TRANSCRIPTION (opt-in, inside the client). Ask for exact per-page Markdown plus
+//       language/confidence. Separate tables or figures without ordering offsets are rejected, and
+//       the client falls back to freeform exact Markdown rather than inventing reading order.
 //
 //   (B) User-defined typed EXTRACTION (composition, outside the client). For an arbitrary POCO, DON'T
 //       grow IDocumentExtractionClient — reach the inner IChatClient via GetService<IChatClient>() and call
@@ -24,6 +23,7 @@ using System.ComponentModel;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 using DemoOcr;
 
 string endpoint = Require("OCR:OpenAIEndpoint");
@@ -43,26 +43,11 @@ Console.WriteLine("=== (A) structured transcription: OFF vs ON ===\n");
 
 DocumentExtractionResult freeform = await OcrOnce(ocr, pdf, mediaType, structured: false);
 Console.WriteLine($"[structured=OFF] model={freeform.GetModelId()} pages={freeform.Pages.Count} " +
-    $"tables={freeform.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count())} figures={freeform.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count())} " +
     $"lang={Lang(freeform)} conf={Conf(freeform)}");
 
 DocumentExtractionResult structured = await OcrOnce(ocr, pdf, mediaType, structured: true);
 Console.WriteLine($"[structured=ON ] model={structured.GetModelId()} pages={structured.Pages.Count} " +
-    $"tables={structured.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count())} figures={structured.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count())} " +
     $"lang={Lang(structured)} conf={Conf(structured)}");
-
-DocumentPage first = structured.Pages[0];
-List<DocumentTable> firstTables = first.Elements.OfType<DocumentTable>().ToList();
-List<DocumentImage> firstImages = first.Elements.OfType<DocumentImage>().ToList();
-if (firstTables.Count > 0)
-{
-    Console.WriteLine($"\n  first table ({firstTables[0].RowCount}x{firstTables[0].ColumnCount}):");
-    Console.WriteLine("  " + (firstTables[0].MarkdownRepresentation ?? "(cells only)").Replace("\n", "\n  "));
-}
-foreach (DocumentImage img in firstImages)
-{
-    Console.WriteLine($"  figure caption (no bytes — VLM archetype): {img.Caption}");
-}
 
 // --- Pattern B: OCR-then-extract a typed POCO via the INNER IChatClient (composition) -------------
 Console.WriteLine("\n=== (B) OCR-then-extract a typed POCO (GetService<IChatClient>) ===\n");
@@ -74,9 +59,10 @@ if (inner is null)
     return 0;
 }
 
-string transcript = string.Join("\n\n", structured.Pages.Select(p => p.Text));
+// Typed extraction consumes the deterministic canonical-tree projection, not provider Markdown.
+string canonicalTranscript = structured.Text;
 ChatResponse<DocumentSummary> extracted = await inner.GetResponseAsync<DocumentSummary>(
-    [new ChatMessage(ChatRole.User, $"Extract a structured summary from this document text:\n\n{transcript}")],
+    [new ChatMessage(ChatRole.User, $"Extract a structured summary from this document text:\n\n{canonicalTranscript}")],
     VisionLlmOcrClient.SchemaJson);
 
 if (extracted.TryGetResult(out DocumentSummary? summary))
@@ -101,13 +87,12 @@ static async Task<DocumentExtractionResult> OcrOnce(IDocumentExtractionClient oc
 }
 
 static string Lang(DocumentExtractionResult r) =>
-    r.Pages.Count > 0 && r.Pages[0].AdditionalProperties?.TryGetValue("language", out object? l) == true
-        ? l?.ToString() ?? "?" : "?";
+    r.Document.Nodes.OfType<DocumentText>().Select(text => text.Language).FirstOrDefault(language => language is not null) ?? "?";
 
 static string Conf(DocumentExtractionResult r) =>
-    r.Pages.Count > 0
-    && r.Pages[0].AdditionalProperties?.TryGetValue("confidence", out object? confidence) == true
-    && confidence is double c ? c.ToString("0.00") : "?";
+    r.Pages.SelectMany(page => page.Evidence).Select(evidence => evidence.Confidence).FirstOrDefault() is { } confidence
+        ? confidence.ToString("0.00")
+        : "?";
 
 static string Require(string name) =>
     DemoOcr.DemoConfig.Config[name]

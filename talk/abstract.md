@@ -1,25 +1,18 @@
 # Abstract
 
-**One interface for every OCR engine: provider-neutral document parsing for .NET**
+**Preview 2 neutral shared-tree consumer validation**
 
-Getting a PDF into clean, structured text is the messiest part of any RAG or document pipeline, and
-today it locks you to one vendor. Mistral OCR, Azure Document Intelligence, Azure Content
-Understanding, and vision LLMs each solve the same job behind a different API, so switching engines is
-a rewrite instead of a config change.
+This draft comparison tests a neutral shared `Document` on the authoritative non-generic MEDI
+Preview 2 baseline. A credential-free two-page extraction runs through the built-in
+`DocumentExtractionReader`, non-generic chunker/processor/pipeline contracts, a typed
+`VectorStoreWriter<TRecord>`, real InMemory provider embeddings, and page-specific retrieval.
 
-This talk introduces `IDocumentExtractionClient`, a provider-neutral seam for document parsing that follows the exact
-pattern .NET already uses for `IChatClient` and `IEmbeddingGenerator`: one interface, any engine, swap
-with a line. We run four live engines through a single loop with identical code, then draw the line
-that matters — `IDocumentExtractionClient` is a *capability*, `IngestionDocumentReader` is a *pipeline stage*, and one
-small `OcrDocumentReader` bridges them into a real Microsoft.Extensions.DataIngestion (MEDI) pipeline.
-From there we carry the page number through chunking so answers cite their source page, show the same
-seam composed a second way by the PdfPig reader (digital text first, OCR only the pages that need it),
-and close with an end-to-end run from PDF to a page-cited answer.
+The proof also covers mixed `TextContent` and captionless-image `DataContent`, required token counts,
+recursive provenance, exact Markdown isolation, PdfPig metadata, serialization round trip, and
+independent use of `Microsoft.Extensions.Documents.Abstractions`.
 
-Everything is grounded on real runs you can reproduce from the sample repo — and the samples run on
-the real `dotnet/extensions` code, packed locally, not a mock. You will leave knowing where OCR stops
-and the pipeline begins, how to keep your document pipeline free of vendor lock-in, and how a set of
-open pull requests across `dotnet/extensions` and `CommunityToolkit/AI` make this a first-class
-building block.
+Packages come only from implementation `6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`.
+Presentation `7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2` is evidence-only.
 
-Audience: .NET developers building RAG, document, or agent pipelines. No prior OCR experience needed.
+This evidence supports comparison with the bridge architecture. It does not declare a winner or
+claim merge readiness, OCR quality, performance, or settled schema-evolution policy.

@@ -22,15 +22,15 @@ dotnet --version
 
 ## 2. Get the code and the packages
 
-The `IDocumentExtractionClient` (#7588) API is **not on nuget.org yet**, so the
-repo ships it prebuilt in [`local-feed/`](../local-feed/README.md) and `nuget.config` resolves it
-from there — nothing to build. (To rebuild/refresh the feed from public GitHub refs:
-`scripts/build-local-feed.sh`.)
+The six Preview 2 neutral architecture packages are **not on nuget.org**. The repo ships the exact
+hash-verified implementation feed in [`local-feed/`](../local-feed/README.md). Run
+`scripts/build-local-feed.sh` to verify package count, IDs, hashes, version, repository, and commit.
+Published MEAI and provider dependencies still resolve from NuGet.org.
 
 ## 3. Authentication (keyless)
 
-Every sample authenticates with **`Azure.Identity.DefaultAzureCredential`** — no keys in code or
-config. Sign in once, with an identity that has a **Cognitive Services** data-plane role (e.g.
+Credential-backed Azure samples authenticate with **`Azure.Identity.DefaultAzureCredential`**. No
+keys are stored in code or config. Sign in once with an identity that has a **Cognitive Services** data-plane role (e.g.
 *Cognitive Services User*) on the resources you use:
 
 ```bash
@@ -84,7 +84,7 @@ See [`samples/README.md`](../samples/README.md) for the full sample table and wh
 This repo exists to gather feedback on the **proposed** building blocks while they're still in
 review. If you have thoughts on the shape, that's the point:
 
-- **`IDocumentExtractionClient`** — the provider-neutral OCR seam — [dotnet/extensions #7588](https://github.com/dotnet/extensions/pull/7588)
-- **`OcrDocumentReader`** — the `IDocumentExtractionClient` → MEDI bridge (in `samples/ocr-shape/`)
+- **neutral implementation:** `6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`
+- **presentation evidence only:** `7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2`
 
 Open an issue here for demo/repro problems, or comment on the PRs for API-shape feedback.

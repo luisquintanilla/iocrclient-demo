@@ -4,6 +4,7 @@ using DemoOcr;
 using hero.Web.Components;
 using hero.Web.Services;
 using hero.Web.Services.Ingestion;
+using CommunityToolkit.VectorData.SqliteVec;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
@@ -28,6 +29,9 @@ builder.Services.AddChatClient(azureOpenAIClient.GetChatClient(chatDeployment).A
 builder.Services.AddEmbeddingGenerator(azureOpenAIClient.GetEmbeddingClient(embeddingDeployment).AsIEmbeddingGenerator())
     .UseOpenTelemetry(configure: c =>
         c.EnableSensitiveData = builder.Environment.IsDevelopment());
+builder.Services.AddSingleton<IEmbeddingGenerator<AIContent, Embedding<float>>>(sp =>
+    new AIContentEmbeddingGenerator(
+        sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>()));
 builder.Services.AddSingleton<IDocumentExtractionClient>(sp =>
     new VisionLlmOcrClient(sp.GetRequiredService<IChatClient>()));
 
@@ -36,11 +40,18 @@ var vectorStorePath = Path.IsPathFullyQualified(configuredVectorStorePath)
     ? configuredVectorStorePath
     : Path.Combine(AppContext.BaseDirectory, configuredVectorStorePath);
 var vectorStoreConnectionString = $"Data Source={vectorStorePath}";
-builder.Services.AddSqliteVectorStore(_ => vectorStoreConnectionString);
-builder.Services.AddSingleton(sp => sp.GetRequiredService<VectorStore>().GetIngestionRecordCollection<IngestedChunk>(
-    IngestedChunk.CollectionName,
-    IngestedChunk.VectorDimensions,
-    IngestedChunk.VectorDistanceFunction));
+builder.Services.AddSingleton<VectorStore>(sp => new SqliteVectorStore(
+    vectorStoreConnectionString,
+    new()
+    {
+        EmbeddingGenerator =
+            sp.GetRequiredService<IEmbeddingGenerator<AIContent, Embedding<float>>>(),
+    }));
+builder.Services.AddSingleton(sp => sp.GetRequiredService<VectorStore>()
+    .GetIngestionRecordCollection<IngestedChunk>(
+        IngestedChunk.CollectionName,
+        IngestedChunk.VectorDimensions,
+        IngestedChunk.VectorDistanceFunction));
 builder.Services.AddSingleton<DataIngestor>();
 builder.Services.AddSingleton<SemanticSearch>();
 builder.Services.AddKeyedSingleton("ingestion_directory", new DirectoryInfo(Path.Combine(builder.Environment.WebRootPath, "Data")));
@@ -71,4 +82,28 @@ internal static class ConfigurationExtensions
     public static string Require(this IConfiguration configuration, string key) =>
         configuration[key] ?? throw new InvalidOperationException(
             $"Missing config '{key}'. Set it with: dotnet user-secrets set \"{key}\" <value> --id iocrclient-demo");
+}
+
+internal sealed class AIContentEmbeddingGenerator(
+    IEmbeddingGenerator<string, Embedding<float>> inner)
+    : IEmbeddingGenerator<AIContent, Embedding<float>>
+{
+    public Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(
+        IEnumerable<AIContent> values,
+        EmbeddingGenerationOptions? options = null,
+        CancellationToken cancellationToken = default)
+        => inner.GenerateAsync(
+            values.Select(value => value is TextContent text
+                ? text.Text
+                : throw new NotSupportedException(
+                    $"The configured text embedding model cannot embed {value.GetType().Name}.")),
+            options,
+            cancellationToken);
+
+    public object? GetService(Type serviceType, object? serviceKey = null)
+        => serviceKey is null && serviceType.IsInstanceOfType(this)
+            ? this
+            : inner.GetService(serviceType, serviceKey);
+
+    public void Dispose() => inner.Dispose();
 }

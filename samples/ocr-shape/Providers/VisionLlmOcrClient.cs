@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 
 namespace DemoOcr;
 
@@ -16,12 +17,11 @@ namespace DemoOcr;
 /// hybrid fallback — NOT as a first-class document reader, and NOT confused with the vision LLM's real
 /// value, which is *understanding* (captioning/field-extraction) via an enricher over IChatClient.
 ///
-/// Round-2 spike (current-repo, not #7588): when the model supports structured output, this client can
-/// ask for DocumentExtractionResult-SHAPED JSON instead of freeform markdown, so it fills tables + figure captions +
-/// language + confidence reliably rather than by parsing prose. Opt in via
+/// When the model supports structured output, this client can request exact page Markdown plus
+/// language and confidence. Opt in via
 /// <c>DocumentExtractionOptions.AdditionalProperties["vision.structured"] = true</c>; it degrades to the freeform path
-/// if the model can't honor a schema. The vision LLM cannot emit image BYTES, so figures are
-/// caption-only (DocumentImage.Content stays null) — exactly the archetype the nullable Content shape serves.
+/// if the model cannot honor the schema or returns separate tables/figures without ordering offsets.
+/// The client never fabricates a canonical order by subtracting and appending structural fragments.
 /// For arbitrary typed extraction, reach the inner client via <c>GetService&lt;IChatClient&gt;()</c>.
 /// </summary>
 public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = null) : IDocumentExtractionClient
@@ -38,10 +38,9 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
         "Output only the Markdown, no commentary.";
 
     private const string StructuredPrompt =
-        "Transcribe this document as structured data. For each page provide: the zero-based index; " +
-        "GitHub-flavored markdown preserving headings, lists, and tables; a list of tables with " +
-        "rowCount, columnCount, and a markdown rendering; a list of figures each with a short caption " +
-        "describing the image or chart; the detected language; and a confidence in [0,1].";
+        "Transcribe this document as structured data. For each page provide the zero-based index, " +
+        "one exact GitHub-flavored Markdown rendering in reading order, detected language, and confidence in [0,1]. " +
+        "Do not return separate table or figure collections because they do not carry ordering offsets.";
 
     public async Task<DocumentExtractionResult> ExtractAsync(
         Stream document, string mediaType, DocumentExtractionOptions? options = null,
@@ -74,7 +73,20 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
             .GetResponseAsync(message, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        var page = new DocumentPage(1, response.Text);
+        string projected = DocumentExtractionDemoExtensions.ProjectProviderMarkdown(response.Text);
+        var nodes = new List<DocumentNode>();
+        if (projected.Length > 0)
+        {
+            nodes.Add(DocumentExtractionDemoExtensions.CreateTextNode("vision", 1, 0, projected));
+        }
+
+        var page = new DocumentPage(
+            1,
+            DocumentExtractionDemoExtensions.CreatePageDocument("vision", 1, nodes),
+            markdown: response.Text)
+        {
+            RawRepresentation = response,
+        };
         return new DocumentExtractionResult([page])
         {
             RawRepresentation = response,
@@ -101,22 +113,42 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
                 return null;
             }
 
+            if (!HasSequentialPageIndices(parsed.Pages.Select(static page => page.Index)) ||
+                parsed.Pages.Any(page => !CanPreserveStructuredOrder(
+                page.Markdown,
+                page.Tables?.Count ?? 0,
+                page.Figures?.Count ?? 0)))
+            {
+                return null;
+            }
+
             var pages = new List<DocumentPage>(parsed.Pages.Count);
             foreach (VisionPage vp in parsed.Pages)
             {
-                var tables = (vp.Tables ?? []).Select(t =>
-                    new DocumentTable(t.RowCount, t.ColumnCount, markdownRepresentation: t.Markdown)).ToList();
-
-                // The VLM archetype: figures are CAPTION-ONLY (no bytes) — DocumentImage.Content stays null.
-                var images = (vp.Figures ?? [])
-                    .Where(f => !string.IsNullOrWhiteSpace(f.Caption))
-                    .Select(f => new DocumentImage { Caption = f.Caption }).ToList();
-
-                pages.Add(new DocumentPage(vp.Index + 1, vp.Markdown ?? "")
+                int pageNumber = vp.Index + 1;
+                string projected = DocumentExtractionDemoExtensions.ProjectProviderMarkdown(vp.Markdown!);
+                var nodes = new List<DocumentNode>();
+                var evidence = new List<DocumentExtractionEvidence>();
+                if (projected.Length > 0)
                 {
-                    Elements = tables.Cast<DocumentElement>().Concat(images).ToList(),
-                    AdditionalProperties = BuildPageProperties(vp.Language, vp.Confidence),
-                });
+                    DocumentText textNode = DocumentExtractionDemoExtensions.CreateTextNode(
+                        "vision",
+                        pageNumber,
+                        nodes.Count,
+                        projected,
+                        language: vp.Language);
+                    nodes.Add(textNode);
+                    if (vp.Confidence is { } confidence)
+                    {
+                        evidence.Add(new DocumentExtractionEvidence(textNode.Id) { Confidence = confidence });
+                    }
+                }
+
+                pages.Add(new DocumentPage(
+                    pageNumber,
+                    DocumentExtractionDemoExtensions.CreatePageDocument("vision", pageNumber, nodes),
+                    markdown: vp.Markdown,
+                    evidence: evidence));
             }
 
             return new DocumentExtractionResult(pages)
@@ -132,24 +164,30 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
         }
     }
 
-    private static AdditionalPropertiesDictionary? BuildPageProperties(string? language, double? confidence)
+    public static bool CanPreserveStructuredOrder(
+        string? markdown,
+        int tableCount,
+        int figureCount)
+        => !string.IsNullOrWhiteSpace(markdown)
+            && tableCount == 0
+            && figureCount == 0;
+
+    public static bool HasSequentialPageIndices(IEnumerable<int> indices)
     {
-        AdditionalPropertiesDictionary? properties = null;
-        if (language is { Length: > 0 })
+        int expected = 0;
+        foreach (int index in indices)
         {
-            properties = new() { ["language"] = language };
+            if (index != expected++)
+            {
+                return false;
+            }
         }
-        if (confidence is { } c)
-        {
-            properties ??= new();
-            properties["confidence"] = c;
-        }
-        return properties;
+        return expected > 0;
     }
 
     public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
         Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
-        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
+        => DocumentExtractionDemoExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this : chatClient.GetService(serviceType, serviceKey);
@@ -175,8 +213,6 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
 
     private sealed class VisionTable
     {
-        [JsonPropertyName("rowCount")] public int RowCount { get; set; }
-        [JsonPropertyName("columnCount")] public int ColumnCount { get; set; }
         [JsonPropertyName("markdown")] public string? Markdown { get; set; }
     }
 

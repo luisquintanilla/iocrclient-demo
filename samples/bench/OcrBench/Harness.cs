@@ -2,6 +2,7 @@ using System.Diagnostics;
 using CommunityToolkit.VectorData.InMemory;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 using Microsoft.Extensions.VectorData;
 using UglyToad.PdfPig;
 
@@ -46,9 +47,11 @@ public static class Harness
             ct);
         sw.Stop();
 
-        string text = string.Join("\n\n", result.Pages.Select(p => p.Text));
-        int tables = result.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
-        int images = result.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count());
+        // Evaluation and retrieval use the deterministic canonical-tree projection.
+        // Exact provider Markdown remains a separate extraction artifact.
+        string text = result.Text;
+        int tables = result.Document.Nodes.OfType<DocumentTable>().Count();
+        int images = result.Document.Nodes.OfType<DocumentImage>().Count();
         return new ExtractionOutcome(provider, text, result.Pages.Count, tables, images, sw.ElapsedMilliseconds);
     }
 

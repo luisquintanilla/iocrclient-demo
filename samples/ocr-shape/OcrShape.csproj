@@ -1,10 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The REAL IOcrClient (#7588) + MEDI (preview2), consumed from the local-pack feed built
-    by scripts/build-local-feed.sh (version 10.8.0-dev). Every provider in this demo implements the
-    actual Microsoft.Extensions.AI.IOcrClient, and the OcrDocumentReader bridges it to MEDI's
-    IngestionDocumentReader. When #7588 ships, delete ../local-feed and bump the versions.
+    Preview 2 neutral implementation packages from exact source
+    6f7f3fa75d08599eb5005a0cd3db17d20694e1a8.
   -->
 
   <PropertyGroup>
@@ -12,16 +10,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <!-- IOcrClient / OCR types and MEDI chunkers are marked [Experimental]; opt in explicitly. -->
+    <!-- Document Extraction types and MEDI chunkers are marked [Experimental]; opt in explicitly. -->
     <NoWarn>$(NoWarn);MEAI001;MEDE0001;MEAI002;MEAI003</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Real abstractions + core middleware + OpenAI binding + MEDI pipeline (local-pack). -->
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.DocumentExtraction" Version="10.8.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.8.0-dev" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.0" />
+    <PackageReference Include="Microsoft.Extensions.Documents.Abstractions" Version="10.8.0-preview2neutral.6f7f3fa" />
+    <PackageReference Include="Microsoft.Extensions.DocumentExtraction" Version="10.8.0-preview2neutral.6f7f3fa" />
+    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.8.0-preview2neutral.6f7f3fa" />
+    <PackageReference Include="Microsoft.Extensions.DataIngestion.DocumentExtraction" Version="10.8.0-preview2neutral.6f7f3fa" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.0" />
     <!-- Credentials for every sample come from user-secrets (id iocrclient-demo), env fallback. -->
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.9" />

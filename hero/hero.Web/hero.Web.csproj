@@ -10,9 +10,10 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.5.0-beta.1" />
-    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.8.0-dev" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.0" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.0" />
+    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.8.0-preview2neutral.6f7f3fa" />
+    <PackageReference Include="Microsoft.Extensions.DataIngestion.DocumentExtraction" Version="10.8.0-preview2neutral.6f7f3fa" />
     <PackageReference Include="Microsoft.ML.Tokenizers.Data.Cl100kBase" Version="1.0.1" />
     <PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="1.0.1" />
     <PackageReference Include="CommunityToolkit.VectorData.SqliteVec" Version="1.0.0-preview.3" />

@@ -1,36 +1,88 @@
-# One interface for every OCR engine
+# Preview 2 neutral shared-tree consumer validation
 
-A grounded talk and runnable sample set showing `IDocumentExtractionClient`, a provider-neutral seam for document
-parsing in .NET. Four OCR engines (a vision LLM, Mistral OCR, Azure Document Intelligence, and Azure
-Content Understanding) run through one interface; a thin `OcrDocumentReader` bridges that capability
-into a real Microsoft.Extensions.DataIngestion (MEDI) pipeline; the page model is carried through
-chunking so answers cite their source page; and the PdfPig reader shows the same seam composed a
-second way (digital text first, OCR only the pages that need it).
+> **DRAFT COMPARISON. DO NOT MERGE until Adam selects an architecture.**
 
-- **Slides:** [`slides.md`](slides.md) (message-first, every claim grounded on a real run)
-- **Speaker outline + abstract + primer:** [`talk/`](talk/) — the deck opens with a 90-second
-  [primer](talk/primer.md) (what OCR is, the extract→structure→chunk→retrieve→answer vocabulary, and
-  the two engine archetypes) so the payoff lands for everyone.
-- **Runnable proof:** [`samples/`](samples/) with captured output in `samples/output/` — including
-  `09-images-and-uris.cs` (figures + `UriContent`), `10-eval-ocr-vs-pdfpig.cs` (an eval harness
-  measuring OCR engines vs naive PdfPig), and `11-vision-structured-output.cs` (structured
-  transcription from the vision path).
-- **Diagrams:** [`assets/diagrams/`](assets/diagrams/) — four hand-authored branded SVGs (stack,
-  data-flow/boundary, composition, eval harness) embedded in the deck and reusable standalone.
-- **Reproducible feed:** [`scripts/build-local-feed.sh`](scripts/build-local-feed.sh) packs the real
-  `dotnet/extensions` code (preview2 + #7588) into `local-feed/` — the samples run on the real
-  types, not a vendored copy.
-- **The body of work this drives, across two repos:**
-  - dotnet/extensions [#7588](https://github.com/dotnet/extensions/pull/7588) (IDocumentExtractionClient) — the live
-    seam. Page provenance rides the shipping API (the reader emits one section per page; the samples
-    chunk per page), so an earlier chunk-propagation proposal,
-    [#7516](https://github.com/dotnet/extensions/pull/7516), closed unmerged and is no longer needed
-  - CommunityToolkit/AI [#13](https://github.com/CommunityToolkit/AI/issues/13) (design),
-    [#15](https://github.com/CommunityToolkit/AI/pull/15) (VisionLMOcrClient, closes #13),
-    [#14](https://github.com/CommunityToolkit/AI/pull/14) (PdfPig reader composing any IDocumentExtractionClient)
+This is the executable consumer companion for the neutral architecture on the authoritative
+`data-ingestion-preview2` line:
 
-Built on the reveal-presentation-template. The rest of this README is the template's operating
-manual: how the deck, themes, layouts, and grounding workflow fit together.
+- evaluated implementation and package source:
+  [`6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`](https://github.com/luisquintanilla/extensions/commit/6f7f3fa75d08599eb5005a0cd3db17d20694e1a8)
+- evidence-only presentation:
+  [`7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2`](https://github.com/luisquintanilla/extensions/commit/7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2)
+- common base: `f6ba2df16275bfc5eaf50aeb9327e2ec34ee8129`
+- Preview 2 ancestor: `e124c123afeeda2f271f3b99a70eb3cfe187a471`
+
+Only `6f7f3fa7…` supplies packages. The presentation commit is never a package source.
+
+```csharp
+using IDocumentExtractionClient client = new FixtureExtractionClient(result);
+var reader = new DocumentExtractionReader(client);
+var chunker = new SectionChunker(new(tokenizer)
+{
+    MaxTokensPerChunk = 256,
+    OverlapTokens = 0,
+});
+using var writer = new VectorStoreWriter<Preview2ChunkRecord>(collection);
+using var pipeline = new IngestionPipeline(reader, chunker, writer);
+```
+
+Preview 2 remains non-generic at the pipeline boundary: `IngestionPipeline`, `IngestionChunker`,
+`IngestionChunkProcessor`, `IngestionChunkWriter`, and `IngestionChunk`. Chunk `Content` is
+`AIContent`, and every chunk has a required positive `TokenCount`. The stock
+`VectorStoreWriter<TRecord>` persists through a typed `IngestionChunkVectorRecord`.
+
+Run the credential-free validation:
+
+```bash
+scripts/build-local-feed.sh
+scripts/validate-neutral-tree.sh
+```
+
+The exact proof is
+[`samples/17-neutral-shared-tree-validation.cs`](samples/17-neutral-shared-tree-validation.cs);
+its executed output is
+[`samples/output/17-neutral-shared-tree-validation.txt`](samples/output/17-neutral-shared-tree-validation.txt).
+The independent shared-package proof is
+[`samples/documents-only/Program.cs`](samples/documents-only/Program.cs), with captured output in
+[`samples/output/documents-only.txt`](samples/output/documents-only.txt).
+
+The six-package feed is closed and hash-verified by ID, version, repository URL, branch, and exact commit.
+Published MEAI, provider SDK, vector store, and evaluation dependencies come from NuGet.org.
+
+**This proves:** shared `Document` identity pass-through; producer-order page references with preserved
+multiplicity; versioned `DocumentOpaque` and non-text round trips; typed extraction-result/evidence
+lookup with optional geometry kept outside the semantic tree; exact non-generic chunk content,
+context, token counts, source IDs, and pages; typed stock-writer persistence; real provider embeddings
+during upsert and query; exact revenue/retention retrieval; mixed `TextContent`/`DataContent`;
+serialization round trip; Markdown isolation; PdfPig metadata/provenance; and independent Documents
+consumption.
+
+**It does not prove:** merge readiness, OCR quality, performance, live-provider behavior, archive
+rebuild identity, or settled schema evolution and immutable rewrite policy. `SourceNodeIds` do not
+persist by default. Existing collections may need migration for page-number storage. Cross-page
+logical hierarchy remains an open decision, and sparse table overlap validation remains
+`O(cells^2)`.
+
+Provider-backed samples and the hero compile; providers are not executed and no provider output is
+claimed.
+
+## Comparison links
+
+- bridge architecture handoff:
+  [`a3033e0aa1aa25e4b5e360d73d500101e6b9af71`](https://github.com/luisquintanilla/extensions/commit/a3033e0aa1aa25e4b5e360d73d500101e6b9af71)
+- evaluated bridge source:
+  [`c1913907f05148370a84824b669d73249bb502e4`](https://github.com/luisquintanilla/extensions/commit/c1913907f05148370a84824b669d73249bb502e4)
+- bridge consumer:
+  [`aa55dfe6a6d297b7a3edaf9107007cefcc9f09f6`](https://github.com/luisquintanilla/iocrclient-demo/commit/aa55dfe6a6d297b7a3edaf9107007cefcc9f09f6)
+
+These links support comparison only. This PR does not state a winner.
+
+## Superseded historical generic-main evidence
+
+The previous head
+[`75bbb4195baf8ed92f702a6cfa1f02ec5360399e`](https://github.com/luisquintanilla/iocrclient-demo/commit/75bbb4195baf8ed92f702a6cfa1f02ec5360399e)
+tested a historical generic-main neutral experiment. It is superseded and is not Preview 2 evidence.
+Its commits remain reachable for audit, but no result from that package set is presented as current.
 
 ---
 
@@ -98,17 +150,17 @@ Microsoft Learn links) and the `dotnet user-secrets` keys each one needs.
 The samples run on the real `IDocumentExtractionClient` + MEDI bits. Those APIs aren't on nuget.org yet, so this
 repo **ships them prebuilt in [`local-feed/`](local-feed/README.md)** — *unofficial* local dev
 builds; read that NOTICE — and `nuget.config` resolves them from there. Nothing to build first:
-`az login`, set your endpoints, run a sample. (To rebuild/refresh the feed from public GitHub refs,
-run `scripts/build-local-feed.sh`.)
+`az login`, set your endpoints, run a sample. Use `scripts/build-local-feed.sh` to verify the
+committed feed, or set `SOURCE_FEED` to validate and install a prebuilt replacement with rollback.
 
 ```bash
 az login                                            # keyless DefaultAzureCredential
 # set endpoints once via user-secrets (UserSecretsId iocrclient-demo) — see docs/SETUP.md
 dotnet run samples/05-one-loop-four-clients.cs                     # defaults to the complex USGS fact sheet
 dotnet run samples/05-one-loop-four-clients.cs -- samples/data/survival-kit.pdf  # the simple born-digital baseline
-dotnet run samples/06-medi-pipeline.cs              # OcrDocumentReader -> MEDI chunker; per-page provenance
+dotnet run samples/06-medi-pipeline.cs              # built-in reader -> MEDI chunker; typed provenance
 dotnet run samples/07-e2e-rag.cs                    # USGS default + its oil-estimate question
-dotnet run samples/08-pdfpig-reader.cs              # native text + OCR fallback on USGS
+dotnet run samples/08-pdfpig-reader.cs              # native text or optional whole-document OCR
 dotnet run samples/09-images-and-uris.cs            # figures + UriContent overload
 (cd samples && dotnet run 10-eval-ocr-vs-pdfpig.cs)                # eval: OCR vs naive PdfPig on the USGS twins
 dotnet run samples/11-vision-structured-output.cs   # structured transcription

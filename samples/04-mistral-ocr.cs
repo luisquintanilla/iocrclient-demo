@@ -13,6 +13,7 @@
 // OCR_MISTRAL_MODEL (optional, defaults to mistral-ocr-4-0).
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 using DemoOcr;
 
 string endpoint = Require("OCR:FoundryEndpoint");
@@ -33,8 +34,10 @@ static void Report(DocumentExtractionResult r)
     Console.WriteLine($"pages  : {r.Pages.Count}");
     Console.WriteLine();
     DocumentPage first = r.Pages[0];
-    Console.WriteLine($"--- page {first.PageNumber}  ({first.Elements.OfType<DocumentTable>().Count()} table(s)) ---");
-    string md = first.Text;
+    Console.WriteLine($"--- page {first.PageNumber}  ({first.Document.Nodes.OfType<DocumentTable>().Count()} table(s)) ---");
+    string md = first.Markdown
+        ?? throw new InvalidOperationException("The provider did not return exact Markdown.");
+    Console.WriteLine("exact provider Markdown:");
     Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 }
 
