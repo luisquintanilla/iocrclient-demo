@@ -26,6 +26,9 @@ Every nuspec reports:
 `SOURCE_FEED` to stage a replacement feed; the script validates the source before copying and rolls
 back the committed feed on any target validation failure.
 
+The checked-in artifacts carry `net10.0` assets, matching this consumer's target framework. This
+evidence makes no claim for other target frameworks.
+
 The architecture presentation commit
 `7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2` is links/docs evidence only and is never a package
 source. `provenance.json` records it separately from the evaluated implementation.

@@ -92,8 +92,8 @@ variables through `DemoConfig`. See `../docs/SETUP.md`.
 This evidence does not claim OCR quality, performance, live-provider behavior, merge readiness,
 archive rebuild identity, or resolved schema-evolution policy. Existing vector collections may need
 migration for page-number storage. `SourceNodeIds` persistence, immutable rewrite ergonomics,
-cross-page hierarchy reconstruction, and sparse-table `O(cells^2)` overlap validation remain explicit
-design considerations.
+cross-page hierarchy reconstruction, sparse-table `O(cells^2)` overlap validation, and non-net10
+package assets remain explicit limitations.
 
 ## Superseded evidence
 
