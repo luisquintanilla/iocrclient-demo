@@ -1,5 +1,0 @@
-[Never]                 native PdfPig only  -> 2 pages, 2 elements, OCR calls: 0
-[FallbackForEmptyPages] native + OCR gaps   -> 2 pages, 2 elements, OCR calls: 0 (all pages were digital)
-[AllPages]              whole doc -> IOcrClient -> 2 pages, 2 elements, OCR calls: 1
-
-Both readers feed the SAME chunker: [Never] document -> 17 chunks. One pipeline, two readers, one IOcrClient seam.

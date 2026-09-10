@@ -34,8 +34,9 @@ DocumentExtractionResult result = await ocr.ExtractAsync(doc, mediaType);
 Console.WriteLine($"model  : {result.GetModelId()}");
 Console.WriteLine($"pages  : {result.Pages.Count}");
 Console.WriteLine();
-string md = result.Pages[0].Text;
-Console.WriteLine("--- transcribed page (markdown) ---");
+string md = result.Pages[0].Markdown
+    ?? throw new InvalidOperationException("The provider did not return exact Markdown.");
+Console.WriteLine("--- exact provider Markdown ---");
 Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 return 0;
 

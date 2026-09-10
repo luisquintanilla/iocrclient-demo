@@ -12,6 +12,7 @@
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 using DemoOcr;
 
 string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
@@ -32,7 +33,7 @@ var clients = new (string Name, IDocumentExtractionClient Client)[]
 
 byte[] bytes = await File.ReadAllBytesAsync(pdf);
 
-Console.WriteLine($"{"provider",-30} {"pages",6} {"tables",7} {"chars",8}  first-heading");
+Console.WriteLine($"{"provider",-30} {"pages",6} {"tables",7} {"canonical chars",15}  first canonical line");
 Console.WriteLine(new string('-', 90));
 foreach (var (name, client) in clients)
 {
@@ -42,17 +43,17 @@ foreach (var (name, client) in clients)
         using var stream = new MemoryStream(bytes, writable: false);
         DocumentExtractionResult r = await client.ExtractAsync(stream, "application/pdf");
 
-        int tables = r.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
-        int chars = r.Text.Length;
-        string heading = FirstHeading(r.Text);
-        Console.WriteLine($"{name,-30} {r.Pages.Count,6} {tables,7} {chars,8}  {heading}");
+        int tables = r.Document.Nodes.OfType<DocumentTable>().Count();
+        string canonicalText = r.Text;
+        string firstLine = FirstLine(canonicalText);
+        Console.WriteLine($"{name,-30} {r.Pages.Count,6} {tables,7} {canonicalText.Length,15}  {firstLine}");
     }
 }
 return 0;
 
-static string FirstHeading(string md)
+static string FirstLine(string canonicalText)
 {
-    foreach (string line in md.Split('\n'))
+    foreach (string line in canonicalText.Split('\n'))
     {
         string t = line.Trim();
         if (t.Length > 0)

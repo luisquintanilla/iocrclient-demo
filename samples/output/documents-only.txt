@@ -1,0 +1,8 @@
+documents-only source: luisquintanilla/extensions@704a3e44ef4d7b053748780549fc2c8e929a444b
+dependencies: Microsoft.Extensions.Documents.Abstractions only
+package dependencies: System.Text.Json only
+node types: DocumentContainer, DocumentText, DocumentTable, DocumentTableCell, DocumentImage
+pages: 1, 2
+projection: Quarterly Review |  | Revenue increased after the bridge rollout. |  | Metric	Value | Revenue	$12M |  | Quarterly revenue chart |  | provider-specific note |  | Appendix |  | Retention policy remains unchanged.
+serialized discriminators: container, text, table, image
+PASS: construct -> traverse -> project -> serialize without DocumentExtraction or MEDI

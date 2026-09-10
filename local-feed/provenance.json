@@ -1,0 +1,10 @@
+{
+  "implementationCommit": "704a3e44ef4d7b053748780549fc2c8e929a444b",
+  "presentationCommit": "7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2",
+  "commonBase": "f6ba2df16275bfc5eaf50aeb9327e2ec34ee8129",
+  "preview2Ancestor": "e124c123afeeda2f271f3b99a70eb3cfe187a471",
+  "packageVersion": "10.8.0-preview2neutral.704a3e4",
+  "packageCount": 6,
+  "packageRepository": "https://github.com/dotnet/extensions.git",
+  "hashManifest": "SHA256SUMS"
+}

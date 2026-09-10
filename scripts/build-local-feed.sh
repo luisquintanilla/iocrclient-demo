@@ -1,132 +1,141 @@
 #!/usr/bin/env bash
-#
-# build-local-feed.sh — reproduce the "virtual monorepo" local NuGet feed the samples run on.
-#
-# The samples don't run on a vendored copy of the DocumentExtraction API — they run on the REAL
-# dotnet/extensions code, packed locally. This script builds one coherent feed = one source tree, so
-# every Microsoft.Extensions.* assembly (AI(.Abstractions/.OpenAI), DataIngestion(.Abstractions),
-# and the new DocumentExtraction(.Abstractions)) comes from the SAME tree with no version skew. The
-# composition is:
-#
-#     data-ingestion-preview2 @ da091f9e               (latest MEDI: non-generic IngestionChunk +
-#                                                       IngestionChunkVectorRecord)
-#       + #7588  Microsoft.Extensions.DocumentExtraction(.Abstractions)
-#                                                       (the extraction peer library; the two DE
-#                                                        project folders grafted from the PR head)
-#
-# #7588 targets main and preview2 is far behind main, so a full merge would conflict. The
-# DocumentExtraction libraries are self-contained project folders that depend only on
-# Microsoft.Extensions.AI.Abstractions (present in the preview2 base), so we GRAFT the two project
-# folders plus one const the [Experimental] attributes reference. Everything else (Azure SDKs,
-# OpenAI) stays on nuget.org — the local feed only carries the locally-packed dev bits.
-#
-# Once #7588 ships, delete the local feed + nuget.config <clear/> and bump the samples to
-# the published package versions. This whole script becomes unnecessary.
-#
-# Usage:
-#     scripts/build-local-feed.sh
-#
-# Requires: git, and the pinned repo SDK the extensions clone provides (via its global.json).
 
 set -euo pipefail
 
-# --- knobs -------------------------------------------------------------------------------------
-DEV_VERSION="${DEV_VERSION:-10.8.0-dev}"
-WORK="${WORK:-$HOME/dev/extensions-preview2}"          # where the grafted extensions tree lives
-FEED="$(cd "$(dirname "$0")/.." && pwd)/local-feed"    # <repo>/local-feed
-UPSTREAM="https://github.com/dotnet/extensions.git"
+IMPLEMENTATION_SHA="704a3e44ef4d7b053748780549fc2c8e929a444b"
+PRESENTATION_SHA="7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2"
+COMMON_BASE_SHA="f6ba2df16275bfc5eaf50aeb9327e2ec34ee8129"
+PREVIEW2_ANCESTOR_SHA="e124c123afeeda2f271f3b99a70eb3cfe187a471"
+PACKAGE_VERSION="10.8.0-preview2neutral.704a3e4"
+REPOSITORY_URL="https://github.com/dotnet/extensions.git"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FEED="$ROOT/local-feed"
+STATE="$(mktemp -d "${TMPDIR:-/tmp}/preview2-neutral-feed.XXXXXX")"
+BACKUP="$STATE/backup"
 
-ABS="src/Libraries/Microsoft.Extensions.AI.Abstractions"
-AI="src/Libraries/Microsoft.Extensions.AI"
-DE_ABS="src/Libraries/Microsoft.Extensions.DocumentExtraction.Abstractions"
-DE="src/Libraries/Microsoft.Extensions.DocumentExtraction"
+cleanup() {
+  rm -rf "$STATE"
+}
+trap cleanup EXIT
 
-echo "==> feed target: $FEED  (version $DEV_VERSION)"
-
-# --- 1) base: data-ingestion-preview2 -----------------------------------------------------------
-# Clone extensions and land on data-ingestion-preview2 (the latest MEDI base). If $WORK already exists
-# (the common case here), we assume it is already on data-ingestion-preview2 and skip re-fetching.
-# Validated base commit: da091f9e (non-generic IngestionChunk + IngestionChunkVectorRecord).
-if [ ! -d "$WORK/.git" ]; then
-  echo "==> cloning dotnet/extensions -> $WORK"
-  git clone "$UPSTREAM" "$WORK"
-  git -C "$WORK" checkout data-ingestion-preview2
+if [ -n "${PYTHON:-}" ]; then
+  CANDIDATES=("$PYTHON")
 else
-  echo "==> reusing existing tree at $WORK (assumed on data-ingestion-preview2)"
+  CANDIDATES=(python3 python)
+fi
+PYTHON3=""
+for candidate in "${CANDIDATES[@]}"; do
+  if command -v "$candidate" > /dev/null 2>&1 &&
+      "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info.major == 3 else 1)'; then
+    PYTHON3="$candidate"
+    break
+  fi
+done
+if [ -z "$PYTHON3" ]; then
+  echo "ERROR: Python 3 is required to inspect NuGet package provenance." >&2
+  exit 1
 fi
 
-# --- 2) graft #7588 DocumentExtraction (additive project folders) -------------------------------
-# #7588 targets main and preview2 is far behind main, so a full merge would conflict. The
-# DocumentExtraction libraries are self-contained project folders (they ProjectReference
-# ..\Microsoft.Extensions.AI.Abstractions, which exists in the preview2 base), so we GRAFT the two
-# folders whole. Clear any prior copy first so a re-run doesn't graft onto a stale tree.
-#
-# Two sources, same footprint:
-#   * default  — the public PR head (pull/7588/head): reproducible from a public ref, no local branch.
-#   * DE_SRC   — a LOCAL worktree (e.g. DE_SRC=$HOME/dev/ext-wt-figure): the pre-publish validation
-#                path, for building the feed against local DocumentExtraction changes before the PR
-#                head is updated.
-rm -rf "$WORK/$DE_ABS" "$WORK/$DE"
-if [ -n "${DE_SRC:-}" ]; then
-  echo "==> grafting DocumentExtraction project folders from local DE_SRC=$DE_SRC"
-  cp -rT "$DE_SRC/$DE_ABS" "$WORK/$DE_ABS"
-  cp -rT "$DE_SRC/$DE" "$WORK/$DE"
-  # drop any build output that rode along from the source worktree
-  rm -rf "$WORK/$DE_ABS/bin" "$WORK/$DE_ABS/obj" "$WORK/$DE/bin" "$WORK/$DE/obj"
+verify_feed() {
+  local feed="$1"
+  "$PYTHON3" - "$feed" "$IMPLEMENTATION_SHA" "$PACKAGE_VERSION" "$REPOSITORY_URL" <<'PY'
+import hashlib
+import pathlib
+import sys
+import xml.etree.ElementTree as ET
+import zipfile
+
+feed = pathlib.Path(sys.argv[1])
+expected_commit = sys.argv[2]
+expected_version = sys.argv[3]
+expected_repository = sys.argv[4]
+expected = {
+    "Microsoft.Extensions.DataIngestion": "2b6002fc142dace6a5b08a1bc845eb544d08523c4f75d60c6384a36255e8f7b0",
+    "Microsoft.Extensions.DataIngestion.Abstractions": "6b8a88bb5f52121b05022c834de890669f8a8327a54bafa148df063675cf2f4f",
+    "Microsoft.Extensions.DataIngestion.DocumentExtraction": "c2dd354bf6460b5f1f8b01186b5ff3f0c27ce790a6bb08535e30846250ca5d35",
+    "Microsoft.Extensions.DocumentExtraction": "fa54be131cc99b3c870ea9789cde03584967413302e2fa7ac53f9ac6e89b79a1",
+    "Microsoft.Extensions.DocumentExtraction.Abstractions": "a4347cb50702c82127af83cbcb5852d3148a2429f7920f13b89c0538b67e2b65",
+    "Microsoft.Extensions.Documents.Abstractions": "c94ea97233f9756009012f8f25234974f56c950982d7021b2df22430d4c98f4b",
+}
+manifest_path = feed / "SHA256SUMS"
+if not manifest_path.is_file():
+    raise SystemExit(f"ERROR: missing SHA256SUMS in {feed}")
+manifest = {}
+for line in manifest_path.read_text(encoding="utf-8").splitlines():
+    parts = line.split(maxsplit=1)
+    if len(parts) != 2:
+        raise SystemExit(f"ERROR: malformed SHA256SUMS line: {line}")
+    digest, filename = parts
+    manifest[filename.lstrip("*")] = digest.lower()
+expected_files = {
+    f"{package_id}.{expected_version}.nupkg": digest
+    for package_id, digest in expected.items()
+}
+if manifest != expected_files:
+    raise SystemExit("ERROR: SHA256SUMS does not exactly match the authoritative six packages")
+
+packages = sorted(feed.glob("*.nupkg"))
+if len(packages) != len(expected):
+    raise SystemExit(f"ERROR: expected exactly {len(expected)} packages, found {len(packages)} in {feed}")
+
+seen = set()
+for package in packages:
+    digest = hashlib.sha256(package.read_bytes()).hexdigest()
+    with zipfile.ZipFile(package) as archive:
+        nuspecs = [entry for entry in archive.namelist() if entry.lower().endswith(".nuspec")]
+        if len(nuspecs) != 1:
+            raise SystemExit(f"ERROR: expected one nuspec in {package.name}")
+        root = ET.fromstring(archive.read(nuspecs[0]))
+    namespace = {"n": root.tag.partition("}")[0].lstrip("{")} if "}" in root.tag else {}
+    prefix = "n:" if namespace else ""
+    metadata = root.find(f"{prefix}metadata", namespace)
+    package_id = metadata.find(f"{prefix}id", namespace).text
+    version = metadata.find(f"{prefix}version", namespace).text
+    repository = metadata.find(f"{prefix}repository", namespace)
+    repository_url = repository.attrib.get("url")
+    commit = repository.attrib.get("commit")
+    if package_id not in expected:
+        raise SystemExit(f"ERROR: unexpected package ID {package_id}")
+    if package_id in seen:
+        raise SystemExit(f"ERROR: duplicate package ID {package_id}")
+    if digest != expected[package_id]:
+        raise SystemExit(f"ERROR: SHA-256 mismatch for {package_id}: {digest}")
+    if version != expected_version or repository_url != expected_repository or commit != expected_commit:
+        raise SystemExit(
+            f"ERROR: nuspec provenance mismatch for {package_id}: "
+            f"version={version} repo={repository_url} commit={commit}")
+    seen.add(package_id)
+    print(f"{package_id} | {version} | {repository_url} | {commit} | {digest}")
+
+if seen != set(expected):
+    raise SystemExit(f"ERROR: missing package IDs: {sorted(set(expected) - seen)}")
+PY
+}
+
+echo "Preview 2 neutral implementation: $IMPLEMENTATION_SHA"
+echo "Presentation evidence only: $PRESENTATION_SHA"
+echo "Common base: $COMMON_BASE_SHA"
+echo "Preview 2 ancestor: $PREVIEW2_ANCESTOR_SHA"
+
+if [ -n "${SOURCE_FEED:-}" ]; then
+  SOURCE_FEED="$(cd "$SOURCE_FEED" && pwd)"
+  echo "Validating replacement source feed: $SOURCE_FEED"
+  verify_feed "$SOURCE_FEED"
+  mkdir -p "$BACKUP"
+  cp "$FEED"/*.nupkg "$FEED/SHA256SUMS" "$BACKUP/"
+  rollback() {
+    rm -f "$FEED"/*.nupkg "$FEED/SHA256SUMS"
+    cp "$BACKUP"/* "$FEED/"
+  }
+  trap 'rollback; cleanup' ERR
+  rm -f "$FEED"/*.nupkg "$FEED/SHA256SUMS"
+  cp "$SOURCE_FEED"/*.nupkg "$FEED/"
+  ( cd "$FEED" && sha256sum *.nupkg | LC_ALL=C sort -k2 > SHA256SUMS )
+  verify_feed "$FEED"
+  trap cleanup EXIT
+  echo "Replacement feed committed in place after complete validation."
 else
-  echo "==> fetching #7588 head (pull/7588/head)"
-  git -C "$WORK" fetch "$UPSTREAM" pull/7588/head:pr-7588
-  echo "==> grafting DocumentExtraction project folders from pr-7588 (#7588 head)"
-  git -C "$WORK" checkout pr-7588 -- "$DE_ABS" "$DE"
+  verify_feed "$FEED"
 fi
 
-# One const the grafted [Experimental] attributes reference. The reshape source defines it via a
-# two-level indirection (DocumentExtraction = DocumentExtractionExperiments = "MEDE0001"); the graft
-# only needs the resolved value, so we inject the single sufficient constant.
-if ! grep -q "DocumentExtraction" "$WORK/src/Shared/DiagnosticIds/DiagnosticIds.cs"; then
-  echo "    + DiagnosticIds.Experiments.DocumentExtraction = MEDE0001"
-  sed -i 's/\(internal const string AIOpenAIRequestPolicies = AIExperiments;\)/\1\n        internal const string DocumentExtraction = "MEDE0001";/' \
-    "$WORK/src/Shared/DiagnosticIds/DiagnosticIds.cs"
-fi
-
-# --- 3) clear stale cache (same dev version does NOT refresh in ~/.nuget) -----------------------
-echo "==> clearing stale $DEV_VERSION from the global NuGet cache"
-for pkg in microsoft.extensions.ai microsoft.extensions.ai.abstractions microsoft.extensions.ai.openai \
-           microsoft.extensions.dataingestion microsoft.extensions.dataingestion.abstractions \
-           microsoft.extensions.ai.evaluation microsoft.extensions.ai.evaluation.quality \
-           microsoft.extensions.ai.evaluation.reporting microsoft.extensions.ai.evaluation.nlp \
-           microsoft.extensions.documentextraction microsoft.extensions.documentextraction.abstractions; do
-  rm -rf "$HOME/.nuget/packages/$pkg/$DEV_VERSION"
-done
-
-# --- 4) pack the coherent set -> local-feed ----------------------------------------------------
-# DebugType=none (no PDB) keeps the local build path out of the shipped DLLs — otherwise a
-# non-deterministic Release build embeds the absolute .pdb path (i.e. the packer's home dir) into
-# each assembly's debug directory. No symbols package either; the local feed doesn't need one.
-DOTNET="$WORK/.dotnet/dotnet"; [ -x "$DOTNET" ] || DOTNET="dotnet"   # prefer the repo-pinned SDK
-mkdir -p "$FEED"
-projects=(
-  "$ABS/Microsoft.Extensions.AI.Abstractions.csproj"
-  "$AI/Microsoft.Extensions.AI.csproj"
-  "src/Libraries/Microsoft.Extensions.AI.OpenAI/Microsoft.Extensions.AI.OpenAI.csproj"
-  "src/Libraries/Microsoft.Extensions.DataIngestion/Microsoft.Extensions.DataIngestion.csproj"
-  "src/Libraries/Microsoft.Extensions.DataIngestion.Abstractions/Microsoft.Extensions.DataIngestion.Abstractions.csproj"
-  "src/Libraries/Microsoft.Extensions.AI.Evaluation/Microsoft.Extensions.AI.Evaluation.csproj"
-  "src/Libraries/Microsoft.Extensions.AI.Evaluation.Quality/Microsoft.Extensions.AI.Evaluation.Quality.csproj"
-  "src/Libraries/Microsoft.Extensions.AI.Evaluation.Reporting/CSharp/Microsoft.Extensions.AI.Evaluation.Reporting.csproj"
-  "src/Libraries/Microsoft.Extensions.AI.Evaluation.NLP/Microsoft.Extensions.AI.Evaluation.NLP.csproj"
-  "$DE_ABS/Microsoft.Extensions.DocumentExtraction.Abstractions.csproj"
-  "$DE/Microsoft.Extensions.DocumentExtraction.csproj"
-)
-for proj in "${projects[@]}"; do
-  echo "==> pack $(basename "$proj")"
-  ( cd "$WORK" && "$DOTNET" pack "$proj" -c Release \
-      -p:Version="$DEV_VERSION" -p:PackageVersion="$DEV_VERSION" \
-      -p:DebugType=none -p:DebugSymbols=false -p:IncludeSymbols=false \
-      -o "$FEED" )
-done
-
-echo
-echo "==> done. $FEED now carries:"
-ls "$FEED"/*.nupkg | sed 's#.*/#    #'
-echo "    Samples resolve these via nuget.config (local-feed). Azure SDKs come from nuget.org."
+echo "PASS: exact six-package Preview 2 neutral feed verified"

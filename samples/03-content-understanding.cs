@@ -26,8 +26,9 @@ DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf")
 Console.WriteLine($"model  : {result.GetModelId()}");
 Console.WriteLine($"pages  : {result.Pages.Count}");
 Console.WriteLine();
-string md = result.Pages[0].Text;
-Console.WriteLine("--- page 0 (markdown) ---");
+string md = result.Pages[0].Markdown
+    ?? throw new InvalidOperationException("The provider did not return exact Markdown.");
+Console.WriteLine("--- page 1 exact provider Markdown ---");
 Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 return 0;
 

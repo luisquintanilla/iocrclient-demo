@@ -9,7 +9,7 @@
 //
 //  (B) A UriContent overload for ExtractAsync. UriContent already exists in dotnet/extensions, so the
 //      overload is symmetric with the shipped DataContent one. It resolves self-contained data: URIs and
-//      leaves native URL passthrough as an explicit open question (see docs/api-notes.md).
+//      keeps native URL passthrough separate from self-contained data URIs.
 //
 //  (C) ExtractFromUriAsync — the opt-in remote downloader (R2). ExtractAsync(UriContent) never touches
 //      the network (remote -> NotSupported); ExtractFromUriAsync is the explicit counterpart that GETs
@@ -25,6 +25,7 @@
 // (gitignored); only counts + bbox + captions are printed.
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 using DemoOcr;
 
 string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
@@ -91,27 +92,28 @@ async Task RunImages(string label, IDocumentExtractionClient client)
     {
         await using var doc = new MemoryStream(bytes);
         DocumentExtractionResult r = await client.ExtractAsync(doc, "application/pdf", options);
-        int imgCount = r.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count());
+        int imgCount = r.Document.Nodes.OfType<DocumentImage>().Count();
         Console.WriteLine($"--- {label}: {r.Pages.Count} page(s), {imgCount} image(s) ---");
         foreach (DocumentPage page in r.Pages)
         {
-            List<DocumentImage> images = page.Elements.OfType<DocumentImage>().ToList();
+            List<DocumentImage> images = page.Document.Nodes.OfType<DocumentImage>().ToList();
             for (int i = 0; i < images.Count; i++)
             {
                 DocumentImage img = images[i];
                 string bbox = "bbox:none";
-                if (img.BoundingRegion is { } br && br.GetBounds() is { } b)
+                DocumentExtractionEvidence? evidence = page.Evidence.FirstOrDefault(item => item.NodeId == img.Id);
+                if (evidence?.BoundingRegion is { } br && br.GetBounds() is { } b)
                 {
                     bbox = $"bbox[{b.Left},{b.Top},{b.Right},{b.Bottom}]";
                 }
-                string caption = string.IsNullOrEmpty(img.Caption) ? "" : $" caption=\"{img.Caption}\"";
+                string caption = string.IsNullOrEmpty(img.Description) ? "" : $" caption=\"{img.Description}\"";
                 string saved = "no-bytes";
-                if (img.Content is { } content)
+                if (!img.Content.IsEmpty)
                 {
-                    string ext = content.MediaType?.Split('/').Last() ?? "bin";
+                    string ext = img.MediaType?.Split('/').Last() ?? "bin";
                     string file = Path.Combine(outDir, $"{label}-p{page.PageNumber}-{i}.{ext}");
-                    await File.WriteAllBytesAsync(file, content.Data.ToArray());
-                    saved = $"{content.Data.Length:N0}B -> {file}";
+                    await File.WriteAllBytesAsync(file, img.Content.ToArray());
+                    saved = $"{img.Content.Length:N0}B -> {file}";
                 }
 
                 Console.WriteLine($"  p{page.PageNumber} img{i}: {bbox}{caption}  ({saved})");

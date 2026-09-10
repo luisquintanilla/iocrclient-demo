@@ -1,10 +1,12 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Azure.Core;
 
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 
 namespace DemoOcr;
 
@@ -77,45 +79,175 @@ public sealed class FoundryMistralOcrClient(
         {
             int index = page.GetProperty("index").GetInt32();
             string markdown = page.TryGetProperty("markdown", out var md) ? md.GetString() ?? "" : "";
-            int tableCount = page.TryGetProperty("tables", out var t) && t.ValueKind == JsonValueKind.Array
-                ? t.GetArrayLength() : 0;
-            var tables = new List<DocumentTable>(tableCount);
-            for (int i = 0; i < tableCount; i++)
-            {
-                tables.Add(new DocumentTable(0, 0)); // Mistral reports tables inline in the page markdown.
-            }
+            int pageNumber = index + 1;
+            var evidence = new List<DocumentExtractionEvidence>();
+            var unplacedNodes = new List<DocumentNode>();
+            bool hasImages = page.TryGetProperty("images", out JsonElement imgs) &&
+                imgs.ValueKind == JsonValueKind.Array;
+            var replacements = new List<(int Start, int Length, DocumentNode Node)>();
 
-            // Figures: Mistral returns page.images[] with a bbox and (when include_image_base64=true) the
-            // rendered bytes. This is the document-native archetype filling DocumentImage.Content + bbox.
-            var images = new List<DocumentImage>();
-            if (page.TryGetProperty("images", out var imgs) && imgs.ValueKind == JsonValueKind.Array)
+            if (page.TryGetProperty("tables", out JsonElement tables) &&
+                tables.ValueKind == JsonValueKind.Array)
             {
-                foreach (JsonElement img in imgs.EnumerateArray())
+                int tableIndex = 0;
+                foreach (JsonElement providerTable in tables.EnumerateArray())
                 {
-                    var image = new DocumentImage();
-                    if (img.TryGetProperty("image_base64", out var b64) && b64.ValueKind == JsonValueKind.String)
+                    int currentTableIndex = tableIndex++;
+                    string? tableMarkdown = GetString(providerTable, "markdown")
+                        ?? GetString(providerTable, "content");
+                    DocumentTable? parsedTable = tableMarkdown is null
+                        ? null
+                        : CreateTable("mistral", pageNumber, currentTableIndex, tableMarkdown);
+                    DocumentTable table = parsedTable ?? CreateTableShell(
+                        "mistral", pageNumber, currentTableIndex, providerTable);
+                    if (tableMarkdown is not null &&
+                        FindUnique(markdown, tableMarkdown) is { } match &&
+                        parsedTable is not null)
                     {
-                        string raw = b64.GetString()!;
-                        image.Content = raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
-                            ? new DataContent(raw)
-                            : new DataContent(Convert.FromBase64String(raw), "image/png");
+                        replacements.Add((match.Start, match.Length, table));
+                    }
+                    else
+                    {
+                        // The exact Markdown remains the semantic text authority when provider order
+                        // cannot be established. Preserve table shape + raw evidence without duplicating text.
+                        unplacedNodes.Add(new DocumentTable(
+                            table.Id,
+                            table.RowCount,
+                            table.ColumnCount,
+                            [],
+                            pageReferences: table.PageReferences));
                     }
 
-                    if (img.TryGetProperty("top_left_x", out var tlx) && img.TryGetProperty("top_left_y", out var tly)
-                        && img.TryGetProperty("bottom_right_x", out var brx) && img.TryGetProperty("bottom_right_y", out var bry))
+                    evidence.Add(new DocumentExtractionEvidence(table.Id)
                     {
-                        image.BoundingRegion = DocumentBoundingRegion.FromRectangle(
-                            index + 1, (float)tlx.GetDouble(), (float)tly.GetDouble(), (float)brx.GetDouble(), (float)bry.GetDouble());
-                    }
-
-                    images.Add(image);
+                        RawRepresentation = providerTable.Clone(),
+                    });
                 }
             }
 
-            pages.Add(new DocumentPage(index + 1, markdown)
+            if (hasImages)
             {
-                Elements = tables.Cast<DocumentElement>().Concat(images).ToList(),
+                int imageIndex = 0;
+                foreach (JsonElement img in imgs.EnumerateArray())
+                {
+                    byte[] imageBytes = [];
+                    string? imageMediaType = null;
+                    if (img.TryGetProperty("image_base64", out var b64) && b64.ValueKind == JsonValueKind.String)
+                    {
+                        string raw = b64.GetString()!;
+                        int comma = raw.IndexOf(',');
+                        if (raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase) && comma >= 0)
+                        {
+                            string metadata = raw[5..comma];
+                            int semicolon = metadata.IndexOf(';');
+                            string declaredMediaType = semicolon >= 0 ? metadata[..semicolon] : metadata;
+                            if (declaredMediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                            {
+                                imageMediaType = declaredMediaType;
+                            }
+                        }
+                        imageBytes = Convert.FromBase64String(
+                            raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase) && comma >= 0
+                                ? raw[(comma + 1)..]
+                                : raw);
+                        imageMediaType ??= DetectImageMediaType(imageBytes);
+                    }
+
+                    string? providerImageId = img.TryGetProperty("id", out JsonElement id)
+                        ? id.GetString()
+                        : null;
+                    Match? marker = providerImageId is { Length: > 0 }
+                        ? Regex.Match(
+                            markdown,
+                            $@"!\[(?<alt>[^\]]*)\]\(\s*{Regex.Escape(providerImageId)}\s*\)",
+                            RegexOptions.CultureInvariant)
+                        : null;
+                    string? alt = marker?.Success == true ? marker.Groups["alt"].Value : null;
+                    string? description = !string.IsNullOrWhiteSpace(alt) &&
+                        !string.Equals(alt, providerImageId, StringComparison.OrdinalIgnoreCase)
+                            ? alt
+                            : null;
+                    Uri? sourceUri = providerImageId is { Length: > 0 }
+                        ? new Uri(providerImageId, UriKind.RelativeOrAbsolute)
+                        : null;
+                    if (imageBytes.Length == 0 && sourceUri is null && description is null)
+                    {
+                        continue;
+                    }
+
+                    DocumentNodeId nodeId = DocumentExtractionDemoExtensions.CreateNodeId(
+                        "mistral", pageNumber, "image", imageIndex++);
+                    DocumentImage imageNode = new(
+                        nodeId,
+                        imageBytes,
+                        imageMediaType,
+                        source: sourceUri,
+                        description: description,
+                        pageReferences: [new(pageNumber)]);
+                    if (marker?.Success == true)
+                    {
+                        replacements.Add((marker.Index, marker.Length, imageNode));
+                    }
+                    else
+                    {
+                        unplacedNodes.Add(imageNode);
+                    }
+
+                    DocumentBoundingRegion? region = null;
+                    if (img.TryGetProperty("top_left_x", out var tlx) && img.TryGetProperty("top_left_y", out var tly)
+                        && img.TryGetProperty("bottom_right_x", out var brx) && img.TryGetProperty("bottom_right_y", out var bry)
+                        && tlx.ValueKind == JsonValueKind.Number && tly.ValueKind == JsonValueKind.Number
+                        && brx.ValueKind == JsonValueKind.Number && bry.ValueKind == JsonValueKind.Number)
+                    {
+                        region = DocumentBoundingRegion.FromRectangle(
+                            pageNumber, (float)tlx.GetDouble(), (float)tly.GetDouble(), (float)brx.GetDouble(), (float)bry.GetDouble());
+                    }
+
+                    evidence.Add(new DocumentExtractionEvidence(nodeId)
+                    {
+                        BoundingRegion = region,
+                        RawRepresentation = img.Clone(),
+                        AdditionalProperties = providerImageId is { Length: > 0 }
+                            ? new() { ["mistral.imageId"] = providerImageId }
+                            : null,
+                    });
+                }
+            }
+
+            var nodes = new List<DocumentNode>();
+            int cursor = 0;
+            foreach ((int start, int length, DocumentNode node) in replacements
+                .OrderBy(replacement => replacement.Start))
+            {
+                if (start < cursor)
+                {
+                    continue;
+                }
+                AddText(markdown[cursor..start]);
+                nodes.Add(node);
+                cursor = start + length;
+            }
+            AddText(markdown[cursor..]);
+            nodes.AddRange(unplacedNodes);
+
+            pages.Add(new DocumentPage(
+                pageNumber,
+                DocumentExtractionDemoExtensions.CreatePageDocument("mistral", pageNumber, nodes),
+                markdown,
+                evidence)
+            {
+                RawRepresentation = page.Clone(),
             });
+
+            void AddText(string source)
+            {
+                string text = DocumentExtractionDemoExtensions.ProjectProviderMarkdown(source);
+                if (text.Length > 0)
+                {
+                    nodes.Add(DocumentExtractionDemoExtensions.CreateTextNode(
+                        "mistral", pageNumber, nodes.Count, text));
+                }
+            }
         }
 
         return new DocumentExtractionResult(pages)
@@ -128,10 +260,130 @@ public sealed class FoundryMistralOcrClient(
 
     public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
         Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
-        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
+        => DocumentExtractionDemoExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this : null;
 
     public void Dispose() => _http.Dispose();
+
+    private static string? GetString(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out JsonElement property) &&
+            property.ValueKind == JsonValueKind.String
+                ? property.GetString()
+                : null;
+
+    private static (int Start, int Length)? FindUnique(string source, string value)
+    {
+        int start = source.IndexOf(value, StringComparison.Ordinal);
+        return start >= 0 &&
+            source.IndexOf(value, start + value.Length, StringComparison.Ordinal) < 0
+                ? (start, value.Length)
+                : null;
+    }
+
+    private static DocumentTable? CreateTable(
+        string provider,
+        int pageNumber,
+        int tableIndex,
+        string markdown)
+    {
+        string[][] rows = markdown
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => line.Contains('|') && !IsMarkdownTableSeparator(line))
+            .Select(line => line.Trim('|', ' ').Split('|').Select(cell => cell.Trim()).ToArray())
+            .ToArray();
+        int columns = rows.Select(row => row.Length).DefaultIfEmpty().Max();
+        if (rows.Length == 0 || columns == 0 || rows.Any(row => row.Length != columns))
+        {
+            return null;
+        }
+
+        var cells = new List<DocumentTableCell>();
+        for (int row = 0; row < rows.Length; row++)
+        {
+            for (int column = 0; column < columns; column++)
+            {
+                int cellIndex = cells.Count;
+                DocumentText text = new(
+                    DocumentExtractionDemoExtensions.CreateNodeId(
+                        provider, pageNumber, $"table-{tableIndex}-cell-text", cellIndex),
+                    rows[row][column],
+                    pageReferences: [new(pageNumber)]);
+                cells.Add(new DocumentTableCell(
+                    DocumentExtractionDemoExtensions.CreateNodeId(
+                        provider, pageNumber, $"table-{tableIndex}-cell", cellIndex),
+                    row,
+                    column,
+                    [text],
+                    role: row == 0
+                        ? DocumentTableCellRole.ColumnHeader
+                        : DocumentTableCellRole.Content,
+                    pageReferences: [new(pageNumber)]));
+            }
+        }
+        return new DocumentTable(
+            DocumentExtractionDemoExtensions.CreateNodeId(
+                provider, pageNumber, "table", tableIndex),
+            rows.Length,
+            columns,
+            cells,
+            pageReferences: [new(pageNumber)]);
+    }
+
+    public static bool IsMarkdownTableSeparator(string line)
+        => Regex.IsMatch(
+            line,
+            @"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$",
+            RegexOptions.CultureInvariant);
+
+    private static DocumentTable CreateTableShell(
+        string provider,
+        int pageNumber,
+        int tableIndex,
+        JsonElement providerTable)
+    {
+        int rows = GetInt(providerTable, "row_count") ?? GetInt(providerTable, "rowCount") ?? 0;
+        int columns = GetInt(providerTable, "column_count") ?? GetInt(providerTable, "columnCount") ?? 0;
+        return new DocumentTable(
+            DocumentExtractionDemoExtensions.CreateNodeId(
+                provider, pageNumber, "table", tableIndex),
+            rows,
+            columns,
+            [],
+            pageReferences: [new(pageNumber)]);
+    }
+
+    private static int? GetInt(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out JsonElement property) &&
+            property.TryGetInt32(out int value)
+                ? value
+                : null;
+
+    private static string DetectImageMediaType(byte[] bytes)
+    {
+        if (bytes.Length >= 8 &&
+            bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47)
+        {
+            return "image/png";
+        }
+        if (bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF)
+        {
+            return "image/jpeg";
+        }
+        if (bytes.Length >= 6 &&
+            bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46)
+        {
+            return "image/gif";
+        }
+        if (bytes.Length >= 12 &&
+            bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+            bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50)
+        {
+            return "image/webp";
+        }
+        return "application/octet-stream";
+    }
 }

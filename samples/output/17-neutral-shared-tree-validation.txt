@@ -1,0 +1,15 @@
+Source: 704a3e44ef4d7b053748780549fc2c8e929a444b
+Presentation: 7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2 (evidence-only)
+Feed: 6/6 hashes+id+version+repo+commit
+Contracts: pipeline/chunker/processor/writer/chunk=non-generic content=AIContent TokenCount=required
+Client/pipeline: calls=1 processors=1 processed_chunks=2 pass_through=true
+Shared: pages=1,2 nodes=17 table=2x2 image=4B unknown-kind=paragraph
+Chunks: count=2 types=TextContent|TextContent tokens=28|8 pages=1|2 source_ids=13|2
+Writer: typed=Preview2ChunkRecord stored=2 pages=1|2 SourceNodeIds=not-persisted embeddings=TextContent,TextContent
+Retrieval: revenue=page1:$12M retention=page2:unchanged
+Mixed: chunks=TextContent(2)|DataContent(1) stored=2 roundtrip=true embeddings=TextContent,DataContent
+Markdown: exact=extraction-only canonical-empty=true
+PdfPig: pages=12 recursive_provenance=true metadata=reader,page_count
+Range/overlap: pages=1,2 recursive_source_ids=true trailing_overlap_chunk=false
+Loss: extraction evidence retained; ingestion/chunks/records isolated
+PASS: Preview 2 neutral shared tree -> non-generic pipeline -> typed writer -> provider embedding -> retrieval

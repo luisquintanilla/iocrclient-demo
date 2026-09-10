@@ -2,12 +2,14 @@ using DemoOcr;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
+using Microsoft.Extensions.Documents;
+using SharedDocument = Microsoft.Extensions.Documents.Document;
 
 namespace hero.Web.Services.Ingestion;
 
 internal sealed class DocumentReader(DirectoryInfo rootDirectory, IDocumentExtractionClient ocrClient) : IngestionDocumentReader
 {
-    private readonly OcrDocumentReader _ocrReader = new(ocrClient, new DocumentExtractionOptions
+    private readonly DocumentExtractionReader _ocrReader = new(ocrClient, new DocumentExtractionOptions
     {
         AdditionalProperties = new()
         {
@@ -48,14 +50,14 @@ internal sealed class DocumentReader(DirectoryInfo rootDirectory, IDocumentExtra
         using var reader = new StreamReader(source);
         string text = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
-        var document = new IngestionDocument(identifier);
-        var section = new IngestionDocumentSection();
-        section.Elements.Add(new IngestionDocumentParagraph(text)
-        {
-            Text = text,
-        });
-        document.Sections.Add(section);
-
-        return document;
+        return new IngestionDocument(
+            identifier,
+            new SharedDocument(
+            [
+                new DocumentContainer(
+                    new("markdown-section"),
+                    DocumentContainerRole.Section,
+                    [new DocumentText(new("markdown-text"), text)]),
+            ]));
     }
 }

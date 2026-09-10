@@ -26,6 +26,8 @@ using System.Text;
 using Azure.Identity;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
+using SharedDocument = Microsoft.Extensions.Documents.Document;
 using OllamaSharp;
 using UglyToad.PdfPig;
 using DemoOcr;
@@ -152,7 +154,7 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
             var img = pdf.GetPage(i).GetImages().FirstOrDefault();
             if (img is null || !img.TryGetPng(out byte[]? png) || png is null)
             {
-                pages.Add(new DocumentPage(i, ""));   // no extractable image on this page
+                pages.Add(new DocumentPage(i, new SharedDocument([])));   // no extractable image on this page
                 continue;
             }
 
@@ -160,7 +162,22 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
                 .ExtractAsync(new MemoryStream(png), "image/png", options, cancellationToken)
                 .ConfigureAwait(false);
             modelId ??= one.GetModelId();
-            pages.Add(new DocumentPage(i, one.Pages.Count > 0 ? one.Pages[0].Text : ""));
+            // Remap canonical text to the source PDF page; preserve exact provider Markdown separately.
+            string text = one.Pages.Count > 0 ? one.Pages[0].Text : string.Empty;
+            IReadOnlyList<DocumentNode> nodes = text.Length > 0
+                ? [new DocumentText(new($"glm:page-{i}:text-0"), text, pageReferences: [new(i)])]
+                : [];
+            pages.Add(new DocumentPage(
+                i,
+                new SharedDocument(
+                [
+                    new DocumentContainer(
+                        new($"glm:page-{i}:section-0"),
+                        DocumentContainerRole.Section,
+                        nodes,
+                        pageReferences: [new(i)]),
+                ]),
+                markdown: one.Pages.FirstOrDefault()?.Markdown));
         }
 
         return new DocumentExtractionResult(pages)
@@ -171,7 +188,7 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
 
     public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
         Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
-        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
+        => DocumentExtractionDemoExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null) =>
         serviceType.IsInstanceOfType(this) ? this : _inner.GetService(serviceType, serviceKey);

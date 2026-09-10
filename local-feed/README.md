@@ -1,47 +1,33 @@
-# `local-feed/` — unofficial local dev packages (READ THIS)
+# Preview 2 neutral local feed
 
-**These are NOT official Microsoft packages.** They are local, unofficial builds produced solely so
-this demo is clone-and-run while the APIs it showcases are still in review. Do not depend on them in
-real projects, and do not redistribute them as if they were shipped Microsoft packages.
+**Unofficial evaluation packages. DO NOT use as shipped Microsoft packages.**
 
-## What these are
+This folder contains exactly six architecture packages built from evaluated implementation commit
+`704a3e44ef4d7b053748780549fc2c8e929a444b` at version
+`10.8.0-preview2neutral.704a3e4`.
 
-The `Microsoft.Extensions.DocumentExtraction` API shown in this demo (the
-`IDocumentExtractionClient` extraction surface) is **proposed** in an open pull request against
-[dotnet/extensions](https://github.com/dotnet/extensions) and is **not on nuget.org yet**.
-Rather than vendor a hand-copied snapshot, `../scripts/build-local-feed.sh` packs the *real*
-dotnet/extensions source into this folder at version `10.8.0-dev`, so the samples bind to the actual
-`Microsoft.Extensions.*` types. `../nuget.config` resolves these from `local-feed`; everything else
-(Azure SDKs, OpenAI, PdfPig, vector-store connectors) resolves from nuget.org.
+| Package ID | SHA-256 |
+| --- | --- |
+| `Microsoft.Extensions.DataIngestion` | `2b6002fc142dace6a5b08a1bc845eb544d08523c4f75d60c6384a36255e8f7b0` |
+| `Microsoft.Extensions.DataIngestion.Abstractions` | `6b8a88bb5f52121b05022c834de890669f8a8327a54bafa148df063675cf2f4f` |
+| `Microsoft.Extensions.DataIngestion.DocumentExtraction` | `c2dd354bf6460b5f1f8b01186b5ff3f0c27ce790a6bb08535e30846250ca5d35` |
+| `Microsoft.Extensions.DocumentExtraction` | `fa54be131cc99b3c870ea9789cde03584967413302e2fa7ac53f9ac6e89b79a1` |
+| `Microsoft.Extensions.DocumentExtraction.Abstractions` | `a4347cb50702c82127af83cbcb5852d3148a2429f7920f13b89c0538b67e2b65` |
+| `Microsoft.Extensions.Documents.Abstractions` | `c94ea97233f9756009012f8f25234974f56c950982d7021b2df22430d4c98f4b` |
 
-## Provenance (what went into the build)
+Every nuspec reports:
 
-Packed **2026-08-03** at version `10.8.0-dev` from this composition:
+- repository: `https://github.com/dotnet/extensions.git`
+- commit: `704a3e44ef4d7b053748780549fc2c8e929a444b`
+- version: `10.8.0-preview2neutral.704a3e4`
 
-- base: `dotnet/extensions` branch **`data-ingestion-preview2`** at commit **`da091f9e`** (latest MEDI: non-generic `IngestionChunk` + `IngestionChunkVectorRecord`; the public upstream branch, no in-flight PRs merged in)
-- **+ PR [#7588](https://github.com/dotnet/extensions/pull/7588)** — `Microsoft.Extensions.DocumentExtraction(.Abstractions)` (the extraction peer library; the two self-contained DE project folders grafted from the PR head, since #7588 targets `main`)
-- one const the grafted `[Experimental]` attributes reference (`DiagnosticIds.Experiments.DocumentExtraction = "MEDE0001"`) — see the build script
+`scripts/build-local-feed.sh` verifies exact package count, IDs, hashes, and nuspec provenance. Set
+`SOURCE_FEED` to stage a replacement feed; the script validates the source before copying and rolls
+back the committed feed on any target validation failure.
 
-The exact recipe (and the branch/PR heads used) lives in
-[`../scripts/build-local-feed.sh`](../scripts/build-local-feed.sh); it reproduces this feed from
-public GitHub refs so these binaries are verifiable, not opaque.
+The architecture presentation commit
+`7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2` is links/docs evidence only and is never a package
+source. `provenance.json` records it separately from the evaluated implementation.
 
-## Committed contents
-
-Only the **runtime** `*.nupkg` files are committed. `*.symbols.nupkg` are intentionally left out
-(`.gitignore`) — they are not needed to run the samples.
-
-## License
-
-The packaged code is from `dotnet/extensions`, licensed under the
-**[MIT License](https://github.com/dotnet/extensions/blob/main/LICENSE)**
-(Copyright (c) .NET Foundation and Contributors). The MIT license text and copyright are retained
-inside each `.nupkg`. This repository's own sample code is likewise MIT (see `../LICENSE`).
-
-## When to delete this feed
-
-The moment #7588 ships on nuget.org, this whole folder becomes unnecessary:
-
-1. delete `local-feed/`,
-2. remove the `<clear/>` + `local-feed` source from `../nuget.config`,
-3. bump the samples to the published package versions.
+Published MEAI, vector, provider, and evaluation dependencies resolve from NuGet.org and are not
+part of this closed six-package architecture feed.

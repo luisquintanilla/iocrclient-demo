@@ -3,14 +3,16 @@
 // 02-document-intelligence.cs — Azure AI Document Intelligence behind IDocumentExtractionClient (document-native).
 //
 // A DIFFERENT wire protocol from Mistral (async-poll AnalyzeResult, prebuilt-layout), but it
-// normalizes onto the SAME DocumentExtractionResult: per-page Markdown, structured tables (row/column cells), and
-// native paragraph polygons. Swap the engine, keep the pipeline. Keyless via DefaultAzureCredential.
+// normalizes onto the SAME DocumentExtractionResult: canonical shared nodes, structured tables
+// (row/column cells), and native paragraph polygons in evidence. The SDK exposes one document-level
+// Markdown artifact, so page.Markdown remains accurately unavailable.
 //
 //   az login
 //   OCR_DI_ENDPOINT=https://<account>.cognitiveservices.azure.com \
 //     dotnet run 02-document-intelligence.cs -- data/usgs-petroleum-assessment.pdf
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 using DemoOcr;
 
 string endpoint = Require("OCR:DocIntelEndpoint");
@@ -24,13 +26,13 @@ DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf")
 
 Console.WriteLine($"model  : {result.GetModelId()}");
 Console.WriteLine($"pages  : {result.Pages.Count}");
-int tables = result.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
-int blocks = result.Pages.Sum(p => p.Elements.OfType<DocumentBlock>().Count());
+int tables = result.Document.Nodes.OfType<DocumentTable>().Count();
+int blocks = result.Document.Nodes.OfType<DocumentText>().Count();
 Console.WriteLine($"tables : {tables}   blocks : {blocks}");
 Console.WriteLine();
-string md = result.Pages[0].Text;
-Console.WriteLine("--- page 0 (markdown) ---");
-Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
+string canonicalText = result.Pages[0].Text;
+Console.WriteLine("--- deterministic canonical page projection ---");
+Console.WriteLine(canonicalText.Length > 900 ? canonicalText[..900] + "\n…" : canonicalText);
 return 0;
 
 static string Require(string name) =>

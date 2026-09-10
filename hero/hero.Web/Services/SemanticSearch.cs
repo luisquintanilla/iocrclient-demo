@@ -1,4 +1,5 @@
 ﻿using hero.Web.Services.Ingestion;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 
 namespace hero.Web.Services;
@@ -17,7 +18,7 @@ public class SemanticSearch(
         // Ensure documents have been loaded before searching
         await LoadDocumentsAsync();
 
-        var nearest = vectorCollection.SearchAsync(text, maxResults, new VectorSearchOptions<IngestedChunk>
+        var nearest = vectorCollection.SearchAsync(new TextContent(text), maxResults, new VectorSearchOptions<IngestedChunk>
         {
             Filter = documentIdFilter is { Length: > 0 } ? record => record.DocumentId == documentIdFilter : null,
         });

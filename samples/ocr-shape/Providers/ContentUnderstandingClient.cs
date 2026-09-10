@@ -1,36 +1,17 @@
 using Azure;
 using Azure.AI.ContentUnderstanding;
 using Azure.Core;
-
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
-using DocumentElement = Microsoft.Extensions.DocumentExtraction.DocumentElement;
-using DocumentPage = Microsoft.Extensions.DocumentExtraction.DocumentPage;
-using DocumentTable = Microsoft.Extensions.DocumentExtraction.DocumentTable;
-using DocumentTableCell = Microsoft.Extensions.DocumentExtraction.DocumentTableCell;
-using DocumentTableCellKind = Microsoft.Extensions.DocumentExtraction.DocumentTableCellKind;
+using Microsoft.Extensions.Documents;
+using ExtractionPage = Microsoft.Extensions.DocumentExtraction.DocumentPage;
+using SharedTable = Microsoft.Extensions.Documents.DocumentTable;
+using SharedTableCell = Microsoft.Extensions.Documents.DocumentTableCell;
 
 namespace DemoOcr;
 
-/// <summary>
-/// Azure AI Content Understanding behind the SAME <see cref="IDocumentExtractionClient"/> contract (the markdown path).
-///
-/// CU is the widest-surface PEER in the provider matrix, not an apex: one CU service can emit EITHER
-/// Markdown (this client, <see cref="IDocumentExtractionClient"/>) OR typed fields + grounding + confidence
-/// (<see cref="ContentUnderstandingAnalysisClient"/>, the sibling <see cref="IDocumentAnalysisClient"/>).
-/// That is exactly why CU is the strongest cross-provider conformance test — if the same polygon /
-/// confidence / builder primitives serve CU's two shapes AND Mistral OCR AND Azure DI AND a vision LLM,
-/// provider-neutrality is proven. But CU is a peer behind the contract, never privileged over the others.
-///
-/// Wire protocol: analyzer + async-poll (<c>AnalyzeBinary(WaitUntil.Completed, analyzerId, …)</c> →
-/// <c>AnalysisResult.Contents[]</c>). Different from Mistral (document→pages[]) and DI (AnalyzeResult),
-/// so it is a different class — but it normalizes onto the same <see cref="DocumentExtractionResult"/>, so the
-/// <see cref="OcrDocumentReader"/> and the vector store never see the difference. Keyless via
-/// DefaultAzureCredential / any TokenCredential on a Foundry resource.
-/// </summary>
 public sealed class ContentUnderstandingClient : IDocumentExtractionClient
 {
-    /// <summary>The prebuilt analyzer that returns layout markdown (the RAG/reader path).</summary>
     public const string DefaultAnalyzerId = "prebuilt-document";
 
     private readonly Azure.AI.ContentUnderstanding.ContentUnderstandingClient _client;
@@ -51,77 +32,214 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
         DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        using var ms = new MemoryStream();
-        await document.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+        using var buffer = new MemoryStream();
+        await document.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
 
         string analyzerId = options?.ModelId ?? _analyzerId;
-        Operation<AnalysisResult> op = await _client
+        Operation<AnalysisResult> operation = await _client
             .AnalyzeBinaryAsync(
                 WaitUntil.Completed,
                 analyzerId,
-                BinaryData.FromBytes(ms.ToArray()),
+                BinaryData.FromBytes(buffer.ToArray()),
                 contentRange: null,
                 contentType: mediaType,
                 processingLocation: null,
                 cancellationToken)
             .ConfigureAwait(false);
 
-        AnalysisResult result = op.Value;
-        var pages = new List<DocumentPage>();
+        AnalysisResult result = operation.Value;
+        var pages = new List<ExtractionPage>();
 
-        // CU returns one or more content segments; the document path yields DocumentContent with markdown.
         foreach (AnalysisContent content in result.Contents)
         {
-            if (content is not DocumentContent doc)
+            if (content is not DocumentContent providerDocument)
             {
                 continue;
             }
 
-            var tablesByPage = new Dictionary<int, List<DocumentTable>>();
-            if (doc.Tables is { Count: > 0 })
+            string providerMarkdown = providerDocument.Markdown ?? string.Empty;
+            var entriesByPage =
+                new Dictionary<int, List<(int Offset, DocumentNode Node, DocumentExtractionEvidence? Evidence)>>();
+            var tableSpans = providerDocument.Tables?
+                .Select(static table => table.Span)
+                .ToList() ?? [];
+
+            List<(int Offset, DocumentNode Node, DocumentExtractionEvidence? Evidence)> Entries(int pageNumber)
+                => entriesByPage.TryGetValue(pageNumber, out var entries)
+                    ? entries
+                    : entriesByPage[pageNumber] = [];
+
+            if (providerDocument.Paragraphs is { Count: > 0 })
             {
-                foreach (Azure.AI.ContentUnderstanding.DocumentTable t in doc.Tables)
+                foreach (Azure.AI.ContentUnderstanding.DocumentParagraph paragraph in providerDocument.Paragraphs)
                 {
-                    var cells = new List<DocumentTableCell>(t.Cells.Count);
-                    foreach (Azure.AI.ContentUnderstanding.DocumentTableCell c in t.Cells)
+                    if (tableSpans.Any(tableSpan =>
+                        paragraph.Span.Offset < tableSpan.Offset + tableSpan.Length &&
+                        tableSpan.Offset < paragraph.Span.Offset + paragraph.Span.Length))
                     {
-                        cells.Add(new DocumentTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
-                        {
-                            Kind = c.Kind?.ToString() is { Length: > 0 } cellKind ? new DocumentTableCellKind(cellKind) : null,
-                            RowSpan = c.RowSpan ?? 1,
-                            ColumnSpan = c.ColumnSpan ?? 1,
-                        });
+                        continue;
                     }
-                    // CU encodes geometry as a source string (not a polygon array); it rides in RawRepresentation.
-                    (tablesByPage.TryGetValue(doc.StartPageNumber, out var list) ? list : tablesByPage[doc.StartPageNumber] = new())
-                        .Add(new DocumentTable(t.RowCount, t.ColumnCount, cells));
+
+                    int[] sourcePages = GetSourcePages(paragraph.Source, providerDocument.StartPageNumber);
+                    int pageNumber = sourcePages[0];
+                    DocumentPageReference[] pageReferences = PageReferences(sourcePages);
+                    DocumentTextRole role = paragraph.Role?.ToString() switch
+                    {
+                        "title" or "sectionHeading" => DocumentTextRole.Heading,
+                        "pageHeader" => DocumentTextRole.Header,
+                        "pageFooter" => DocumentTextRole.Footer,
+                        _ => DocumentTextRole.Paragraph,
+                    };
+                    DocumentText node = new(
+                        DocumentExtractionDemoExtensions.CreateNodeId(
+                            "content-understanding", pageNumber, "text", Entries(pageNumber).Count),
+                        paragraph.Content ?? string.Empty,
+                        role,
+                        pageReferences: pageReferences);
+                    Entries(pageNumber).Add((
+                        paragraph.Span.Offset,
+                        node,
+                        CreateEvidence(node.Id, paragraph, paragraph.Source)));
                 }
             }
 
-            if (doc.Pages is { Count: > 0 })
+            if (providerDocument.Tables is { Count: > 0 })
             {
-                for (int i = 0; i < doc.Pages.Count; i++)
+                int tableIndex = 0;
+                foreach (Azure.AI.ContentUnderstanding.DocumentTable providerTable in providerDocument.Tables)
                 {
-                    Azure.AI.ContentUnderstanding.DocumentPage page = doc.Pages[i];
-                    bool first = pages.Count == 0;
-                    pages.Add(new DocumentPage(page.PageNumber, first ? doc.Markdown ?? "" : "")
+                    int currentTableIndex = tableIndex++;
+                    int[] sourcePages = GetSourcePages(providerTable.Source, providerDocument.StartPageNumber);
+                    int pageNumber = sourcePages[0];
+                    DocumentPageReference[] pageReferences = PageReferences(sourcePages);
+                    var cells = new List<SharedTableCell>(providerTable.Cells.Count);
+                    foreach (Azure.AI.ContentUnderstanding.DocumentTableCell providerCell in providerTable.Cells)
                     {
-                        Elements = tablesByPage.TryGetValue(page.PageNumber, out var tb)
-                            ? tb.Cast<DocumentElement>().ToList()
-                            : [],
-                        AdditionalProperties = new() { ["cu.pageNumber"] = page.PageNumber },
-                    });
+                        int cellIndex = cells.Count;
+                        DocumentText cellText = new(
+                            DocumentExtractionDemoExtensions.CreateNodeId(
+                                "content-understanding", pageNumber, $"table-{currentTableIndex}-cell-text", cellIndex),
+                            providerCell.Content ?? string.Empty,
+                            pageReferences: pageReferences);
+                        DocumentTableCellRole role = providerCell.Kind?.ToString() switch
+                        {
+                            "columnHeader" => DocumentTableCellRole.ColumnHeader,
+                            "rowHeader" => DocumentTableCellRole.RowHeader,
+                            _ => DocumentTableCellRole.Content,
+                        };
+                        cells.Add(new SharedTableCell(
+                            DocumentExtractionDemoExtensions.CreateNodeId(
+                                "content-understanding", pageNumber, $"table-{currentTableIndex}-cell", cellIndex),
+                            providerCell.RowIndex,
+                            providerCell.ColumnIndex,
+                            [cellText],
+                            providerCell.RowSpan ?? 1,
+                            providerCell.ColumnSpan ?? 1,
+                            role,
+                            pageReferences: pageReferences));
+                    }
+
+                    DocumentNodeId tableId = DocumentExtractionDemoExtensions.CreateNodeId(
+                        "content-understanding", pageNumber, "table", currentTableIndex);
+                    var table = new SharedTable(
+                        tableId,
+                        providerTable.RowCount,
+                        providerTable.ColumnCount,
+                        cells,
+                        pageReferences: pageReferences);
+                    Entries(pageNumber).Add((
+                        providerTable.Span.Offset,
+                        table,
+                        CreateEvidence(tableId, providerTable, providerTable.Source)));
+                    if (!string.IsNullOrWhiteSpace(providerTable.Caption?.Content))
+                    {
+                        Entries(pageNumber).Add((
+                            providerTable.Caption.Span.Offset,
+                            new DocumentText(
+                                DocumentExtractionDemoExtensions.CreateNodeId(
+                                    "content-understanding", pageNumber, "table-caption", currentTableIndex),
+                                providerTable.Caption.Content,
+                                DocumentTextRole.Caption,
+                                pageReferences: pageReferences),
+                            null));
+                    }
+
+                    if (providerTable.Footnotes is { Count: > 0 })
+                    {
+                        for (int footnoteIndex = 0; footnoteIndex < providerTable.Footnotes.Count; footnoteIndex++)
+                        {
+                            DocumentFootnote footnote = providerTable.Footnotes[footnoteIndex];
+                            Entries(pageNumber).Add((
+                                footnote.Span.Offset,
+                                new DocumentText(
+                                    DocumentExtractionDemoExtensions.CreateNodeId(
+                                        "content-understanding",
+                                        pageNumber,
+                                        $"table-{currentTableIndex}-footnote",
+                                        footnoteIndex),
+                                    footnote.Content,
+                                    pageReferences: pageReferences),
+                                null));
+                        }
+                    }
                 }
             }
-            else
+
+            bool hasProviderPages = providerDocument.Pages is { Count: > 0 };
+            IEnumerable<Azure.AI.ContentUnderstanding.DocumentPage> providerPages =
+                hasProviderPages
+                    ? providerDocument.Pages
+                    : [ContentUnderstandingModelFactory.DocumentPage(providerDocument.StartPageNumber)];
+
+            foreach (Azure.AI.ContentUnderstanding.DocumentPage providerPage in providerPages)
             {
-                pages.Add(new DocumentPage(1, doc.Markdown ?? ""));
+                if (providerDocument.Paragraphs is not { Count: > 0 })
+                {
+                    IEnumerable<ContentSpan> pageSpans =
+                        providerPage.Spans is { Count: > 0 }
+                            ? providerPage.Spans
+                            : !hasProviderPages && providerMarkdown.Length > 0
+                                ? [ContentUnderstandingModelFactory.ContentSpan(0, providerMarkdown.Length)]
+                                : [];
+                    AddMarkdownSegments(
+                        providerMarkdown,
+                        pageSpans,
+                        tableSpans,
+                        providerPage.PageNumber,
+                        Entries(providerPage.PageNumber));
+                }
+
+                var orderedEntries = Entries(providerPage.PageNumber)
+                    .OrderBy(static entry => entry.Offset)
+                    .ToArray();
+                string pageMarkdown = providerPage.Spans is { Count: > 0 }
+                    ? SliceMarkdown(providerMarkdown, providerPage.Spans)
+                    : !hasProviderPages
+                        ? providerMarkdown
+                        : string.Empty;
+                pages.Add(new ExtractionPage(
+                    providerPage.PageNumber,
+                    DocumentExtractionDemoExtensions.CreatePageDocument(
+                        "content-understanding",
+                        providerPage.PageNumber,
+                        orderedEntries.Select(static entry => entry.Node).ToArray()),
+                    markdown: pageMarkdown.Length > 0 ? pageMarkdown : null,
+                    evidence: orderedEntries
+                        .Where(static entry => entry.Evidence is not null)
+                        .Select(static entry => entry.Evidence!)
+                        .ToArray())
+                {
+                    RawRepresentation = providerPage,
+                    AdditionalProperties = new() { ["cu.pageNumber"] = providerPage.PageNumber },
+                });
             }
         }
 
         if (pages.Count == 0)
         {
-            pages.Add(new DocumentPage(1, ""));
+            pages.Add(new ExtractionPage(
+                1,
+                DocumentExtractionDemoExtensions.CreatePageDocument("content-understanding", 1, [])));
         }
 
         return new DocumentExtractionResult(pages)
@@ -132,12 +250,105 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
     }
 
     public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
-        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
-        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
+        Stream document,
+        string mediaType,
+        DocumentExtractionOptions? options = null,
+        CancellationToken cancellationToken = default)
+        => DocumentExtractionDemoExtensions.StreamAsUpdates(
+            ct => ExtractAsync(document, mediaType, options, ct),
+            cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this
-            : serviceType == typeof(Azure.AI.ContentUnderstanding.ContentUnderstandingClient) ? _client : null;
+            : serviceType == typeof(Azure.AI.ContentUnderstanding.ContentUnderstandingClient) ? _client
+            : null;
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+    }
+
+    private static DocumentExtractionEvidence CreateEvidence(
+        DocumentNodeId nodeId,
+        object rawRepresentation,
+        string? source)
+        => new(nodeId)
+        {
+            RawRepresentation = rawRepresentation,
+            AdditionalProperties = string.IsNullOrWhiteSpace(source)
+                ? null
+                : new() { ["cu.source"] = source },
+        };
+
+    private static int[] GetSourcePages(string? source, int fallbackPage)
+    {
+        int[] pages = string.IsNullOrWhiteSpace(source)
+            ? []
+            : Azure.AI.ContentUnderstanding.DocumentSource.Parse(source)
+                .Select(static item => item.PageNumber)
+                .Distinct()
+                .Order()
+                .ToArray();
+        return pages.Length > 0 ? pages : [fallbackPage];
+    }
+
+    private static DocumentPageReference[] PageReferences(IEnumerable<int> pages)
+        => pages.Select(static page => new DocumentPageReference(page)).ToArray();
+
+    private static void AddMarkdownSegments(
+        string markdown,
+        IEnumerable<ContentSpan>? pageSpans,
+        IEnumerable<ContentSpan> excludedSpans,
+        int pageNumber,
+        List<(int Offset, DocumentNode Node, DocumentExtractionEvidence? Evidence)> entries)
+    {
+        foreach (ContentSpan pageSpan in pageSpans ?? [])
+        {
+            int cursor = pageSpan.Offset;
+            int pageEnd = Math.Min(markdown.Length, pageSpan.Offset + pageSpan.Length);
+            foreach (ContentSpan excluded in excludedSpans
+                .Where(span => span.Offset < pageEnd && span.Offset + span.Length > cursor)
+                .OrderBy(static span => span.Offset))
+            {
+                AddSegment(cursor, Math.Max(cursor, excluded.Offset));
+                cursor = Math.Max(cursor, excluded.Offset + excluded.Length);
+            }
+            AddSegment(cursor, pageEnd);
+        }
+
+        void AddSegment(int start, int end)
+        {
+            if (start < 0 || end <= start || end > markdown.Length)
+            {
+                return;
+            }
+
+            string text = DocumentExtractionDemoExtensions.ProjectProviderMarkdown(markdown[start..end]);
+            if (text.Length == 0)
+            {
+                return;
+            }
+
+            entries.Add((
+                start,
+                new DocumentText(
+                    DocumentExtractionDemoExtensions.CreateNodeId(
+                        "content-understanding", pageNumber, "markdown-text", entries.Count),
+                    text,
+                    pageReferences: [new(pageNumber)]),
+                null));
+        }
+    }
+
+    private static string SliceMarkdown(string markdown, IEnumerable<ContentSpan>? spans)
+    {
+        if (markdown.Length == 0 || spans is null)
+        {
+            return string.Empty;
+        }
+
+        return string.Concat(spans
+            .OrderBy(static span => span.Offset)
+            .Where(span => span.Offset >= 0 && span.Length > 0 && span.Offset + span.Length <= markdown.Length)
+            .Select(span => markdown.Substring(span.Offset, span.Length)));
+    }
 }

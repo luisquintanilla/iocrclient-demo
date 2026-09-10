@@ -2,8 +2,8 @@
 
   <!--
     OcrBench — a small shared harness for the OCR-vs-PdfPig eval (sample 10). It reuses the demo's real
-    IOcrClient providers (../../ocr-shape) and the local-pack Microsoft.Extensions.AI.Evaluation stack
-    (10.8.0-dev), and adds one CUSTOM deterministic evaluator (OcrExtractionEvaluator) alongside the
+    IDocumentExtractionClient providers (../../ocr-shape) and the local-pack Microsoft.Extensions.AI.Evaluation stack
+    plus a custom deterministic evaluator (OcrExtractionEvaluator) alongside the
     built-in NLP F1 evaluator. No ground-truth accuracy is claimed — scores are reference-free
     (structural coverage) or reference-based only against the small authored answer set in questions.json.
   -->
@@ -21,9 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Evaluation stack (local-pack, same 10.8.0-dev tree as the OCR/MEDI bits). -->
-    <PackageReference Include="Microsoft.Extensions.AI.Evaluation" Version="10.8.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.NLP" Version="10.8.0-dev" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation" Version="10.9.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.NLP" Version="10.9.0-preview.1.26411.16" />
     <!-- Naive baseline: native PdfPig text extraction (nuget.org). -->
     <PackageReference Include="PdfPig" Version="0.1.15" />
   <!-- Real local vector store for the constant retriever held identical across rows (nuget.org). -->
