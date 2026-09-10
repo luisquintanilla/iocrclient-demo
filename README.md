@@ -6,13 +6,13 @@ This is the executable consumer companion for the neutral architecture on the au
 `data-ingestion-preview2` line:
 
 - evaluated implementation and package source:
-  [`704a3e44ef4d7b053748780549fc2c8e929a444b`](https://github.com/luisquintanilla/extensions/commit/704a3e44ef4d7b053748780549fc2c8e929a444b)
+  [`6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`](https://github.com/luisquintanilla/extensions/commit/6f7f3fa75d08599eb5005a0cd3db17d20694e1a8)
 - evidence-only presentation:
   [`7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2`](https://github.com/luisquintanilla/extensions/commit/7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2)
 - common base: `f6ba2df16275bfc5eaf50aeb9327e2ec34ee8129`
 - Preview 2 ancestor: `e124c123afeeda2f271f3b99a70eb3cfe187a471`
 
-Only `704a3e44…` supplies packages. The presentation commit is never a package source.
+Only `6f7f3fa7…` supplies packages. The presentation commit is never a package source.
 
 ```csharp
 using IDocumentExtractionClient client = new FixtureExtractionClient(result);
@@ -46,13 +46,16 @@ The independent shared-package proof is
 [`samples/documents-only/Program.cs`](samples/documents-only/Program.cs), with captured output in
 [`samples/output/documents-only.txt`](samples/output/documents-only.txt).
 
-The six-package feed is closed and hash-verified by ID, version, repository URL, and exact commit.
+The six-package feed is closed and hash-verified by ID, version, repository URL, branch, and exact commit.
 Published MEAI, provider SDK, vector store, and evaluation dependencies come from NuGet.org.
 
-**This proves:** shared `Document` identity pass-through; exact non-generic chunk content, context,
-token counts, source IDs, and pages; typed stock-writer persistence; real provider embeddings during
-upsert and query; exact revenue/retention retrieval; mixed `TextContent`/`DataContent`; serialization
-round trip; Markdown isolation; PdfPig metadata/provenance; and independent Documents consumption.
+**This proves:** shared `Document` identity pass-through; producer-order page references with preserved
+multiplicity; versioned `DocumentOpaque` and non-text round trips; typed extraction-result/evidence
+lookup with optional geometry kept outside the semantic tree; exact non-generic chunk content,
+context, token counts, source IDs, and pages; typed stock-writer persistence; real provider embeddings
+during upsert and query; exact revenue/retention retrieval; mixed `TextContent`/`DataContent`;
+serialization round trip; Markdown isolation; PdfPig metadata/provenance; and independent Documents
+consumption.
 
 **It does not prove:** merge readiness, OCR quality, performance, live-provider behavior, archive
 rebuild identity, or settled schema evolution and immutable rewrite policy. `SourceNodeIds` do not

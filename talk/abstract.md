@@ -11,7 +11,7 @@ The proof also covers mixed `TextContent` and captionless-image `DataContent`, r
 recursive provenance, exact Markdown isolation, PdfPig metadata, serialization round trip, and
 independent use of `Microsoft.Extensions.Documents.Abstractions`.
 
-Packages come only from implementation `704a3e44ef4d7b053748780549fc2c8e929a444b`.
+Packages come only from implementation `6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`.
 Presentation `7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2` is evidence-only.
 
 This evidence supports comparison with the bridge architecture. It does not declare a winner or

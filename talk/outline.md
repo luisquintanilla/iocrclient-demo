@@ -27,16 +27,19 @@
 
 ## 5. Exercise the edges
 
+- Producer page annotations retain order and multiplicity; opaque and non-text nodes round-trip
+  without entering canonical text.
 - Mixed `TextContent` and captionless `DataContent`.
 - Polymorphic content/page serialization round trip.
 - Recursive/range provenance and no overlap-only terminal chunk.
-- Exact Markdown isolation and PdfPig metadata.
+- Typed extraction evidence lookup through the reader handoff, optional geometry, exact Markdown
+  isolation, and PdfPig metadata.
 - Documents-only consumer with only a System.Text.Json package dependency.
 
 ## 6. Compare without choosing
 
 - Bridge handoff `a3033e0a`, source `c1913907`, consumer `aa55dfe6`.
-- Neutral implementation `704a3e44`, presentation `7e5172fe`.
+- Neutral implementation `6f7f3fa7`, presentation `7e5172fe`.
 - Generic-main consumer `75bbb419` is superseded historical evidence.
 
 ## 7. State limitations

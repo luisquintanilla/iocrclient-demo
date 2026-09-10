@@ -1,7 +1,7 @@
 # Samples
 
 This directory contains the executable Preview 2 neutral comparison. Only outputs executed against
-the exact six-package feed from implementation `704a3e44ef4d7b053748780549fc2c8e929a444b`
+the exact six-package feed from implementation `6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`
 are committed.
 
 > **DRAFT COMPARISON. DO NOT MERGE.**
@@ -17,6 +17,8 @@ dotnet run --project documents-only/DocumentsOnly.csproj
 `17-neutral-shared-tree-validation.cs` exercises:
 
 - the built-in `DocumentExtractionReader` and ordered shared `Document` identity pass-through
+- producer-supplied page-reference order and multiplicity without inferred or sentinel pages
+- versioned `DocumentOpaque` and non-text semantic content round trips without becoming text
 - non-generic `IngestionPipeline`, `IngestionChunker`, `IngestionChunkProcessor`,
   `IngestionChunkWriter`, and `IngestionChunk`
 - `AIContent` chunk content and required `TokenCount`
@@ -24,6 +26,7 @@ dotnet run --project documents-only/DocumentsOnly.csproj
 - `VectorStoreWriter<Preview2ChunkRecord>` and real InMemory provider embedding on upsert and query
 - exact revenue and retention retrieval with persisted pages
 - mixed `TextContent` and captionless-image `DataContent`, typed persistence, and serialization
+- typed extraction-result handoff for node/evidence lookup, optional geometry, and a provider with no geometry
 - extraction-only Markdown/evidence isolation, PdfPig metadata, and recursive provenance
 - explicit disclosure that page numbers persist and source node IDs do not persist by default
 
@@ -39,10 +42,10 @@ Captured outputs:
 ## Exact package source
 
 The closed architecture feed contains exactly six packages at
-`10.8.0-preview2neutral.704a3e4`. Every package hash and nuspec repository/commit is verified by
+`10.8.0-preview2neutral.6f7f3fa`. Every package hash and nuspec repository/branch/commit is verified by
 `../scripts/build-local-feed.sh`.
 
-- implementation/package source: `704a3e44ef4d7b053748780549fc2c8e929a444b`
+- implementation/package source: `6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`
 - presentation evidence only: `7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2`
 - common base: `f6ba2df16275bfc5eaf50aeb9327e2ec34ee8129`
 - Preview 2 ancestor: `e124c123afeeda2f271f3b99a70eb3cfe187a471`

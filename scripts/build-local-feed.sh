@@ -2,12 +2,13 @@
 
 set -euo pipefail
 
-IMPLEMENTATION_SHA="704a3e44ef4d7b053748780549fc2c8e929a444b"
+IMPLEMENTATION_SHA="6f7f3fa75d08599eb5005a0cd3db17d20694e1a8"
 PRESENTATION_SHA="7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2"
 COMMON_BASE_SHA="f6ba2df16275bfc5eaf50aeb9327e2ec34ee8129"
 PREVIEW2_ANCESTOR_SHA="e124c123afeeda2f271f3b99a70eb3cfe187a471"
-PACKAGE_VERSION="10.8.0-preview2neutral.704a3e4"
-REPOSITORY_URL="https://github.com/dotnet/extensions.git"
+PACKAGE_VERSION="10.8.0-preview2neutral.6f7f3fa"
+REPOSITORY_URL="https://github.com/luisquintanilla/extensions.git"
+REPOSITORY_BRANCH="refs/heads/luisquintanilla-neutral-document-tree"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FEED="$ROOT/local-feed"
 STATE="$(mktemp -d "${TMPDIR:-/tmp}/preview2-neutral-feed.XXXXXX")"
@@ -38,7 +39,7 @@ fi
 
 verify_feed() {
   local feed="$1"
-  "$PYTHON3" - "$feed" "$IMPLEMENTATION_SHA" "$PACKAGE_VERSION" "$REPOSITORY_URL" <<'PY'
+  "$PYTHON3" - "$feed" "$IMPLEMENTATION_SHA" "$PACKAGE_VERSION" "$REPOSITORY_URL" "$REPOSITORY_BRANCH" <<'PY'
 import hashlib
 import pathlib
 import sys
@@ -49,13 +50,14 @@ feed = pathlib.Path(sys.argv[1])
 expected_commit = sys.argv[2]
 expected_version = sys.argv[3]
 expected_repository = sys.argv[4]
+expected_branch = sys.argv[5]
 expected = {
-    "Microsoft.Extensions.DataIngestion": "2b6002fc142dace6a5b08a1bc845eb544d08523c4f75d60c6384a36255e8f7b0",
-    "Microsoft.Extensions.DataIngestion.Abstractions": "6b8a88bb5f52121b05022c834de890669f8a8327a54bafa148df063675cf2f4f",
-    "Microsoft.Extensions.DataIngestion.DocumentExtraction": "c2dd354bf6460b5f1f8b01186b5ff3f0c27ce790a6bb08535e30846250ca5d35",
-    "Microsoft.Extensions.DocumentExtraction": "fa54be131cc99b3c870ea9789cde03584967413302e2fa7ac53f9ac6e89b79a1",
-    "Microsoft.Extensions.DocumentExtraction.Abstractions": "a4347cb50702c82127af83cbcb5852d3148a2429f7920f13b89c0538b67e2b65",
-    "Microsoft.Extensions.Documents.Abstractions": "c94ea97233f9756009012f8f25234974f56c950982d7021b2df22430d4c98f4b",
+    "Microsoft.Extensions.DataIngestion": "d2eba22420cef40edc18f49c1f35d561473c129005c2efc282bd1725d0ab4907",
+    "Microsoft.Extensions.DataIngestion.Abstractions": "2f53db2c106eeed8f6139bd4549f4ffc6ba1cc5bdc24ca549bd03e1adc4e2ab3",
+    "Microsoft.Extensions.DataIngestion.DocumentExtraction": "3506579e9e0c97673d80f945c9fb81c9bfed173308bddb61f0bf9fa26b51e9c6",
+    "Microsoft.Extensions.DocumentExtraction": "78b2fe326e42f84d97daed443c2e85d79f4756c78b38e081d3adea8a546cfcea",
+    "Microsoft.Extensions.DocumentExtraction.Abstractions": "2b863eb2f5d1751a44d739f85a33d15067625db0904058dd0614b786239bea65",
+    "Microsoft.Extensions.Documents.Abstractions": "09db41f30dab97b5e94596761805d063a6cffb5baf4044a0ec24814cb9cf98fe",
 }
 manifest_path = feed / "SHA256SUMS"
 if not manifest_path.is_file():
@@ -93,6 +95,7 @@ for package in packages:
     version = metadata.find(f"{prefix}version", namespace).text
     repository = metadata.find(f"{prefix}repository", namespace)
     repository_url = repository.attrib.get("url")
+    branch = repository.attrib.get("branch")
     commit = repository.attrib.get("commit")
     if package_id not in expected:
         raise SystemExit(f"ERROR: unexpected package ID {package_id}")
@@ -100,12 +103,13 @@ for package in packages:
         raise SystemExit(f"ERROR: duplicate package ID {package_id}")
     if digest != expected[package_id]:
         raise SystemExit(f"ERROR: SHA-256 mismatch for {package_id}: {digest}")
-    if version != expected_version or repository_url != expected_repository or commit != expected_commit:
+    if (version != expected_version or repository_url != expected_repository
+            or branch != expected_branch or commit != expected_commit):
         raise SystemExit(
             f"ERROR: nuspec provenance mismatch for {package_id}: "
-            f"version={version} repo={repository_url} commit={commit}")
+            f"version={version} repo={repository_url} branch={branch} commit={commit}")
     seen.add(package_id)
-    print(f"{package_id} | {version} | {repository_url} | {commit} | {digest}")
+    print(f"{package_id} | {version} | {repository_url} | {branch} | {commit} | {digest}")
 
 if seen != set(expected):
     raise SystemExit(f"ERROR: missing package IDs: {sorted(set(expected) - seen)}")
@@ -116,6 +120,7 @@ echo "Preview 2 neutral implementation: $IMPLEMENTATION_SHA"
 echo "Presentation evidence only: $PRESENTATION_SHA"
 echo "Common base: $COMMON_BASE_SHA"
 echo "Preview 2 ancestor: $PREVIEW2_ANCESTOR_SHA"
+echo "Package branch: $REPOSITORY_BRANCH"
 
 if [ -n "${SOURCE_FEED:-}" ]; then
   SOURCE_FEED="$(cd "$SOURCE_FEED" && pwd)"

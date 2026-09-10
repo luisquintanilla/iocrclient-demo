@@ -2,7 +2,7 @@
 
   <!--
     Preview 2 neutral implementation packages from exact source
-    704a3e44ef4d7b053748780549fc2c8e929a444b.
+    6f7f3fa75d08599eb5005a0cd3db17d20694e1a8.
   -->
 
   <PropertyGroup>
@@ -17,10 +17,10 @@
   <ItemGroup>
     <!-- Real abstractions + core middleware + OpenAI binding + MEDI pipeline (local-pack). -->
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.0" />
-    <PackageReference Include="Microsoft.Extensions.Documents.Abstractions" Version="10.8.0-preview2neutral.704a3e4" />
-    <PackageReference Include="Microsoft.Extensions.DocumentExtraction" Version="10.8.0-preview2neutral.704a3e4" />
-    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.8.0-preview2neutral.704a3e4" />
-    <PackageReference Include="Microsoft.Extensions.DataIngestion.DocumentExtraction" Version="10.8.0-preview2neutral.704a3e4" />
+    <PackageReference Include="Microsoft.Extensions.Documents.Abstractions" Version="10.8.0-preview2neutral.6f7f3fa" />
+    <PackageReference Include="Microsoft.Extensions.DocumentExtraction" Version="10.8.0-preview2neutral.6f7f3fa" />
+    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.8.0-preview2neutral.6f7f3fa" />
+    <PackageReference Include="Microsoft.Extensions.DataIngestion.DocumentExtraction" Version="10.8.0-preview2neutral.6f7f3fa" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.0" />
     <!-- Credentials for every sample come from user-secrets (id iocrclient-demo), env fallback. -->
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />

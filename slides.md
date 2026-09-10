@@ -16,7 +16,7 @@ repo: https://github.com/luisquintanilla/iocrclient-demo
 
 <div class="title-rule"></div>
 
-<p class="byline">Implementation 704a3e44 · Presentation 7e5172fe</p>
+<p class="byline">Implementation 6f7f3fa7 · Presentation 7e5172fe</p>
 
 </div>
 
@@ -80,6 +80,8 @@ The built-in reader passes the ordered shared `Document` identity through unchan
 ```text
 Contracts: pipeline/chunker/processor/writer/chunk=non-generic content=AIContent TokenCount=required
 Shared: pages=1,2 nodes=17 table=2x2 image=4B unknown-kind=paragraph
+Page refs: producer-order=3,1,3 multiplicity=preserved inferred=none sentinel=none
+Opaque/non-text: logical_kind=provider.unknown-chart schema=4 payload=roundtrip page_refs=2,1,2 text=excluded image=roundtrip
 Chunks: count=2 types=TextContent|TextContent tokens=28|8 pages=1|2 source_ids=13|2
 ```
 </div>
@@ -141,6 +143,7 @@ The proof serializes and restores polymorphic `AIContent` plus page numbers, the
 
 - exact provider Markdown never becomes canonical `Text`
 - confidence, geometry, raw objects, and provider properties remain extraction evidence
+- typed reader handoff supports node/evidence lookup while a provider without geometry remains valid
 - PdfPig adds reader/page-count metadata and recursive page references
 - independent Documents-only consumer depends only on `System.Text.Json`
 
@@ -158,7 +161,7 @@ Loss: extraction evidence retained; ingestion/chunks/records isolated
 
 ## Six packages, one implementation commit
 
-`10.8.0-preview2neutral.704a3e4`
+`10.8.0-preview2neutral.6f7f3fa`
 
 - DataIngestion + Abstractions
 - DataIngestion.DocumentExtraction
@@ -166,7 +169,7 @@ Loss: extraction evidence retained; ingestion/chunks/records isolated
 - Documents.Abstractions
 
 Every hash, package ID, version, repository URL, and nuspec commit resolves to
-`704a3e44ef4d7b053748780549fc2c8e929a444b`.
+`6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`.
 
 <div class="slide-actions">
 <span class="run">scripts/build-local-feed.sh</span>
@@ -181,7 +184,7 @@ Every hash, package ID, version, repository URL, and nuspec commit resolves to
 - bridge handoff: `a3033e0a`
 - evaluated bridge source: `c1913907`
 - bridge consumer: `aa55dfe6`
-- neutral implementation: `704a3e44`
+- neutral implementation: `6f7f3fa7`
 - neutral presentation: `7e5172fe`
 
 This evidence does not claim merge readiness, OCR quality, performance, live-provider behavior,

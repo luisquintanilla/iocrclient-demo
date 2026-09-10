@@ -1,10 +1,12 @@
 using System.Text.Json;
 using System.IO.Compression;
 using System.Xml.Linq;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Documents;
 using SharedDocument = Microsoft.Extensions.Documents.Document;
 
-const string ExpectedSourceCommit = "704a3e44ef4d7b053748780549fc2c8e929a444b";
+const string ExpectedSourceCommit = "6f7f3fa75d08599eb5005a0cd3db17d20694e1a8";
+const string ExpectedPackageVersion = "10.8.0-preview2neutral.6f7f3fa";
 const string ExpectedProjection =
     "Quarterly Review\n\nRevenue increased after the bridge rollout.\n\nMetric\tValue\nRevenue\t$12M\n\nQuarterly revenue chart\n\nprovider-specific note\n\nAppendix\n\nRetention policy remains unchanged.";
 
@@ -24,22 +26,23 @@ string[] referencedProducts = typeof(SharedDocument).Assembly
 Require(referencedProducts.Length == 0, "The neutral Documents assembly must not reference extraction or MEDI.");
 string packagePath = FindRepoFile(Path.Combine(
     "local-feed",
-    "Microsoft.Extensions.Documents.Abstractions.10.8.0-preview2neutral.704a3e4.nupkg"));
+    $"Microsoft.Extensions.Documents.Abstractions.{ExpectedPackageVersion}.nupkg"));
+string[] packageDependencies;
 using (ZipArchive archive = ZipFile.OpenRead(packagePath))
 {
     ZipArchiveEntry nuspecEntry = archive.Entries.Single(entry =>
         entry.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase));
     XDocument nuspec = XDocument.Load(nuspecEntry.Open());
     XNamespace ns = nuspec.Root!.Name.Namespace;
-    string[] packageDependencies = nuspec
+    packageDependencies = nuspec
         .Descendants(ns + "dependency")
         .Select(dependency => dependency.Attribute("id")?.Value)
         .Where(id => id is not null)
         .Distinct()
         .Cast<string>()
         .ToArray();
-    Require(packageDependencies.SequenceEqual(["System.Text.Json"]),
-        "The neutral Documents package must depend only on System.Text.Json.");
+    Require(packageDependencies.All(static dependency => dependency == "System.Text.Json"),
+        "The neutral Documents package must not add dependencies beyond System.Text.Json.");
 }
 
 string[] nodeTypes = document.Nodes
@@ -48,7 +51,7 @@ string[] nodeTypes = document.Nodes
     .ToArray();
 Require(
     nodeTypes.SequenceEqual(
-        ["DocumentContainer", "DocumentText", "DocumentTable", "DocumentTableCell", "DocumentImage"]),
+        ["DocumentContainer", "DocumentText", "DocumentTable", "DocumentTableCell", "DocumentImage", "DocumentOpaque"]),
     "The Documents-only fixture shape changed.");
 
 int[] pages = document.Nodes
@@ -60,16 +63,31 @@ int[] pages = document.Nodes
 Require(pages.SequenceEqual([1, 2]), "The Documents-only fixture must retain both pages.");
 Require(document.Text == ExpectedProjection, "The deterministic text projection changed.");
 
-string json = JsonSerializer.Serialize(document);
-string[] discriminators = ["container", "text", "table", "image"];
+JsonSerializerOptions jsonOptions = new()
+{
+    TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
+};
+string json = JsonSerializer.Serialize(document, jsonOptions);
+string[] discriminators = ["container", "text", "table", "image", "opaque"];
 Require(
     discriminators.All(discriminator =>
         json.Contains($"\"$type\":\"{discriminator}\"", StringComparison.Ordinal)),
     "The serialized tree must contain every expected node discriminator.");
+SharedDocument roundTrip = JsonSerializer.Deserialize<SharedDocument>(json, jsonOptions)
+    ?? throw new InvalidOperationException("The Documents-only tree did not deserialize.");
+DocumentOpaque opaque = roundTrip.Nodes.OfType<DocumentOpaque>().Single();
+Require(roundTrip.Text == ExpectedProjection
+        && opaque.LogicalKind == "provider.unknown-chart"
+        && opaque.SchemaVersion == 2
+        && opaque.Position == 2
+        && opaque.PageReferences.Select(reference => reference.PageNumber)
+            .SequenceEqual([2, 1, 2])
+        && opaque.Payload.GetProperty("value").GetInt32() == 42,
+    "Opaque semantic content did not retain identity, position, payload, or page references.");
 
 Console.WriteLine($"documents-only source: luisquintanilla/extensions@{sourceCommit}");
 Console.WriteLine("dependencies: Microsoft.Extensions.Documents.Abstractions only");
-Console.WriteLine("package dependencies: System.Text.Json only");
+Console.WriteLine($"package dependencies: {(packageDependencies.Length == 0 ? "none (net10.0)" : string.Join(", ", packageDependencies))}");
 Console.WriteLine($"node types: {string.Join(", ", nodeTypes)}");
 Console.WriteLine($"pages: {string.Join(", ", pages)}");
 Console.WriteLine($"projection: {document.Text.Replace("\n", " | ", StringComparison.Ordinal)}");
@@ -97,13 +115,22 @@ static SharedDocument CreateDocument()
         "image/png",
         description: "Quarterly revenue chart",
         pageReferences: [new(1)]);
+    using JsonDocument opaquePayload = JsonDocument.Parse(
+        """{"provider":"fixture","kind":"unknown-chart","value":42}""");
+    DocumentOpaque opaque = new(
+        new("opaque-chart"),
+        "provider.unknown-chart",
+        schemaVersion: 2,
+        position: 2,
+        opaquePayload.RootElement,
+        pageReferences: [new(2), new(1), new(2)]);
     DocumentText providerNote = Text("provider-note", "provider-specific note", page: 1);
     DocumentText appendix = Text("appendix-heading", "Appendix", DocumentTextRole.Heading, page: 2);
     DocumentText retention = Text("retention-paragraph", "Retention policy remains unchanged.", page: 2);
 
     return new SharedDocument(
     [
-        Section("page-1", 1, [heading, revenue, table, image, providerNote]),
+        Section("page-1", 1, [heading, revenue, table, image, opaque, providerNote]),
         Section("page-2", 2, [appendix, retention]),
     ]);
 }

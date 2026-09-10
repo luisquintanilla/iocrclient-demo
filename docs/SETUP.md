@@ -84,7 +84,7 @@ See [`samples/README.md`](../samples/README.md) for the full sample table and wh
 This repo exists to gather feedback on the **proposed** building blocks while they're still in
 review. If you have thoughts on the shape, that's the point:
 
-- **neutral implementation:** `704a3e44ef4d7b053748780549fc2c8e929a444b`
+- **neutral implementation:** `6f7f3fa75d08599eb5005a0cd3db17d20694e1a8`
 - **presentation evidence only:** `7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2`
 
 Open an issue here for demo/repro problems, or comment on the PRs for API-shape feedback.

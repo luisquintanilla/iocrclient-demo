@@ -7,6 +7,8 @@
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Xml.Linq;
 using CommunityToolkit.VectorData.InMemory;
 using DemoOcr;
@@ -19,11 +21,14 @@ using Microsoft.Extensions.VectorData;
 using Microsoft.ML.Tokenizers;
 using SharedDocument = Microsoft.Extensions.Documents.Document;
 
-const string ImplementationSha = "704a3e44ef4d7b053748780549fc2c8e929a444b";
+const string ImplementationSha = "6f7f3fa75d08599eb5005a0cd3db17d20694e1a8";
+const string ImplementationBranch = "refs/heads/luisquintanilla-neutral-document-tree";
 const string PresentationSha = "7e5172fe81b9c2e1fb5db9d54c0ab761cd7be9f2";
-const string PackageVersion = "10.8.0-preview2neutral.704a3e4";
-VerifyFeedAndLoadedAssemblies(ImplementationSha, PackageVersion);
+const string PackageVersion = "10.8.0-preview2neutral.6f7f3fa";
+VerifyFeedAndLoadedAssemblies(ImplementationSha, ImplementationBranch, PackageVersion);
 CheckNonGenericContracts();
+CheckProducerPageReferences();
+CheckOpaqueAndNonTextRoundTrip();
 Check(
     FoundryMistralOcrClient.IsMarkdownTableSeparator("| --- | --- |")
     && FoundryMistralOcrClient.IsMarkdownTableSeparator("--- | ---")
@@ -173,7 +178,8 @@ Check(records.Count == chunks.Count
         && records.All(record => record.SerializedContent is not null
             && record.SerializedPageNumbers is "1" or "2"
             && !record.SerializedContent.Contains(FixtureExtractionClient.EvidenceMarker, StringComparison.Ordinal)
-            && !record.SerializedContent.Contains(FixtureExtractionClient.ProviderMarkdown, StringComparison.Ordinal))
+            && !record.SerializedContent.Contains(FixtureExtractionClient.ProviderMarkdown, StringComparison.Ordinal)
+            && !record.SerializedContent.Contains("BoundingRegion", StringComparison.Ordinal))
         && typeof(IngestionChunkVectorRecord).GetProperty("SourceNodeIds") is null,
     "Stock writer changed content, context, pages, or SourceNodeIds omission.");
 Check(embeddings.InputTypes.SequenceEqual([typeof(TextContent), typeof(TextContent)]),
@@ -199,6 +205,8 @@ Console.WriteLine("Feed: 6/6 hashes+id+version+repo+commit");
 Console.WriteLine("Contracts: pipeline/chunker/processor/writer/chunk=non-generic content=AIContent TokenCount=required");
 Console.WriteLine($"Client/pipeline: calls={client.ExtractCallCount} processors=1 processed_chunks={processor.Chunks.Count} pass_through=true");
 Console.WriteLine("Shared: pages=1,2 nodes=17 table=2x2 image=4B unknown-kind=paragraph");
+Console.WriteLine("Page refs: producer-order=3,1,3 multiplicity=preserved inferred=none sentinel=none");
+Console.WriteLine("Opaque/non-text: logical_kind=provider.unknown-chart schema=4 payload=roundtrip page_refs=2,1,2 text=excluded image=roundtrip");
 Console.WriteLine($"Chunks: count=2 types=TextContent|TextContent tokens={chunks[0].TokenCount}|{chunks[1].TokenCount} pages=1|2 source_ids=13|2");
 Console.WriteLine("Writer: typed=Preview2ChunkRecord stored=2 pages=1|2 SourceNodeIds=not-persisted embeddings=TextContent,TextContent");
 Console.WriteLine("Retrieval: revenue=page1:$12M retention=page2:unchanged");
@@ -206,6 +214,7 @@ Console.WriteLine($"Mixed: chunks=TextContent({mixed.TextTokens})|DataContent({m
 Console.WriteLine("Markdown: exact=extraction-only canonical-empty=true");
 Console.WriteLine($"PdfPig: pages={pdfPages} recursive_provenance=true metadata=reader,page_count");
 Console.WriteLine("Range/overlap: pages=1,2 recursive_source_ids=true trailing_overlap_chunk=false");
+Console.WriteLine("Evidence: typed_handoff=true node_lookup=true geometry=optional provider_without_geometry=true tree_geometry=excluded");
 Console.WriteLine("Loss: extraction evidence retained; ingestion/chunks/records isolated");
 Console.WriteLine("PASS: Preview 2 neutral shared tree -> non-generic pipeline -> typed writer -> provider embedding -> retrieval");
 
@@ -230,6 +239,13 @@ static void AssertEvidenceIsolation(
     IngestionDocument ingestion)
 {
     DocumentPage first = extraction.Pages[0];
+    Check(ingestion.TryGetExtractionResult(out DocumentExtractionResult? handedOff)
+            && ReferenceEquals(handedOff, extraction)
+            && extraction.Evidence.Count == 4
+            && extraction.TryGetEvidence(new DocumentNodeId("review-heading"), out DocumentExtractionEvidence? indexed)
+            && ReferenceEquals(indexed, first.Evidence[0])
+            && extraction.TryGetEvidence(new DocumentNodeId("retention-paragraph"), out _) == false,
+        "The typed reader handoff did not preserve extraction-owned evidence lookup.");
     Check(first.Markdown == FixtureExtractionClient.ProviderMarkdown
             && first.RawRepresentation is not null
             && first.Dimensions is { Width: 8, Height: 11 }
@@ -247,13 +263,81 @@ static void AssertEvidenceIsolation(
                 && evidence.BoundingRegion?.GetBounds() is { Left: 0, Top: 0, Right: 8, Bottom: 1 })
             && first.Evidence.Any(evidence =>
                 evidence.NodeId == new DocumentNodeId("metric-header-text")
-                && evidence.Confidence == 0.95),
+                && evidence.Confidence == 0.95)
+            && extraction.Pages[1].Dimensions is null
+            && extraction.Pages[1].CoordinateUnit is null
+            && extraction.Pages[1].Evidence.Count == 0,
         "Extraction-only evidence was not retained at the source.");
     Check(ReferenceEquals(ingestion.Document, extraction.Document)
-            && !ingestion.HasMetadata
+            && ingestion.HasMetadata
+            && ingestion.Metadata.Count == 1
             && !ingestion.Document.Text.Contains(FixtureExtractionClient.EvidenceMarker, StringComparison.Ordinal)
-            && !ingestion.Document.Text.Contains(FixtureExtractionClient.ProviderMarkdown, StringComparison.Ordinal),
+            && !ingestion.Document.Text.Contains(FixtureExtractionClient.ProviderMarkdown, StringComparison.Ordinal)
+            && !JsonSerializer.Serialize(
+                    ingestion.Document,
+                    new JsonSerializerOptions { TypeInfoResolver = new DefaultJsonTypeInfoResolver() })
+                .Contains("BoundingRegion", StringComparison.Ordinal),
         "Extraction evidence or duplicate Markdown leaked into ingestion.");
+}
+
+static void CheckProducerPageReferences()
+{
+    DocumentText source = new(
+        new("producer-pages"),
+        "Producer pages remain annotations.",
+        pageReferences: [new(3), new(1), new(3)]);
+    DocumentText noPages = new(new("no-pages"), "No inferred page.");
+    SharedDocument document = new([source, noPages]);
+
+    Check(source.PageReferences.Select(reference => reference.PageNumber).SequenceEqual([3, 1, 3])
+            && noPages.PageReferences.Count == 0
+            && document.Nodes.SelectMany(node => node.PageReferences)
+                .Select(reference => reference.PageNumber)
+                .SequenceEqual([3, 1, 3]),
+        "Producer page references were sorted, deduplicated, inferred, or replaced by sentinels.");
+}
+
+static void CheckOpaqueAndNonTextRoundTrip()
+{
+    using JsonDocument payload = JsonDocument.Parse(
+        """{"provider":"fixture","kind":"unknown-chart","value":42}""");
+    DocumentOpaque opaque = new(
+        new("opaque-chart"),
+        "provider.unknown-chart",
+        schemaVersion: 4,
+        position: 1,
+        payload.RootElement,
+        pageReferences: [new(2), new(1), new(2)],
+        sourceNodeIds: [new("source-chart")]);
+    DocumentImage image = new(
+        new("opaque-image"),
+        new byte[] { 9, 8, 7 },
+        "image/png",
+        pageReferences: [new(2)]);
+    SharedDocument document = new([opaque, image]);
+    JsonSerializerOptions jsonOptions = new()
+    {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
+    };
+    string json = JsonSerializer.Serialize(document, jsonOptions);
+    SharedDocument roundTrip = JsonSerializer.Deserialize<SharedDocument>(json, jsonOptions)
+        ?? throw new InvalidOperationException("The semantic document did not deserialize.");
+    DocumentOpaque restoredOpaque = roundTrip.Nodes.OfType<DocumentOpaque>().Single();
+    DocumentImage restoredImage = roundTrip.Nodes.OfType<DocumentImage>().Single();
+
+    Check(document.Text == string.Empty
+            && json.Contains("\"$type\":\"opaque\"", StringComparison.Ordinal)
+            && restoredOpaque.LogicalKind == opaque.LogicalKind
+            && restoredOpaque.SchemaVersion == opaque.SchemaVersion
+            && restoredOpaque.Position == opaque.Position
+            && restoredOpaque.Payload.GetProperty("value").GetInt32() == 42
+            && restoredOpaque.PageReferences.Select(reference => reference.PageNumber)
+                .SequenceEqual([2, 1, 2])
+            && restoredOpaque.SourceNodeIds.Select(id => id.Value).SequenceEqual(["source-chart"])
+            && restoredImage.Content.Span.SequenceEqual(new byte[] { 9, 8, 7 })
+            && restoredImage.MediaType == "image/png"
+            && !roundTrip.Text.Contains("unknown-chart", StringComparison.Ordinal),
+        "Opaque or non-text semantic content was projected as text or failed to round-trip.");
 }
 
 static async Task CheckMarkdownBoundaryAsync()
@@ -476,17 +560,20 @@ static void CheckNonGenericContracts()
         "Preview 2 non-generic contracts or typed writer shape changed.");
 }
 
-static void VerifyFeedAndLoadedAssemblies(string implementationSha, string packageVersion)
+static void VerifyFeedAndLoadedAssemblies(
+    string implementationSha,
+    string implementationBranch,
+    string packageVersion)
 {
     string feed = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "local-feed"));
     (string Id, string Hash, Assembly Assembly)[] packages =
     [
-        ("Microsoft.Extensions.DataIngestion", "2b6002fc142dace6a5b08a1bc845eb544d08523c4f75d60c6384a36255e8f7b0", typeof(SectionChunker).Assembly),
-        ("Microsoft.Extensions.DataIngestion.Abstractions", "6b8a88bb5f52121b05022c834de890669f8a8327a54bafa148df063675cf2f4f", typeof(IngestionChunk).Assembly),
-        ("Microsoft.Extensions.DataIngestion.DocumentExtraction", "c2dd354bf6460b5f1f8b01186b5ff3f0c27ce790a6bb08535e30846250ca5d35", typeof(DocumentExtractionReader).Assembly),
-        ("Microsoft.Extensions.DocumentExtraction", "fa54be131cc99b3c870ea9789cde03584967413302e2fa7ac53f9ac6e89b79a1", typeof(DocumentExtractionClientBuilder).Assembly),
-        ("Microsoft.Extensions.DocumentExtraction.Abstractions", "a4347cb50702c82127af83cbcb5852d3148a2429f7920f13b89c0538b67e2b65", typeof(DocumentPage).Assembly),
-        ("Microsoft.Extensions.Documents.Abstractions", "c94ea97233f9756009012f8f25234974f56c950982d7021b2df22430d4c98f4b", typeof(SharedDocument).Assembly),
+        ("Microsoft.Extensions.DataIngestion", "d2eba22420cef40edc18f49c1f35d561473c129005c2efc282bd1725d0ab4907", typeof(SectionChunker).Assembly),
+        ("Microsoft.Extensions.DataIngestion.Abstractions", "2f53db2c106eeed8f6139bd4549f4ffc6ba1cc5bdc24ca549bd03e1adc4e2ab3", typeof(IngestionChunk).Assembly),
+        ("Microsoft.Extensions.DataIngestion.DocumentExtraction", "3506579e9e0c97673d80f945c9fb81c9bfed173308bddb61f0bf9fa26b51e9c6", typeof(DocumentExtractionReader).Assembly),
+        ("Microsoft.Extensions.DocumentExtraction", "78b2fe326e42f84d97daed443c2e85d79f4756c78b38e081d3adea8a546cfcea", typeof(DocumentExtractionClientBuilder).Assembly),
+        ("Microsoft.Extensions.DocumentExtraction.Abstractions", "2b863eb2f5d1751a44d739f85a33d15067625db0904058dd0614b786239bea65", typeof(DocumentPage).Assembly),
+        ("Microsoft.Extensions.Documents.Abstractions", "09db41f30dab97b5e94596761805d063a6cffb5baf4044a0ec24814cb9cf98fe", typeof(SharedDocument).Assembly),
     ];
     Check(Directory.GetFiles(feed, "*.nupkg").Length == packages.Length,
         "Local feed contains missing or extra packages.");
@@ -506,7 +593,8 @@ static void VerifyFeedAndLoadedAssemblies(string implementationSha, string packa
         XElement repository = metadata.Element(ns + "repository")!;
         Check(metadata.Element(ns + "id")?.Value == id
                 && metadata.Element(ns + "version")?.Value == packageVersion
-                && repository.Attribute("url")?.Value == "https://github.com/dotnet/extensions.git"
+                && repository.Attribute("url")?.Value == "https://github.com/luisquintanilla/extensions.git"
+                && repository.Attribute("branch")?.Value == implementationBranch
                 && repository.Attribute("commit")?.Value == implementationSha,
             $"Package provenance mismatch: {id}.");
         ZipArchiveEntry dll = zip.GetEntry($"lib/net10.0/{id}.dll")
