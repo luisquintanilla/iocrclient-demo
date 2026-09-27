@@ -50,20 +50,22 @@ public sealed class PdfPigReader(
             bytes = buffer.ToArray();
         }
 
-        var document = new IngestionDocument(identifier);
-
         // Document-native archetype: one whole-document OCR call, its pages[] become sections.
         if (policy == OcrPolicy.AllPages && ocrClient is not null)
         {
             using var docStream = new MemoryStream(bytes, writable: false);
-            DocumentExtractionResult result = await ocrClient.ExtractAsync(docStream, mediaType, cancellationToken: cancellationToken);
+            var extractionReader = new Microsoft.Extensions.DataIngestion.DocumentExtractionReader(ocrClient);
+            IngestionDocument extracted = await extractionReader.ReadAsync(
+                docStream,
+                identifier,
+                mediaType,
+                cancellationToken);
             OcrCalls++;
-            foreach (DocumentPage page in result.Pages)
-                document.Sections.Add(OcrPageToSection(page, result.GetModelId()));
-            return document;
+            return extracted;
         }
 
         // Native PdfPig text, with image-per-page OCR only for pages that need it.
+        var document = new IngestionDocument(identifier);
         using var pdf = PdfDocument.Open(new MemoryStream(bytes, writable: false));
         IPageSegmenter segmenter = pageSegmenter ?? DefaultPageSegmenter.Instance;
 
@@ -113,18 +115,4 @@ public sealed class PdfPigReader(
         return document;
     }
 
-    private static IngestionDocumentSection OcrPageToSection(DocumentPage page, string? ocrSource)
-    {
-        var section = new IngestionDocumentSection();
-        section.Metadata["page_number"] = page.PageNumber;
-        section.Metadata["ocr_source"] = ocrSource ?? "ocr";
-        if (!string.IsNullOrWhiteSpace(page.Text))
-        {
-            var para = new IngestionDocumentParagraph(page.Text) { Text = page.Text, PageNumber = page.PageNumber };
-            para.Metadata["page_number"] = page.PageNumber;
-            para.Metadata["ocr_source"] = ocrSource ?? "ocr";
-            section.Elements.Add(para);
-        }
-        return section;
-    }
 }

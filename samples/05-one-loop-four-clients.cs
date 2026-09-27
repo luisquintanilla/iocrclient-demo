@@ -12,6 +12,7 @@
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 using DemoOcr;
 
 string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
@@ -40,11 +41,11 @@ foreach (var (name, client) in clients)
     {
         // Identical call for every engine. This block never changes when you add or swap a provider.
         using var stream = new MemoryStream(bytes, writable: false);
-        DocumentExtractionResult r = await client.ExtractAsync(stream, "application/pdf");
+        using DocumentExtractionResult r = await client.ExtractAsync(stream, "application/pdf");
 
-        int tables = r.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
-        int chars = r.Text.Length;
-        string heading = FirstHeading(r.Text);
+        int tables = r.CountElements<DocumentTableElement>();
+        int chars = r.GetMarkdown().Length;
+        string heading = FirstHeading(r.GetMarkdown());
         Console.WriteLine($"{name,-30} {r.Pages.Count,6} {tables,7} {chars,8}  {heading}");
     }
 }

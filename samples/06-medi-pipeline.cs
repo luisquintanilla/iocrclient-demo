@@ -6,12 +6,12 @@
 // 06-medi-pipeline.cs — the document-AI engine as a MEDI reader, end to end. This is where the two
 // abstractions meet:
 //
-//   IDocumentExtractionClient (a capability)  --OcrDocumentReader-->  IngestionDocumentReader (a pipeline stage)
+//   IDocumentExtractionClient (a capability)  --DocumentExtractionReader-->  IngestionDocumentReader (a pipeline stage)
 //                                                          -> SectionChunker -> IngestionChunk[]
 //
 // The line (the demo's core question): IDocumentExtractionClient turns bytes into a normalized DocumentExtractionResult and knows
 // nothing about pipelines. IngestionDocumentReader is the MEDI front door and knows nothing about
-// which engine. OcrDocumentReader is the ONE bridge — it composes ANY IDocumentExtractionClient and never needs a
+// which engine. DocumentExtractionReader is the ONE bridge — it composes ANY IDocumentExtractionClient and never needs a
 // per-engine subclass or a VisionOnly flag.
 //
 // It also shows how to keep page provenance end to end on the REAL chunker: the stock SectionChunker
@@ -36,7 +36,7 @@ string endpoint = Require("OCR:FoundryEndpoint");
 string model = DemoOcr.DemoConfig.Config["OCR:MistralModel"] ?? "mistral-ocr-4-0";
 string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
 
-// --- 1. A real IDocumentExtractionClient (#7588), wrapped in the real OCR middleware builder. Same shape as
+// --- 1. A real IDocumentExtractionClient from the provisional local feed, wrapped in the real OCR middleware builder. Same shape as
 //        ChatClientBuilder: you compose a client, you don't set flags. Swap the engine on one line. ---
 using ILoggerFactory loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Warning).AddConsole());
 IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(endpoint), new DefaultAzureCredential(), model)
@@ -45,7 +45,7 @@ IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(endpoint), n
     .Build();
 
 // --- 2. The bridge. One reader composes the engine; the engine is the constructor argument. ---
-var reader = new OcrDocumentReader(ocr);
+var reader = new Microsoft.Extensions.DataIngestion.DocumentExtractionReader(ocr);
 
 IngestionDocument document;
 await using (FileStream src = File.OpenRead(pdf))

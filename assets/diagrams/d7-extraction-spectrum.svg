@@ -51,7 +51,7 @@
   <text class="ctitle" x="664" y="264">3. OCR scanned pages</text>
   <text class="sub" x="664" y="288">native text first</text>
   <rect class="pill" x="664" y="314" width="222" height="40" rx="8"/>
-  <text class="small mono" x="682" y="339">IDocumentExtractionClient.ExtractAsync</text>
+  <text class="small mono" x="682" y="339">IDocumentExtractionClient.ExtractPagesAsync</text>
   <rect class="pill" x="664" y="366" width="222" height="40" rx="8"/>
   <text class="small mono" x="682" y="391">OcrPolicy.Auto</text>
   <text class="small accent" x="664" y="438">only scanned / empty pages</text>
@@ -60,7 +60,7 @@
   <text class="ctitle" x="954" y="264">4. Whole-doc OCR</text>
   <text class="sub" x="954" y="288">richest service path</text>
   <rect class="pill" x="954" y="314" width="242" height="40" rx="8"/>
-  <text class="small mono" x="972" y="339">OcrDocumentReader</text>
+  <text class="small mono" x="972" y="339">DocumentExtractionReader</text>
   <rect class="pill" x="954" y="366" width="242" height="40" rx="8"/>
   <text class="small mono" x="972" y="391">OcrPolicy.AllPages</text>
   <text class="small accent" x="954" y="438">tables · figures · scans</text>

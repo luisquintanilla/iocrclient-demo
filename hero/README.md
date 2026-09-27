@@ -40,7 +40,7 @@ The intended production shape is Qdrant as an Aspire-managed container. This env
 
 ```text
 VisionLlmOcrClient (IDocumentExtractionClient)
-  -> OcrDocumentReader
+  -> DocumentExtractionReader
   -> IngestionPipeline<string>
   -> VectorStoreWriter<string>
   -> SqliteVec

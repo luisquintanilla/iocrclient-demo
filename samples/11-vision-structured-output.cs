@@ -6,9 +6,8 @@
 // MEAI ships first-class structured output (IChatClient.GetResponseAsync<T> + ForJsonSchema<T>), so a
 // vision provider can do better. Two provider-neutral patterns — NEITHER genericizes IDocumentExtractionClient:
 //
-//   (A) Structured TRANSCRIPTION (opt-in, inside the client). Ask the model for DocumentExtractionResult-SHAPED JSON
-//       instead of prose, so tables / figure captions / language / confidence come back reliably rather
-//       than parsed out of markdown. Opt in with DocumentExtractionOptions.AdditionalProperties["vision.structured"].
+//   (A) Structured TRANSCRIPTION (opt-in, inside the client). Ask the model for page observations
+//       instead of prose. The in-memory Documents result is the canonical proof surface.
 //       Degrades to the freeform path when the model can't honor a schema. Figures are caption-only
 //       (DocumentImage.Content stays null) — the VLM archetype the nullable Content shape was designed for.
 //
@@ -32,49 +31,53 @@ string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
 string mediaType = pdf.EndsWith(".pdf") ? "application/pdf"
     : pdf.EndsWith(".jpg") || pdf.EndsWith(".jpeg") ? "image/jpeg" : "image/png";
 
-IChatClient chat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
+IChatClient freeformChat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
+    .GetChatClient(deployment)
+    .AsIChatClient();
+IChatClient structuredChat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
     .GetChatClient(deployment)
     .AsIChatClient();
 
-using IDocumentExtractionClient ocr = new VisionLlmOcrClient(chat);
+using IDocumentExtractionClient freeformOcr = new VisionLlmOcrClient(freeformChat, useStructuredOutput: false);
+using IDocumentExtractionClient structuredOcr = new VisionLlmOcrClient(structuredChat, useStructuredOutput: true);
 
 // --- Pattern A: freeform vs structured transcription, same client, same contract -----------------
 Console.WriteLine("=== (A) structured transcription: OFF vs ON ===\n");
 
-DocumentExtractionResult freeform = await OcrOnce(ocr, pdf, mediaType, structured: false);
-Console.WriteLine($"[structured=OFF] model={freeform.GetModelId()} pages={freeform.Pages.Count} " +
-    $"tables={freeform.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count())} figures={freeform.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count())} " +
-    $"lang={Lang(freeform)} conf={Conf(freeform)}");
+using DocumentExtractionResult freeform = await OcrOnce(freeformOcr, pdf, mediaType);
+Console.WriteLine($"[structured=OFF] pages={freeform.Pages.Count} " +
+    $"tables={freeform.CountElements<Microsoft.Extensions.Documents.DocumentTableElement>()} " +
+    $"figures={freeform.CountElements<Microsoft.Extensions.Documents.DocumentImageElement>()}");
 
-DocumentExtractionResult structured = await OcrOnce(ocr, pdf, mediaType, structured: true);
-Console.WriteLine($"[structured=ON ] model={structured.GetModelId()} pages={structured.Pages.Count} " +
-    $"tables={structured.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count())} figures={structured.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count())} " +
-    $"lang={Lang(structured)} conf={Conf(structured)}");
+using DocumentExtractionResult structured = await OcrOnce(structuredOcr, pdf, mediaType);
+Console.WriteLine($"[structured=ON ] pages={structured.Pages.Count} " +
+    $"tables={structured.CountElements<Microsoft.Extensions.Documents.DocumentTableElement>()} " +
+    $"figures={structured.CountElements<Microsoft.Extensions.Documents.DocumentImageElement>()}");
 
-DocumentPage first = structured.Pages[0];
-List<DocumentTable> firstTables = first.Elements.OfType<DocumentTable>().ToList();
-List<DocumentImage> firstImages = first.Elements.OfType<DocumentImage>().ToList();
+DocumentExtractionPage first = structured.Pages[0];
+List<DocumentExtractionTable> firstTables = first.Observations.OfType<DocumentExtractionTable>().ToList();
+List<DocumentExtractionImage> firstImages = first.Observations.OfType<DocumentExtractionImage>().ToList();
 if (firstTables.Count > 0)
 {
     Console.WriteLine($"\n  first table ({firstTables[0].RowCount}x{firstTables[0].ColumnCount}):");
-    Console.WriteLine("  " + (firstTables[0].MarkdownRepresentation ?? "(cells only)").Replace("\n", "\n  "));
+    Console.WriteLine("  " + firstTables[0].Markdown.Replace("\n", "\n  "));
 }
-foreach (DocumentImage img in firstImages)
+foreach (DocumentExtractionImage img in firstImages)
 {
-    Console.WriteLine($"  figure caption (no bytes — VLM archetype): {img.Caption}");
+    Console.WriteLine($"  figure caption (no bytes — VLM archetype): {img.AlternativeText}");
 }
 
 // --- Pattern B: OCR-then-extract a typed POCO via the INNER IChatClient (composition) -------------
 Console.WriteLine("\n=== (B) OCR-then-extract a typed POCO (GetService<IChatClient>) ===\n");
 
-IChatClient? inner = ocr.GetService(typeof(IChatClient)) as IChatClient;
+IChatClient? inner = structuredOcr.GetService(typeof(IChatClient)) as IChatClient;
 if (inner is null)
 {
     Console.WriteLine("  provider does not expose an inner IChatClient; skipping extraction.");
     return 0;
 }
 
-string transcript = string.Join("\n\n", structured.Pages.Select(p => p.Text));
+string transcript = structured.GetMarkdown();
 ChatResponse<DocumentSummary> extracted = await inner.GetResponseAsync<DocumentSummary>(
     [new ChatMessage(ChatRole.User, $"Extract a structured summary from this document text:\n\n{transcript}")],
     VisionLlmOcrClient.SchemaJson);
@@ -91,23 +94,11 @@ else
 }
 return 0;
 
-static async Task<DocumentExtractionResult> OcrOnce(IDocumentExtractionClient ocr, string path, string mediaType, bool structured)
+static async Task<DocumentExtractionResult> OcrOnce(IDocumentExtractionClient ocr, string path, string mediaType)
 {
-    DocumentExtractionOptions? options = structured
-        ? new DocumentExtractionOptions { AdditionalProperties = new() { [VisionLlmOcrClient.StructuredKey] = true } }
-        : null;
     await using FileStream doc = File.OpenRead(path);
-    return await ocr.ExtractAsync(doc, mediaType, options);
+    return await ocr.ExtractAsync(doc, mediaType);
 }
-
-static string Lang(DocumentExtractionResult r) =>
-    r.Pages.Count > 0 && r.Pages[0].AdditionalProperties?.TryGetValue("language", out object? l) == true
-        ? l?.ToString() ?? "?" : "?";
-
-static string Conf(DocumentExtractionResult r) =>
-    r.Pages.Count > 0
-    && r.Pages[0].AdditionalProperties?.TryGetValue("confidence", out object? confidence) == true
-    && confidence is double c ? c.ToString("0.00") : "?";
 
 static string Require(string name) =>
     DemoOcr.DemoConfig.Config[name]

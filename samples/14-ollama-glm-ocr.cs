@@ -61,11 +61,10 @@ IChatClient chat = ((IChatClient)new OllamaApiClient(new Uri(host), model))
 using IDocumentExtractionClient ocr = new VisionLlmOcrClient(chat, "Text Recognition:");
 
 var sw = Stopwatch.StartNew();
-DocumentExtractionResult result = await ocr.ExtractAsync(new MemoryStream(imageBytes), mediaType);
+using DocumentExtractionResult result = await ocr.ExtractAsync(new MemoryStream(imageBytes), mediaType);
 sw.Stop();
 
-string md = result.Pages.Count > 0 ? result.Pages[0].Text : "";
-Console.WriteLine($"model  : {result.GetModelId()}");
+string md = result.Pages.Count > 0 ? result.Pages[0].GetMarkdown() : "";
 Console.WriteLine($"chars  : {md.Length}   [{sw.ElapsedMilliseconds} ms on local GPU, first call includes model load]");
 Console.WriteLine();
 Console.WriteLine("--- transcribed page (markdown) ---");

@@ -21,12 +21,11 @@ using IDocumentExtractionClient ocr = new ContentUnderstandingClient(
     new Uri(endpoint), new Azure.Identity.DefaultAzureCredential());
 
 await using FileStream doc = File.OpenRead(pdf);
-DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf");
+using DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf");
 
-Console.WriteLine($"model  : {result.GetModelId()}");
 Console.WriteLine($"pages  : {result.Pages.Count}");
 Console.WriteLine();
-string md = result.Pages[0].Text;
+string md = result.Pages.Count == 0 ? "" : result.Pages[0].GetMarkdown();
 Console.WriteLine("--- page 0 (markdown) ---");
 Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 return 0;

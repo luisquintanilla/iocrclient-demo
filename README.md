@@ -2,10 +2,10 @@
 
 A grounded talk and runnable sample set showing `IDocumentExtractionClient`, a provider-neutral seam for document
 parsing in .NET. Four OCR engines (a vision LLM, Mistral OCR, Azure Document Intelligence, and Azure
-Content Understanding) run through one interface; a thin `OcrDocumentReader` bridges that capability
-into a real Microsoft.Extensions.DataIngestion (MEDI) pipeline; the page model is carried through
-chunking so answers cite their source page; and the PdfPig reader shows the same seam composed a
-second way (digital text first, OCR only the pages that need it).
+Content Understanding) run through one interface; the provisional `DocumentExtractionReader` bridge composes
+that capability into a real Microsoft.Extensions.DataIngestion (MEDI) pipeline; the page model is carried through
+chunking so answers cite their source page; and the PdfPig reader shows the same seam composed a second way
+(digital text first, OCR only the pages that need it).
 
 - **Slides:** [`slides.md`](slides.md) (message-first, every claim grounded on a real run)
 - **Speaker outline + abstract + primer:** [`talk/`](talk/) — the deck opens with a 90-second
@@ -18,12 +18,12 @@ second way (digital text first, OCR only the pages that need it).
 - **Diagrams:** [`assets/diagrams/`](assets/diagrams/) — four hand-authored branded SVGs (stack,
   data-flow/boundary, composition, eval harness) embedded in the deck and reusable standalone.
 - **Reproducible feed:** [`scripts/build-local-feed.sh`](scripts/build-local-feed.sh) packs the real
-  `dotnet/extensions` code (preview2 + #7588) into `local-feed/` — the samples run on the real
-  types, not a vendored copy.
+  `dotnet/extensions` code at the exact provisional Documents, extraction, and composition commits into
+  `local-feed/` — the samples run on the real types, not a vendored copy.
 - **The body of work this drives, across two repos:**
-  - dotnet/extensions [#7588](https://github.com/dotnet/extensions/pull/7588) (IDocumentExtractionClient) — the live
-    seam. Page provenance rides the shipping API (the reader emits one section per page; the samples
-    chunk per page), so an earlier chunk-propagation proposal,
+  - dotnet/extensions provisional Documents + DocumentExtraction + composition stack (the exact
+    commits are recorded in `local-feed/README.md`) — the live seam. Page provenance rides the
+    in-memory page/evidence model (the bridge emits one section per page; the samples chunk per page), so an earlier chunk-propagation proposal,
     [#7516](https://github.com/dotnet/extensions/pull/7516), closed unmerged and is no longer needed
   - CommunityToolkit/AI [#13](https://github.com/CommunityToolkit/AI/issues/13) (design),
     [#15](https://github.com/CommunityToolkit/AI/pull/15) (VisionLMOcrClient, closes #13),
@@ -106,7 +106,7 @@ az login                                            # keyless DefaultAzureCreden
 # set endpoints once via user-secrets (UserSecretsId iocrclient-demo) — see docs/SETUP.md
 dotnet run samples/05-one-loop-four-clients.cs                     # defaults to the complex USGS fact sheet
 dotnet run samples/05-one-loop-four-clients.cs -- samples/data/survival-kit.pdf  # the simple born-digital baseline
-dotnet run samples/06-medi-pipeline.cs              # OcrDocumentReader -> MEDI chunker; per-page provenance
+dotnet run samples/06-medi-pipeline.cs              # DocumentExtractionReader -> MEDI chunker; per-page provenance
 dotnet run samples/07-e2e-rag.cs                    # USGS default + its oil-estimate question
 dotnet run samples/08-pdfpig-reader.cs              # native text + OCR fallback on USGS
 dotnet run samples/09-images-and-uris.cs            # figures + UriContent overload

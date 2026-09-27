@@ -8,7 +8,7 @@ pipeline stage.** Repeated beat: *one interface, any engine, swap with a line, a
 survives all the way to the answer.*
 
 Every technical claim maps to a runnable sample under `samples/`, grounded in `samples/output/`. The
-samples run on the REAL `dotnet/extensions` code (preview2 + #7588), packed into a local feed
+samples run on the REAL `dotnet/extensions` code from the exact provisional commit chain, packed into a local feed
 by `scripts/build-local-feed.sh` — not a vendored copy.
 
 ---
@@ -59,16 +59,16 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 - .NET already made this move twice. "Talk to a model" became `IChatClient`. "Turn text into vectors"
   became `IEmbeddingGenerator`. One interface, many providers, swap with a line.
 - Reading a document is the same shape of problem and deserves the same seam. That seam is
-  `IDocumentExtractionClient`, proposed in dotnet/extensions #7588, in its own library
+  `IDocumentExtractionClient` in its own provisional library
   `Microsoft.Extensions.DocumentExtraction` (beside `Microsoft.Extensions.AI`).
 
 ## 3. The interface + result shape (3 min) · *code: ocr-shape/*
-- `ExtractAsync(Stream, mediaType) -> DocumentExtractionResult`. Stream in, normalized result out. `GetService` is
-  the same escape hatch `IChatClient` has, so middleware and callers can still reach the concrete
-  engine.
-- `DocumentExtractionResult` is a list of `DocumentPage`, each with a `PageNumber`, `Markdown`, and `Tables`. Point at
-  `DocumentPage.PageNumber`. It looks minor now; it is the thread we pull in sections 6 and 7.
-- Honesty note: #7588 is not on nuget.org yet, so `scripts/build-local-feed.sh` packs the real branch
+- `ExtractPagesAsync(Stream, identifier, mediaType) -> IAsyncEnumerable<DocumentExtractionPage>`. Stream in,
+  finalize the page sequence into the in-memory Documents result. `GetService` is the same escape hatch
+  `IChatClient` has, so middleware and callers can still reach the concrete engine.
+- `DocumentExtractionPage` carries the page number, observations, and opaque evidence associations. Point at
+  the page number. It looks minor now; it is the thread we pull in sections 6 and 7.
+- Honesty note: the provisional stack is not on nuget.org yet, so `scripts/build-local-feed.sh` packs the exact commits
   into a local feed. The samples run on the actual `IDocumentExtractionClient` type, not a hand-written copy.
 
 ## 4. Payoff: four engines, one loop (4 min) · *sample: 05-one-loop-four-clients.cs*
@@ -89,10 +89,10 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 
 ## 6. The boundary + where it lives (3 min) · *sample: 06-medi-pipeline.cs*
 - The question the demo is really about: **where does OCR stop and the pipeline begin?**
-  - `IDocumentExtractionClient` = a **capability**: bytes -> `DocumentExtractionResult`. Knows nothing about pipelines.
+  - `IDocumentExtractionClient` = a **capability**: bytes -> page observations -> Documents result. Knows nothing about pipelines.
   - `IngestionDocumentReader` (MEDI) = a **pipeline stage**: `ReadAsync -> IngestionDocument`. Knows
     nothing about which engine — or whether OCR is used at all.
-  - `OcrDocumentReader : IngestionDocumentReader` = the **bridge**: one reader that composes ANY
+  - `DocumentExtractionReader : IngestionDocumentReader` = the **bridge**: one reader that composes ANY
     `IDocumentExtractionClient` and stamps the same metadata keys `PdfPigReader` uses. No per-engine reader, no
     `VisionOnly` flag — the engine is injected.
 - Then the layering (Stack slide): the **abstractions** (`IDocumentExtractionClient`, `IngestionDocumentReader`) live
@@ -102,12 +102,12 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 ## 7. Provenance survives the chunker (2 min) · *sample: 06-medi-pipeline.cs*
 - A RAG pipeline chunks the reader's output. If you chunk the whole document at once, a chunk can span
   pages and the page number blurs — every citation becomes a guess.
-- No new chunking API is needed. `OcrDocumentReader` emits **one section per OCR page** with
+- No new chunking API is needed. `DocumentExtractionReader` emits **one section per OCR page** with
   `page_number` stamped; chunk each page-section on its own and every chunk carries its exact source
   page. Show whole-doc (page metadata lost) vs per-page (`page = 9` on each chunk) on the real MEDI
   `SectionChunker`.
-- This is why `DocumentPage.PageNumber` mattered back in section 3 — the page model on the shipping `IDocumentExtractionClient`
-  (#7588) is enough to stay citable. (We explored propagating element metadata through the chunker in
+- This is why the page/evidence model mattered back in section 3 — it is enough to stay citable.
+  (We explored propagating element metadata through the chunker in
   #7516; it closed unmerged, and the demo doesn't need it.)
 
 ## 8. The same seam, a second way (2 min) · *sample: 08-pdfpig-reader.cs* · #13/#14/#15
@@ -123,7 +123,7 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
 - Emphasize: the reader depends on `IDocumentExtractionClient` only, never a chat model directly.
 
 ## 9. End to end: PDF to a cited answer (3 min) · *sample: 07-e2e-rag.cs*
-- Put it together: OCR the PDF (Mistral) -> `OcrDocumentReader` -> `SectionChunker` with page
+- Put it together: OCR the PDF (Mistral) -> `DocumentExtractionReader` -> `SectionChunker` with page
   provenance -> retrieve -> answer grounded only on the retrieved chunks, each citable to its page.
 - Show the captured run: 2 pages, 21 page-tagged chunks, retrieved from pages 0/1, final answer ends
   with `[page 0]`.
@@ -132,11 +132,11 @@ The diagrams (`assets/diagrams/d1..d4`) are hand-authored and branded: D1 stack,
   point is the seam and the provenance.
 
 ## 10. The ask + close (1 min)
-- The work spans two repos. `dotnet/extensions`: **#7588** (the `IDocumentExtractionClient` seam) — page provenance
+- The work spans two repos. `dotnet/extensions`: the provisional `IDocumentExtractionClient` seam — page provenance
   already rides the shipping API via per-page chunking, so the earlier chunk-propagation proposal
   (#7516) closed unmerged. `CommunityToolkit/AI`: **#13** (design), **#15** (`VisionLMOcrClient`,
   closes #13), **#14** (PdfPig reader composing any `IDocumentExtractionClient`).
-- Every sample runs on the real preview2 + #7588 bits via `scripts/build-local-feed.sh` — this repo is
+- Every sample runs on the exact provisional commit chain via `scripts/build-local-feed.sh` — this repo is
   the reproduction.
 - One action: clone it, build the feed, and run `05-one-loop-four-clients.cs` against your own
   document. Then read the PRs and push back on the shape.

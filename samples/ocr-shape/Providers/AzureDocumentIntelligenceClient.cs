@@ -2,209 +2,255 @@ using Azure;
 using Azure.AI.DocumentIntelligence;
 using Azure.Core;
 
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
-using DocumentElement = Microsoft.Extensions.DocumentExtraction.DocumentElement;
-using DocumentPage = Microsoft.Extensions.DocumentExtraction.DocumentPage;
-using DocumentTable = Microsoft.Extensions.DocumentExtraction.DocumentTable;
-using DocumentTableCell = Microsoft.Extensions.DocumentExtraction.DocumentTableCell;
-using DocumentTableCellKind = Microsoft.Extensions.DocumentExtraction.DocumentTableCellKind;
+using Microsoft.Extensions.Documents;
 
 namespace DemoOcr;
 
 /// <summary>
-/// A SECOND engine behind the same <see cref="IDocumentExtractionClient"/> contract — Azure Document Intelligence.
-///
-/// Different wire protocol from Mistral OCR (async-poll AnalyzeResult, not document-&gt;pages[]), so it
-/// is a different class — but it normalizes onto the same DocumentExtractionResult, so the OcrDocumentReader and the
-/// vector store never see the difference. This is the whole point of the capability seam: swap the
-/// engine, keep the pipeline. Keyless via DefaultAzureCredential / any TokenCredential.
+/// An <see cref="IDocumentExtractionClient"/> backed by Azure Document Intelligence.
 /// </summary>
 public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
 {
     private readonly DocumentIntelligenceClient _client;
     private readonly string _defaultModel;
+    private readonly bool _includeImages;
 
     public AzureDocumentIntelligenceClient(
         Uri endpoint,
         TokenCredential credential,
-        string defaultModel = "prebuilt-layout")
+        string defaultModel = "prebuilt-layout",
+        bool includeImages = false)
     {
         _client = new DocumentIntelligenceClient(endpoint, credential);
         _defaultModel = defaultModel;
+        _includeImages = includeImages;
     }
 
-    public async Task<DocumentExtractionResult> ExtractAsync(
+    public IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
+        Stream document,
+        string identifier,
+        string mediaType,
+        CancellationToken cancellationToken = default)
+        => OcrShapeExtensions.StreamPages(
+            ct => ExtractPagesCoreAsync(document, mediaType, cancellationToken: ct),
+            cancellationToken);
+
+    private async Task<IReadOnlyList<DocumentExtractionPage>> ExtractPagesCoreAsync(
         Stream document,
         string mediaType,
-        DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
         await document.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
 
-        string model = options?.ModelId ?? _defaultModel;
-        bool includeImages = options.GetIncludeImages();
+        string model = _defaultModel;
         var analyzeOptions = new AnalyzeDocumentOptions(model, BinaryData.FromBytes(ms.ToArray()))
         {
             OutputContentFormat = DocumentContentFormat.Markdown,
         };
-        if (includeImages)
+        if (_includeImages)
         {
-            // Ask DI to render cropped figure images; each is then retrievable by figure id.
             analyzeOptions.Output.Add(AnalyzeOutputOption.Figures);
         }
 
-        Operation<AnalyzeResult> op = await _client
+        Operation<AnalyzeResult> operation = await _client
             .AnalyzeDocumentAsync(WaitUntil.Completed, analyzeOptions, cancellationToken)
             .ConfigureAwait(false);
+        AnalyzeResult result = operation.Value;
 
-        AnalyzeResult result = op.Value;
-
-        // DI returns one markdown string + a flat list of pages. Map onto DocumentExtractionResult pages.
-        var pages = new List<DocumentPage>();
-        var blocksByPage = new Dictionary<int, List<DocumentBlock>>();
-        var tablesByPage = new Dictionary<int, List<DocumentTable>>();
-        var imagesByPage = new Dictionary<int, List<DocumentImage>>();
-
-        // Figures -> images: DI renders cropped bytes (fetched per figure id) + caption + native polygon.
-        // This is the SECOND document-native engine validating DocumentImage elements (bytes + bbox + caption).
-        if (includeImages && result.Figures is { Count: > 0 })
-        {
-            foreach (DocumentFigure figure in result.Figures)
-            {
-                DocumentBoundingRegion? region = ToRegion(figure.BoundingRegions);
-                int pageNo = region?.PageNumber ?? 1;
-                var image = new DocumentImage
-                {
-                    BoundingRegion = region,
-                    Caption = figure.Caption?.Content,
-                };
-                if (figure.Id is { Length: > 0 })
-                {
-                    Response<BinaryData> figResp = await _client
-                        .GetAnalyzeResultFigureAsync(model, op.Id, figure.Id, cancellationToken)
-                        .ConfigureAwait(false);
-                    image.Content = new DataContent(figResp.Value.ToArray(), "image/png");
-                }
-
-                (imagesByPage.TryGetValue(pageNo, out var imgList) ? imgList : imagesByPage[pageNo] = new())
-                    .Add(image);
-            }
-        }
-
-        // Paragraphs -> blocks, carrying NATIVE DI polygons (no rect flattening — the reason bbox is a polygon).
+        var observationsByPage = new Dictionary<int, List<DocumentExtractionObservation>>();
+        int paragraphIndex = 0;
         if (result.Paragraphs is { Count: > 0 })
         {
-            foreach (DocumentParagraph para in result.Paragraphs)
+            foreach (DocumentParagraph paragraph in result.Paragraphs)
             {
-                DocumentBoundingRegion? region = ToRegion(para.BoundingRegions);
-                int pageNo = region?.PageNumber ?? 1;
-                (blocksByPage.TryGetValue(pageNo, out var list) ? list : blocksByPage[pageNo] = new())
-                    .Add(new DocumentBlock(para.Content ?? "")
-                    {
-                        Kind = para.Role?.ToString() is { Length: > 0 } role ? new DocumentBlockKind(role) : null,
-                        BoundingRegion = region,
-                    });
+                int pageNumber = paragraph.BoundingRegions is { Count: > 0 }
+                    ? paragraph.BoundingRegions[0].PageNumber
+                    : 1;
+                string text = paragraph.Content ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    continue;
+                }
+
+                AddObservation(
+                    observationsByPage,
+                    pageNumber,
+                    new DocumentExtractionText(
+                        $"di:paragraph:{paragraphIndex++}",
+                        GetOrder(observationsByPage, pageNumber),
+                        ToTextKind(paragraph.Role?.ToString()),
+                        text,
+                        text,
+                        pageReferences: [PageReference(pageNumber)]));
             }
         }
 
-        // Tables -> structured cells (the Azure DI shape: indices + spans + kind) + native polygon.
+        int tableIndex = 0;
         if (result.Tables is { Count: > 0 })
         {
-            foreach (Azure.AI.DocumentIntelligence.DocumentTable t in result.Tables)
+            foreach (Azure.AI.DocumentIntelligence.DocumentTable table in result.Tables)
             {
-                DocumentBoundingRegion? region = ToRegion(t.BoundingRegions);
-                int pageNo = region?.PageNumber ?? 1;
-                var cells = new List<DocumentTableCell>(t.Cells.Count);
-                foreach (Azure.AI.DocumentIntelligence.DocumentTableCell c in t.Cells)
+                int pageNumber = table.BoundingRegions is { Count: > 0 }
+                    ? table.BoundingRegions[0].PageNumber
+                    : 1;
+                var cells = new List<DocumentExtractionTableCell>(table.Cells.Count);
+                foreach (Azure.AI.DocumentIntelligence.DocumentTableCell cell in table.Cells)
                 {
-                    cells.Add(new DocumentTableCell(c.RowIndex, c.ColumnIndex, c.Content ?? "")
+                    string text = cell.Content ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(text))
                     {
-                        Kind = c.Kind.ToString() is { Length: > 0 } cellKind ? new DocumentTableCellKind(cellKind) : null,
-                        RowSpan = c.RowSpan ?? 1,
-                        ColumnSpan = c.ColumnSpan ?? 1,
-                    });
+                        continue;
+                    }
+
+                    cells.Add(new DocumentExtractionTableCell(
+                        cell.RowIndex,
+                        cell.ColumnIndex,
+                        new DocumentExtractionText(
+                            $"di:table:{tableIndex}:cell:{cell.RowIndex}:{cell.ColumnIndex}",
+                            cell.RowIndex * Math.Max(table.ColumnCount, 1) + cell.ColumnIndex,
+                            DocumentTextKind.Paragraph,
+                            text,
+                            text,
+                            pageReferences: [PageReference(pageNumber)])));
                 }
-                (tablesByPage.TryGetValue(pageNo, out var list) ? list : tablesByPage[pageNo] = new())
-                    .Add(new DocumentTable(t.RowCount, t.ColumnCount, cells) { BoundingRegion = region });
+
+                AddObservation(
+                    observationsByPage,
+                    pageNumber,
+                    new DocumentExtractionTable(
+                        $"di:table:{tableIndex++}",
+                        GetOrder(observationsByPage, pageNumber),
+                        BuildTableMarkdown(table.RowCount, table.ColumnCount, cells),
+                        table.RowCount,
+                        table.ColumnCount,
+                        cells,
+                        pageReferences: [PageReference(pageNumber)]));
             }
         }
 
+        if (_includeImages && result.Figures is { Count: > 0 })
+        {
+            int imageIndex = 0;
+            foreach (DocumentFigure figure in result.Figures)
+            {
+                int pageNumber = figure.BoundingRegions is { Count: > 0 }
+                    ? figure.BoundingRegions[0].PageNumber
+                    : 1;
+                ReadOnlyMemory<byte>? content = null;
+                if (figure.Id is { Length: > 0 })
+                {
+                    Response<BinaryData> figureResponse = await _client
+                        .GetAnalyzeResultFigureAsync(model, operation.Id, figure.Id, cancellationToken)
+                        .ConfigureAwait(false);
+                    content = figureResponse.Value.ToMemory().ToArray();
+                }
+
+                AddObservation(
+                    observationsByPage,
+                    pageNumber,
+                    new DocumentExtractionImage(
+                        $"di:image:{imageIndex++}",
+                        GetOrder(observationsByPage, pageNumber),
+                        "[image]",
+                        content: content,
+                        mediaType: content is null ? null : "image/png",
+                        alternativeText: figure.Caption?.Content,
+                        pageReferences: [PageReference(pageNumber)]));
+            }
+        }
+
+        var pages = new List<DocumentExtractionPage>();
         if (result.Pages is { Count: > 0 })
         {
-            for (int i = 0; i < result.Pages.Count; i++)
+            foreach (Azure.AI.DocumentIntelligence.DocumentPage page in result.Pages)
             {
-                Azure.AI.DocumentIntelligence.DocumentPage page = result.Pages[i];
-                int pageNo = page.PageNumber;
-                var elements = new List<DocumentElement>();
-                if (blocksByPage.TryGetValue(pageNo, out var b))
-                {
-                    elements.AddRange(b);
-                }
-                if (tablesByPage.TryGetValue(pageNo, out var tb))
-                {
-                    elements.AddRange(tb.Cast<DocumentElement>());
-                }
-                if (imagesByPage.TryGetValue(pageNo, out var im))
-                {
-                    elements.AddRange(im);
-                }
-                pages.Add(new DocumentPage(pageNo, i == 0 ? result.Content ?? "" : "")
-                {
-                    Dimensions = page.Width is { } w && page.Height is { } h ? new DocumentPageDimensions((float)w, (float)h) : null,
-                    CoordinateUnit = ToCoordinateUnit(page.Unit),
-                    Elements = elements,
-                    AdditionalProperties = new() { ["di.pageNumber"] = pageNo },
-                });
+                observationsByPage.TryGetValue(page.PageNumber, out List<DocumentExtractionObservation>? observations);
+                pages.Add(new DocumentExtractionPage(
+                    page.PageNumber,
+                    observations ?? [],
+                    page.PageNumber == result.Pages[0].PageNumber ? result.Content : null,
+                    [PageReference(page.PageNumber)]));
             }
         }
         else
         {
-            pages.Add(new DocumentPage(1, result.Content ?? ""));
+            pages.Add(new DocumentExtractionPage(
+                1,
+                observationsByPage.TryGetValue(1, out List<DocumentExtractionObservation>? observations)
+                    ? observations
+                    : [],
+                result.Content,
+                [PageReference(1)]));
         }
 
-        var tableCount = result.Tables?.Count ?? 0;
-
-        return new DocumentExtractionResult(pages)
-        {
-            Usage = new DocumentExtractionUsage { PagesProcessed = result.Pages?.Count },
-            RawRepresentation = result,
-            AdditionalProperties = new() { ["modelId"] = model, ["di.tableCount"] = tableCount },
-        };
+        return pages;
     }
 
-    private static DocumentCoordinateUnit? ToCoordinateUnit(object? unit)
-        => unit?.ToString() switch
-        {
-            "Pixel" => DocumentCoordinateUnit.Pixel,
-            "Point" => DocumentCoordinateUnit.Point,
-            "Inch" => DocumentCoordinateUnit.Inch,
-            _ => null,
-        };
-
-    /// <summary>Map a DI BoundingRegions list onto the SHARED region primitive, keeping the native polygon.</summary>
-    private static DocumentBoundingRegion? ToRegion(IReadOnlyList<BoundingRegion>? regions)
+    private static void AddObservation(
+        Dictionary<int, List<DocumentExtractionObservation>> observationsByPage,
+        int pageNumber,
+        DocumentExtractionObservation observation)
     {
-        if (regions is not { Count: > 0 })
+        if (!observationsByPage.TryGetValue(pageNumber, out List<DocumentExtractionObservation>? observations))
         {
-            return null;
+            observations = [];
+            observationsByPage.Add(pageNumber, observations);
         }
-        BoundingRegion r = regions[0];
-        var polygon = new List<DocumentPoint>(r.Polygon.Count / 2);
-        for (int i = 0; i + 1 < r.Polygon.Count; i += 2)
-        {
-            polygon.Add(new DocumentPoint((float)r.Polygon[i], (float)r.Polygon[i + 1]));
-        }
-        return new DocumentBoundingRegion(r.PageNumber, polygon);
+
+        observations.Add(observation);
     }
 
-    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
-        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
-        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
+    private static int GetOrder(
+        Dictionary<int, List<DocumentExtractionObservation>> observationsByPage,
+        int pageNumber)
+        => observationsByPage.TryGetValue(pageNumber, out List<DocumentExtractionObservation>? observations)
+            ? observations.Count
+            : 0;
+
+    private static DocumentPageReference PageReference(int pageNumber) => new($"page:{pageNumber}");
+
+    private static DocumentTextKind ToTextKind(string? role)
+        => role?.Contains("heading", StringComparison.OrdinalIgnoreCase) == true
+            || role?.Contains("title", StringComparison.OrdinalIgnoreCase) == true
+            ? DocumentTextKind.Header
+            : DocumentTextKind.Paragraph;
+
+    private static string BuildTableMarkdown(
+        int rowCount,
+        int columnCount,
+        IReadOnlyList<DocumentExtractionTableCell> cells)
+    {
+        if (rowCount == 0 || columnCount == 0)
+        {
+            return "[table]";
+        }
+
+        var values = new string[rowCount, columnCount];
+        foreach (DocumentExtractionTableCell cell in cells)
+        {
+            values[cell.Row, cell.Column] = cell.Content.Markdown;
+        }
+
+        var rows = new List<string>(rowCount);
+        for (int row = 0; row < rowCount; row++)
+        {
+            var columns = new string[columnCount];
+            for (int column = 0; column < columnCount; column++)
+            {
+                columns[column] = values[row, column] ?? string.Empty;
+            }
+
+            rows.Add($"| {string.Join(" | ", columns)} |");
+        }
+
+        return string.Join(Environment.NewLine, rows);
+    }
 
     public object? GetService(Type serviceType, object? serviceKey = null)
-        => serviceType.IsInstanceOfType(this) ? this
+        => serviceType.IsInstanceOfType(this)
+            ? this
             : serviceType == typeof(DocumentIntelligenceClient) ? _client : null;
 
     public void Dispose() { }

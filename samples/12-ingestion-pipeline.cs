@@ -9,7 +9,7 @@ using Microsoft.Extensions.DocumentExtraction;
 // into a REAL local vector store. Samples 06/07 hand-composed the stages to teach them; this one
 // hands them to IngestionPipeline and lets it drive:
 //
-//   IDocumentExtractionClient (#7588) -> OcrDocumentReader -> IngestionPipeline{ SectionChunker -> VectorStoreWriter }
+//   IDocumentExtractionClient -> DocumentExtractionReader -> IngestionPipeline{ SectionChunker -> VectorStoreWriter }
 //                                                       |                                   |
 //                                              emits OTEL activities              SqliteVec (local file)
 //                                              + ILogger for free                 + real embeddings
@@ -51,12 +51,12 @@ var cred = new DefaultAzureCredential();
 
 using ILoggerFactory loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Information).AddConsole());
 
-// 1) OCR engine (#7588) behind the bridge — swap this one line to change engine.
+// 1) OCR engine behind the bridge — swap this one line to change engine.
 using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(
     new Uri(DemoConfig.Require("OCR:FoundryEndpoint")),
     cred,
     DemoConfig.Get("OCR:MistralModel", "mistral-ocr-4-0"));
-var reader = new OcrDocumentReader(ocr);
+var reader = new Microsoft.Extensions.DataIngestion.DocumentExtractionReader(ocr);
 
 // 2) Real embeddings: Azure OpenAI -> IEmbeddingGenerator<string> -> adapted to AIContent input.
 //    GetIngestionRecordCollection declares the vector property as VectorStoreVectorProperty<AIContent>,

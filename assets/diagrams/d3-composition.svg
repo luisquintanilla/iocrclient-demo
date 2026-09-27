@@ -38,7 +38,7 @@
   <!-- Client box -->
   <rect class="node" x="700" y="150" width="500" height="230" rx="12" stroke="#a78bfa"/>
   <text class="ntext mono" x="724" y="188">IDocumentExtractionClient</text>
-  <text class="pr" x="724" y="212">dotnet/extensions #7588</text>
+  <text class="pr" x="724" y="212">dotnet/extensions provisional</text>
   <text class="role" x="724" y="248">decides HOW — the provider</text>
   <rect class="pill" x="724" y="266" width="200" height="40" rx="20"/><text class="ptext" x="746" y="291">VisionLmOcrClient</text>
   <text class="pr" x="936" y="291">#15</text>

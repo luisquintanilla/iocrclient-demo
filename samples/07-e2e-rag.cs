@@ -5,10 +5,10 @@
 
 // 07-e2e-rag.cs — the whole point, end to end, on the REAL MEDI pipeline:
 //
-//   IDocumentExtractionClient (#7588)  ->  OcrDocumentReader  ->  SectionChunker (per page)  ->  vector retrieve  ->  cited answer
+//   IDocumentExtractionClient  ->  DocumentExtractionReader  ->  SectionChunker (per page)  ->  vector retrieve  ->  cited answer
 //
 // Both abstractions pay off together. IDocumentExtractionClient turns the PDF into page-structured Markdown; the
-// OcrDocumentReader bridges it into MEDI (one section per OCR page, each stamped with its page). The
+// DocumentExtractionReader bridges it into MEDI (one section per OCR page, each stamped with its page). The
 // SectionChunker is section-bounded, so chunking each page-section on its own tags every chunk with its
 // exact source page — the answer cites [page N] with zero cross-page bleed and no framework opt-in.
 // Swap the OCR provider on one line and nothing else changes. Retrieval is REAL here: a real
@@ -39,7 +39,7 @@ var cred = new DefaultAzureCredential();
 
 // 1) OCR — swap this one line to change engine. Everything below is provider-agnostic.
 using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(Require("OCR:FoundryEndpoint")), cred);
-var reader = new OcrDocumentReader(ocr);
+var reader = new Microsoft.Extensions.DataIngestion.DocumentExtractionReader(ocr);
 
 IngestionDocument document;
 await using (FileStream src = File.OpenRead(pdf))
@@ -94,7 +94,7 @@ return 0;
 
 static string ChunkText(IngestionChunk c) => (c.Content as TextContent)?.Text ?? c.Content?.ToString() ?? string.Empty;
 
-// Hand-rolled page provenance. SectionChunker is section-bounded and OcrDocumentReader emits one
+// Hand-rolled page provenance. SectionChunker is section-bounded and DocumentExtractionReader emits one
 // section per OCR page (stamped section.Metadata["page_number"]), so chunking each page-section on its
 // own tags every emitted chunk with its exact source page — no cross-page bleed, no framework opt-in.
 static async IAsyncEnumerable<(string Text, int Page)> ChunkByPage(

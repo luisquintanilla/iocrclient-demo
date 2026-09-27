@@ -1,16 +1,15 @@
 #:project ocr-shape/OcrShape.csproj
-#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
-// 16-streaming.cs — ExtractPagesAsync: pages arrive as updates, not one big result.
+#pragma warning disable EXTEXP0019, MEAI001, MEDE0001, MEAI002, MEAI003
+// 16-streaming.cs — ExtractPagesAsync: pages arrive as observations, not one big result.
 //
 // The family idiom. Just as IChatClient.GetStreamingResponseAsync yields ChatResponseUpdates,
-// IDocumentExtractionClient.ExtractPagesAsync yields OcrResponseUpdates — one per page as the engine finishes
-// it. A RAG pipeline can chunk/embed page 1 while page 100 is still being read. Progress
-// (PagesProcessed / TotalPages / Status) now rides ON the update, replacing the old
-// IProgress<OcrProgress> parameter that used to hang off ExtractAsync.
+// IDocumentExtractionClient.ExtractPagesAsync yields one DocumentExtractionPage per page. A RAG
+// pipeline can inspect page 1 while page 100 is still being read. Provider-specific progress
+// metadata is not part of this shared contract.
 //
-// Then DocumentExtractionPageResultExtensions reduces the very same updates back into one DocumentExtractionResult —
-// identical to what ExtractAsync would have returned — proving updates and result are two views of
-// one thing (mirrors ChatResponseUpdate + ToChatResponseAsync()).
+// The page finalization extensions explicitly finalize the same pages into one
+// Documents-backed DocumentExtractionResult. The page sequence is the required proof surface;
+// any future JSON representation is a separate experiment, not the canonical shape.
 //
 //   az login                                # keyless: your identity needs a Cognitive Services role
 //   OCR_FOUNDRY_ENDPOINT=https://<account>.services.ai.azure.com \
@@ -19,10 +18,8 @@
 // Config comes from env vars only (never committed): OCR_FOUNDRY_ENDPOINT (required),
 // OCR_MISTRAL_MODEL (optional, defaults to mistral-ocr-4-0).
 //
-// NOTE (honest framing): these demo IOcrClients wrap a single ExtractAsync call and re-emit its
-// pages as updates (OcrShapeExtensions.StreamAsUpdates) — the update *shape* is real, the
-// incrementality is simulated. A polling engine (e.g. Azure Document Intelligence) would emit
-// genuinely incremental page updates behind this exact same API.
+// NOTE (honest framing): this provider currently buffers its service response before yielding pages.
+// The stream shape is real, while transport-level incrementality depends on the provider.
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
 using DemoOcr;
@@ -36,21 +33,16 @@ using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(endpoi
 await using FileStream doc = File.OpenRead(pdf);
 
 Console.WriteLine("streaming pages as they arrive:");
-List<DocumentExtractionPageResult> updates = [];
-await foreach (DocumentExtractionPageResult update in ocr.ExtractPagesAsync(doc, "application/pdf"))
+List<DocumentExtractionPage> pages = [];
+await foreach (DocumentExtractionPage page in ocr.ExtractPagesAsync(doc, "streaming-proof", "application/pdf"))
 {
-    updates.Add(update);
-    if (update.Page is { } page)
-    {
-        Console.WriteLine($"  page {page.PageNumber,3}  ({update.PagesProcessed}/{update.TotalPages})  {page.Text.Length,6} chars");
-    }
+    pages.Add(page);
+    Console.WriteLine($"  page {page.PageNumber,3}  {page.GetMarkdown().Length,6} chars");
 }
 
-// Reduce the SAME updates back into one DocumentExtractionResult (the streaming twin is ToDocumentExtractionResultAsync() called
-// directly on the IAsyncEnumerable; here we reduce the captured list to avoid a second call).
-DocumentExtractionResult reassembled = updates.ToDocumentExtractionResult();
+using DocumentExtractionResult reassembled = pages.ToDocumentExtractionResult("streaming-proof");
 Console.WriteLine();
-Console.WriteLine($"reassembled: {reassembled.Pages.Count} page(s), model={reassembled.GetModelId()}");
+Console.WriteLine($"reassembled: {reassembled.Pages.Count} page(s), elements={reassembled.EnumerateElements().Count()}");
 
 return 0;
 

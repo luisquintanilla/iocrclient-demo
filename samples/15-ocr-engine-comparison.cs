@@ -136,15 +136,15 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
 {
     private readonly VisionLlmOcrClient _inner = new(chat, prompt);
 
-    public async Task<DocumentExtractionResult> ExtractAsync(
-        Stream document, string mediaType, DocumentExtractionOptions? options = null,
-        CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
+        Stream document,
+        string identifier,
+        string mediaType,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var buffer = new MemoryStream();
         await document.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
 
-        var pages = new List<DocumentPage>();
-        string? modelId = null;
         using PdfDocument pdf = PdfDocument.Open(buffer.ToArray());
         int total = pdf.NumberOfPages;
         for (int i = 1; i <= total; i++)
@@ -152,26 +152,28 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
             var img = pdf.GetPage(i).GetImages().FirstOrDefault();
             if (img is null || !img.TryGetPng(out byte[]? png) || png is null)
             {
-                pages.Add(new DocumentPage(i, ""));   // no extractable image on this page
+                yield return new DocumentExtractionPage(i, []);   // no extractable image on this page
                 continue;
             }
 
-            DocumentExtractionResult one = await _inner
-                .ExtractAsync(new MemoryStream(png), "image/png", options, cancellationToken)
+            using DocumentExtractionResult one = await _inner
+                .ExtractAsync(new MemoryStream(png), $"{identifier}:page:{i}", "image/png", cancellationToken)
                 .ConfigureAwait(false);
-            modelId ??= one.GetModelId();
-            pages.Add(new DocumentPage(i, one.Pages.Count > 0 ? one.Pages[0].Text : ""));
+            string markdown = one.GetMarkdown();
+            yield return new DocumentExtractionPage(
+                i,
+                string.IsNullOrWhiteSpace(markdown)
+                    ? []
+                    : [new DocumentExtractionText(
+                        $"{identifier}:page:{i}:text",
+                        0,
+                        DocumentTextKind.Paragraph,
+                        markdown,
+                        markdown)],
+                markdown,
+                [new DocumentPageReference($"page:{i}")]);
         }
-
-        return new DocumentExtractionResult(pages)
-        {
-            AdditionalProperties = modelId is { Length: > 0 } ? new() { ["modelId"] = modelId } : null,
-        };
     }
-
-    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
-        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
-        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null) =>
         serviceType.IsInstanceOfType(this) ? this : _inner.GetService(serviceType, serviceKey);

@@ -1,35 +1,25 @@
+using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using Azure;
+using Azure.Identity;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 
 namespace DemoOcr;
 
 /// <summary>
-/// An IDocumentExtractionClient backed by ANY IChatClient vision LLM (gpt-4o, Gemini, Qwen-VL, …) — the Docling
-/// ApiVlmModel analog. This is the clean replacement for PdfReadingMode.VisionOnly: "use a vision LLM
-/// to transcribe" becomes a swappable PROVIDER behind the OCR contract, not a flag on the reader.
-///
-/// Insight 3, role 1/3: a vision LLM CAN transcribe, but it is the LOWEST-fidelity option (no native
-/// tables/bbox/confidence, nondeterministic, token-expensive). It belongs behind IDocumentExtractionClient as the
-/// hybrid fallback — NOT as a first-class document reader, and NOT confused with the vision LLM's real
-/// value, which is *understanding* (captioning/field-extraction) via an enricher over IChatClient.
-///
-/// Round-2 spike (current-repo, not #7588): when the model supports structured output, this client can
-/// ask for DocumentExtractionResult-SHAPED JSON instead of freeform markdown, so it fills tables + figure captions +
-/// language + confidence reliably rather than by parsing prose. Opt in via
-/// <c>DocumentExtractionOptions.AdditionalProperties["vision.structured"] = true</c>; it degrades to the freeform path
-/// if the model can't honor a schema. The vision LLM cannot emit image BYTES, so figures are
-/// caption-only (DocumentImage.Content stays null) — exactly the archetype the nullable Content shape serves.
-/// For arbitrary typed extraction, reach the inner client via <c>GetService&lt;IChatClient&gt;()</c>.
+/// An <see cref="IDocumentExtractionClient"/> backed by an <see cref="IChatClient"/> vision model.
 /// </summary>
-public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = null) : IDocumentExtractionClient
+public sealed class VisionLlmOcrClient(
+    IChatClient chatClient,
+    string? prompt = null,
+    bool useStructuredOutput = false) : IDocumentExtractionClient
 {
-    /// <summary>Opt-in key: set <c>DocumentExtractionOptions.AdditionalProperties["vision.structured"] = true</c> to request structured output.</summary>
     public const string StructuredKey = "vision.structured";
 
-    // Reflection-based resolver so arbitrary DTOs (like VisionDocument) get a schema without source-gen.
     public static readonly JsonSerializerOptions SchemaJson =
         new(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
 
@@ -43,25 +33,32 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
         "rowCount, columnCount, and a markdown rendering; a list of figures each with a short caption " +
         "describing the image or chart; the detected language; and a confidence in [0,1].";
 
-    public async Task<DocumentExtractionResult> ExtractAsync(
-        Stream document, string mediaType, DocumentExtractionOptions? options = null,
+    public IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
+        Stream document,
+        string identifier,
+        string mediaType,
         CancellationToken cancellationToken = default)
+        => ExtractPagesCoreAsync(document, mediaType, cancellationToken);
+
+    private async IAsyncEnumerable<DocumentExtractionPage> ExtractPagesCoreAsync(
+        Stream document,
+        string mediaType,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var ms = new MemoryStream();
         await document.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
         byte[] bytes = ms.ToArray();
 
-        bool wantStructured = options?.AdditionalProperties is { } props
-            && props.TryGetValue(StructuredKey, out object? v) && v is true;
-
-        if (wantStructured)
+        if (useStructuredOutput
+            && await TryStructuredPagesAsync(bytes, mediaType, cancellationToken).ConfigureAwait(false)
+                is { } structuredPages)
         {
-            DocumentExtractionResult? structured = await TryStructuredAsync(bytes, mediaType, cancellationToken).ConfigureAwait(false);
-            if (structured is not null)
+            foreach (DocumentExtractionPage page in structuredPages)
             {
-                return structured;
+                yield return page;
             }
-            // Model couldn't honor the schema — fall through to freeform transcription.
+
+            yield break;
         }
 
         var message = new ChatMessage(ChatRole.User,
@@ -74,15 +71,20 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
             .GetResponseAsync(message, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        var page = new DocumentPage(1, response.Text);
-        return new DocumentExtractionResult([page])
-        {
-            RawRepresentation = response,
-            AdditionalProperties = new() { ["modelId"] = response.ModelId },
-        };
+        string markdown = response.Text;
+        yield return new DocumentExtractionPage(
+            1,
+            string.IsNullOrWhiteSpace(markdown)
+                ? []
+                : [new DocumentExtractionText("vision:1:text", 0, DocumentTextKind.Paragraph, markdown, markdown)],
+            markdown,
+            [new DocumentPageReference("page:1")]);
     }
 
-    private async Task<DocumentExtractionResult?> TryStructuredAsync(byte[] bytes, string mediaType, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<DocumentExtractionPage>?> TryStructuredPagesAsync(
+        byte[] bytes,
+        string mediaType,
+        CancellationToken cancellationToken)
     {
         var message = new ChatMessage(ChatRole.User,
         [
@@ -93,7 +95,11 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
         try
         {
             ChatResponse<VisionDocument> response = await chatClient
-                .GetResponseAsync<VisionDocument>([message], SchemaJson, useJsonSchemaResponseFormat: true, cancellationToken: cancellationToken)
+                .GetResponseAsync<VisionDocument>(
+                    [message],
+                    SchemaJson,
+                    useJsonSchemaResponseFormat: true,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (!response.TryGetResult(out VisionDocument? parsed) || parsed?.Pages is not { Count: > 0 })
@@ -101,62 +107,87 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
                 return null;
             }
 
-            var pages = new List<DocumentPage>(parsed.Pages.Count);
-            foreach (VisionPage vp in parsed.Pages)
+            var pages = new List<DocumentExtractionPage>(parsed.Pages.Count);
+            foreach (VisionPage page in parsed.Pages)
             {
-                var tables = (vp.Tables ?? []).Select(t =>
-                    new DocumentTable(t.RowCount, t.ColumnCount, markdownRepresentation: t.Markdown)).ToList();
-
-                // The VLM archetype: figures are CAPTION-ONLY (no bytes) — DocumentImage.Content stays null.
-                var images = (vp.Figures ?? [])
-                    .Where(f => !string.IsNullOrWhiteSpace(f.Caption))
-                    .Select(f => new DocumentImage { Caption = f.Caption }).ToList();
-
-                pages.Add(new DocumentPage(vp.Index + 1, vp.Markdown ?? "")
+                var observations = new List<DocumentExtractionObservation>();
+                DocumentPageReference pageReference = new($"page:{page.Index + 1}");
+                if (!string.IsNullOrWhiteSpace(page.Markdown))
                 {
-                    Elements = tables.Cast<DocumentElement>().Concat(images).ToList(),
-                    AdditionalProperties = BuildPageProperties(vp.Language, vp.Confidence),
-                });
+                    observations.Add(new DocumentExtractionText(
+                        $"vision:{page.Index}:text",
+                        0,
+                        DocumentTextKind.Paragraph,
+                        page.Markdown,
+                        page.Markdown,
+                        pageReferences: [pageReference]));
+                }
+
+                foreach (VisionTable table in page.Tables ?? [])
+                {
+                    observations.Add(new DocumentExtractionTable(
+                        $"vision:{page.Index}:table:{observations.Count}",
+                        observations.Count,
+                        string.IsNullOrWhiteSpace(table.Markdown) ? "[table]" : table.Markdown,
+                        table.RowCount,
+                        table.ColumnCount,
+                        pageReferences: [pageReference]));
+                }
+
+                foreach (VisionFigure figure in page.Figures ?? [])
+                {
+                    if (string.IsNullOrWhiteSpace(figure.Caption))
+                    {
+                        continue;
+                    }
+
+                    observations.Add(new DocumentExtractionImage(
+                        $"vision:{page.Index}:image:{observations.Count}",
+                        observations.Count,
+                        "[image]",
+                        text: figure.Caption,
+                        alternativeText: figure.Caption,
+                        pageReferences: [pageReference]));
+                }
+
+                pages.Add(new DocumentExtractionPage(
+                    page.Index + 1,
+                    observations,
+                    page.Markdown,
+                    [pageReference]));
             }
 
-            return new DocumentExtractionResult(pages)
-            {
-                RawRepresentation = response,
-                AdditionalProperties = new() { ["modelId"] = response.ModelId },
-            };
+            return pages;
         }
-        catch (Exception)
+        catch (Exception exception) when (CanFallbackToFreeform(exception))
         {
-            // Model or endpoint rejected the schema request; caller falls back to freeform.
+            // Only an explicit schema/response-format rejection may degrade to freeform.
             return null;
         }
     }
 
-    private static AdditionalPropertiesDictionary? BuildPageProperties(string? language, double? confidence)
+    public static bool CanFallbackToFreeform(Exception exception)
     {
-        AdditionalPropertiesDictionary? properties = null;
-        if (language is { Length: > 0 })
+        if (exception is OperationCanceledException
+            or AuthenticationFailedException
+            or RequestFailedException
+            or HttpRequestException
+            or TimeoutException)
         {
-            properties = new() { ["language"] = language };
+            return false;
         }
-        if (confidence is { } c)
-        {
-            properties ??= new();
-            properties["confidence"] = c;
-        }
-        return properties;
-    }
 
-    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
-        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
-        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
+        return exception is NotSupportedException or InvalidOperationException
+            && (exception.Message.Contains("schema", StringComparison.OrdinalIgnoreCase)
+                || exception.Message.Contains("response format", StringComparison.OrdinalIgnoreCase)
+                || exception.Message.Contains("structured output", StringComparison.OrdinalIgnoreCase));
+    }
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this : chatClient.GetService(serviceType, serviceKey);
 
     public void Dispose() => chatClient.Dispose();
 
-    // DocumentExtractionResult-shaped DTO the vision model is asked to return.
     private sealed class VisionDocument
     {
         [JsonPropertyName("pages")]
@@ -167,8 +198,6 @@ public sealed class VisionLlmOcrClient(IChatClient chatClient, string? prompt = 
     {
         [JsonPropertyName("index")] public int Index { get; set; }
         [JsonPropertyName("markdown")] public string? Markdown { get; set; }
-        [JsonPropertyName("language")] public string? Language { get; set; }
-        [JsonPropertyName("confidence")] public double? Confidence { get; set; }
         [JsonPropertyName("tables")] public List<VisionTable>? Tables { get; set; }
         [JsonPropertyName("figures")] public List<VisionFigure>? Figures { get; set; }
     }

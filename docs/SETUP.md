@@ -22,7 +22,7 @@ dotnet --version
 
 ## 2. Get the code and the packages
 
-The `IDocumentExtractionClient` (#7588) API is **not on nuget.org yet**, so the
+The `IDocumentExtractionClient` API is experimental and **not on nuget.org yet**, so the
 repo ships it prebuilt in [`local-feed/`](../local-feed/README.md) and `nuget.config` resolves it
 from there — nothing to build. (To rebuild/refresh the feed from public GitHub refs:
 `scripts/build-local-feed.sh`.)
@@ -84,7 +84,7 @@ See [`samples/README.md`](../samples/README.md) for the full sample table and wh
 This repo exists to gather feedback on the **proposed** building blocks while they're still in
 review. If you have thoughts on the shape, that's the point:
 
-- **`IDocumentExtractionClient`** — the provider-neutral OCR seam — [dotnet/extensions #7588](https://github.com/dotnet/extensions/pull/7588)
-- **`OcrDocumentReader`** — the `IDocumentExtractionClient` → MEDI bridge (in `samples/ocr-shape/`)
+- **`IDocumentExtractionClient`** — the provider-neutral page-observation seam
+- **`DocumentExtractionReader`** — the provisional `IDocumentExtractionClient` → MEDI bridge
 
 Open an issue here for demo/repro problems, or comment on the PRs for API-shape feedback.

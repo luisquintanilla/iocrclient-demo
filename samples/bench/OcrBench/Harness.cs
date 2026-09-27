@@ -4,6 +4,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.VectorData;
 using UglyToad.PdfPig;
+using DemoOcr;
 
 namespace OcrBench;
 
@@ -39,16 +40,12 @@ public static class Harness
     {
         var sw = Stopwatch.StartNew();
         await using FileStream doc = File.OpenRead(pdfPath);
-        DocumentExtractionResult result = await ocr.ExtractAsync(
-            doc,
-            mediaType,
-            new DocumentExtractionOptions { AdditionalProperties = new() { ["includeImages"] = true } },
-            ct);
+        using DocumentExtractionResult result = await ocr.ExtractAsync(doc, mediaType, ct);
         sw.Stop();
 
-        string text = string.Join("\n\n", result.Pages.Select(p => p.Text));
-        int tables = result.Pages.Sum(p => p.Elements.OfType<DocumentTable>().Count());
-        int images = result.Pages.Sum(p => p.Elements.OfType<DocumentImage>().Count());
+        string text = result.GetMarkdown();
+        int tables = result.CountElements<Microsoft.Extensions.Documents.DocumentTableElement>();
+        int images = result.CountElements<Microsoft.Extensions.Documents.DocumentImageElement>();
         return new ExtractionOutcome(provider, text, result.Pages.Count, tables, images, sw.ElapsedMilliseconds);
     }
 

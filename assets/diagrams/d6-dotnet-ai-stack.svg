@@ -40,7 +40,7 @@
   <rect class="box" x="664" y="310" width="170" height="34" rx="8"/>
   <text class="btext mono" x="684" y="333">PdfPigReader</text>
   <rect class="box" x="850" y="310" width="244" height="34" rx="8"/>
-  <text class="btext mono" x="870" y="333">OcrDocumentReader</text>
+  <text class="btext mono" x="870" y="333">DocumentExtractionReader</text>
 
   <!-- Extension libraries -->
   <rect class="layer" x="110" y="398" width="1060" height="96" rx="12" stroke="#a78bfa"/>
@@ -57,7 +57,7 @@
   <text class="btext" x="104" y="606">Microsoft.Extensions.AI</text>
   <text class="btext mono" x="104" y="628" font-size="14" fill="#9a9aa4">IChatClient · IEmbeddingGenerator</text>
   <rect class="focus" x="676" y="584" width="520" height="54" rx="8"/>
-  <text class="btext" x="696" y="606" fill="#ffffff">Microsoft.Extensions.DocumentExtraction <tspan class="tag">#7588</tspan></text>
+  <text class="btext" x="696" y="606" fill="#ffffff">Microsoft.Extensions.DocumentExtraction <tspan class="tag">provisional</tspan></text>
   <text class="btext mono" x="696" y="628" font-size="14" fill="#f5b8e6">IDocumentExtractionClient</text>
 
   <!-- Layer arrows -->

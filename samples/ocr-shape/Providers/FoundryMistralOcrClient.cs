@@ -3,61 +3,64 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Azure.Core;
 
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 
 namespace DemoOcr;
 
 /// <summary>
-/// An <see cref="IDocumentExtractionClient"/> backed by Mistral OCR on Azure AI Foundry — a purpose-built
-/// document-AI model. Document-native archetype: the whole PDF goes up in one call and comes back
-/// as an ordered list of pages (per-page Markdown + tables), no client-side page splitting.
-///
-/// Keyless (Entra ID) via any <see cref="TokenCredential"/>. The Foundry route is vendor-namespaced:
-/// <c>{endpoint}/providers/mistral/azure/ocr</c> and accepts a base64 data URL (no public-URL fetch).
+/// An <see cref="IDocumentExtractionClient"/> backed by Mistral OCR on Azure AI Foundry.
 /// </summary>
 public sealed class FoundryMistralOcrClient(
     Uri endpoint,
     TokenCredential credential,
-    string defaultModel = "mistral-ocr-4-0") : IDocumentExtractionClient
+    string defaultModel = "mistral-ocr-4-0",
+    bool includeImages = false) : IDocumentExtractionClient
 {
     private static readonly TokenRequestContext s_scope =
         new(["https://cognitiveservices.azure.com/.default"]);
 
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMinutes(5) };
 
-    public async Task<DocumentExtractionResult> ExtractAsync(
+    public IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
+        Stream document,
+        string identifier,
+        string mediaType,
+        CancellationToken cancellationToken = default)
+        => OcrShapeExtensions.StreamPages(
+            ct => ExtractPagesCoreAsync(document, mediaType, cancellationToken: ct),
+            cancellationToken);
+
+    private async Task<IReadOnlyList<DocumentExtractionPage>> ExtractPagesCoreAsync(
         Stream document,
         string mediaType,
-        DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         using var ms = new MemoryStream();
         await document.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
         string dataUrl = $"data:{mediaType};base64,{Convert.ToBase64String(ms.ToArray())}";
-        string model = options?.ModelId ?? defaultModel;
+        string model = defaultModel;
 
         var request = new JsonObject
         {
             ["model"] = model,
             ["document"] = new JsonObject { ["type"] = "document_url", ["document_url"] = dataUrl },
-            ["include_image_base64"] = options.GetIncludeImages(),
+            ["include_image_base64"] = includeImages,
         };
 
         AccessToken token = await credential.GetTokenAsync(s_scope, cancellationToken).ConfigureAwait(false);
         _http.DefaultRequestHeaders.Authorization = new("Bearer", token.Token);
-        var url = $"{endpoint.ToString().TrimEnd('/')}/providers/mistral/azure/ocr";
+        string url = $"{endpoint.ToString().TrimEnd('/')}/providers/mistral/azure/ocr";
 
-        // Cold-start / capacity returns transient 503 (code 3700). Retrying is exactly the
-        // cross-cutting concern IDocumentExtractionClient middleware (a DelegatingOcrClient) is designed to own.
-        HttpResponseMessage resp = null!;
+        HttpResponseMessage? response = null;
         for (int attempt = 1; attempt <= 5; attempt++)
         {
-            resp = await _http.PostAsync(
+            response?.Dispose();
+            response = await _http.PostAsync(
                 url,
                 new StringContent(request.ToJsonString(), Encoding.UTF8, "application/json"),
                 cancellationToken).ConfigureAwait(false);
-            if (resp.StatusCode != System.Net.HttpStatusCode.ServiceUnavailable)
+            if (response.StatusCode != System.Net.HttpStatusCode.ServiceUnavailable)
             {
                 break;
             }
@@ -65,73 +68,133 @@ public sealed class FoundryMistralOcrClient(
             await Task.Delay(TimeSpan.FromSeconds(attempt * 3), cancellationToken).ConfigureAwait(false);
         }
 
-        resp.EnsureSuccessStatusCode();
-        using var doc = JsonDocument.Parse(
-            await resp.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false));
-        JsonElement root = doc.RootElement;
-
-        var pages = new List<DocumentPage>();
-        JsonElement pageArray = root.GetProperty("pages");
-        int total = pageArray.GetArrayLength();
-        foreach (JsonElement page in pageArray.EnumerateArray())
+        using (response)
         {
-            int index = page.GetProperty("index").GetInt32();
-            string markdown = page.TryGetProperty("markdown", out var md) ? md.GetString() ?? "" : "";
-            int tableCount = page.TryGetProperty("tables", out var t) && t.ValueKind == JsonValueKind.Array
-                ? t.GetArrayLength() : 0;
-            var tables = new List<DocumentTable>(tableCount);
-            for (int i = 0; i < tableCount; i++)
-            {
-                tables.Add(new DocumentTable(0, 0)); // Mistral reports tables inline in the page markdown.
-            }
+            response!.EnsureSuccessStatusCode();
+            using JsonDocument payload = JsonDocument.Parse(
+                await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false));
 
-            // Figures: Mistral returns page.images[] with a bbox and (when include_image_base64=true) the
-            // rendered bytes. This is the document-native archetype filling DocumentImage.Content + bbox.
-            var images = new List<DocumentImage>();
-            if (page.TryGetProperty("images", out var imgs) && imgs.ValueKind == JsonValueKind.Array)
+            var pages = new List<DocumentExtractionPage>();
+            foreach (JsonElement page in payload.RootElement.GetProperty("pages").EnumerateArray())
             {
-                foreach (JsonElement img in imgs.EnumerateArray())
+                int index = page.GetProperty("index").GetInt32();
+                string markdown = page.TryGetProperty("markdown", out JsonElement md)
+                    ? md.GetString() ?? string.Empty
+                    : string.Empty;
+                DocumentPageReference pageReference = new($"page:{index + 1}");
+                var observations = new List<DocumentExtractionObservation>();
+                var replacements = new List<(int Start, int Length, DocumentExtractionTable Table)>();
+                var unplacedTables = new List<DocumentExtractionTable>();
+                if (page.TryGetProperty("tables", out JsonElement tables)
+                    && tables.ValueKind == JsonValueKind.Array)
                 {
-                    var image = new DocumentImage();
-                    if (img.TryGetProperty("image_base64", out var b64) && b64.ValueKind == JsonValueKind.String)
+                    int tableIndex = 0;
+                    foreach (JsonElement table in tables.EnumerateArray())
                     {
-                        string raw = b64.GetString()!;
-                        image.Content = raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
-                            ? new DataContent(raw)
-                            : new DataContent(Convert.FromBase64String(raw), "image/png");
+                        string? tableMarkdown = table.TryGetProperty("markdown", out JsonElement tableMd)
+                            && tableMd.ValueKind == JsonValueKind.String
+                            ? tableMd.GetString()
+                            : null;
+                        var extractionTable = new DocumentExtractionTable(
+                            $"mistral:{index}:table:{tableIndex}",
+                            tableIndex,
+                            "[table]",
+                            0,
+                            0,
+                            pageReferences: [pageReference]);
+                        if (tableMarkdown is not null && FindUnique(markdown, tableMarkdown) is { } match)
+                        {
+                            replacements.Add((match.Start, match.Length, extractionTable));
+                        }
+                        else
+                        {
+                            // Ambiguous or absent Markdown cannot establish reading order. Keep the
+                            // structural observation without replacing semantic text.
+                            unplacedTables.Add(extractionTable);
+                        }
+
+                        tableIndex++;
+                    }
+                }
+
+                int cursor = 0;
+                foreach ((int start, int length, DocumentExtractionTable table) in replacements.OrderBy(static item => item.Start))
+                {
+                    if (start < cursor)
+                    {
+                        unplacedTables.Add(table);
+                        continue;
                     }
 
-                    if (img.TryGetProperty("top_left_x", out var tlx) && img.TryGetProperty("top_left_y", out var tly)
-                        && img.TryGetProperty("bottom_right_x", out var brx) && img.TryGetProperty("bottom_right_y", out var bry))
-                    {
-                        image.BoundingRegion = DocumentBoundingRegion.FromRectangle(
-                            index + 1, (float)tlx.GetDouble(), (float)tly.GetDouble(), (float)brx.GetDouble(), (float)bry.GetDouble());
-                    }
+                    AddText(markdown[cursor..start]);
+                    observations.Add(table);
+                    cursor = start + length;
+                }
 
-                    images.Add(image);
+                AddText(markdown[cursor..]);
+                observations.AddRange(unplacedTables);
+
+                if (page.TryGetProperty("images", out JsonElement images)
+                    && images.ValueKind == JsonValueKind.Array)
+                {
+                    int imageIndex = 0;
+                    foreach (JsonElement image in images.EnumerateArray())
+                    {
+                        ReadOnlyMemory<byte>? content = null;
+                        if (image.TryGetProperty("image_base64", out JsonElement base64)
+                            && base64.ValueKind == JsonValueKind.String)
+                        {
+                            string raw = base64.GetString()!;
+                            int comma = raw.IndexOf(',');
+                            content = Convert.FromBase64String(comma >= 0 ? raw[(comma + 1)..] : raw);
+                        }
+
+                        observations.Add(new DocumentExtractionImage(
+                            $"mistral:{index}:image:{imageIndex}",
+                            observations.Count,
+                            "[image]",
+                            content: content,
+                            mediaType: content is null ? null : "image/png",
+                            pageReferences: [pageReference]));
+                        imageIndex++;
+                    }
+                }
+
+                pages.Add(new DocumentExtractionPage(
+                    index + 1,
+                    observations,
+                    markdown,
+                    [pageReference]));
+
+                void AddText(string value)
+                {
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        observations.Add(new DocumentExtractionText(
+                            $"mistral:{index}:text:{observations.Count}",
+                            observations.Count,
+                            DocumentTextKind.Paragraph,
+                            value,
+                            value,
+                            pageReferences: [pageReference]));
+                    }
                 }
             }
 
-            pages.Add(new DocumentPage(index + 1, markdown)
-            {
-                Elements = tables.Cast<DocumentElement>().Concat(images).ToList(),
-            });
+            return pages;
         }
-
-        return new DocumentExtractionResult(pages)
-        {
-            Usage = new DocumentExtractionUsage { PagesProcessed = total },
-            RawRepresentation = root.Clone(),
-            AdditionalProperties = new() { ["modelId"] = root.TryGetProperty("model", out var m) ? m.GetString() ?? model : model },
-        };
     }
-
-    public IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
-        Stream document, string mediaType, DocumentExtractionOptions? options = null, CancellationToken cancellationToken = default)
-        => OcrShapeExtensions.StreamAsUpdates(ct => ExtractAsync(document, mediaType, options, ct), cancellationToken);
 
     public object? GetService(Type serviceType, object? serviceKey = null)
         => serviceType.IsInstanceOfType(this) ? this : null;
+
+    public static (int Start, int Length)? FindUnique(string source, string value)
+    {
+        int start = source.IndexOf(value, StringComparison.Ordinal);
+        return start >= 0 && source.IndexOf(value, start + value.Length, StringComparison.Ordinal) < 0
+            ? (start, value.Length)
+            : null;
+    }
 
     public void Dispose() => _http.Dispose();
 }

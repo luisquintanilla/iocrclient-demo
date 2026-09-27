@@ -8,10 +8,11 @@ repo: TODO repo URL after publishing
 -->
 
 <!-- Message-first deck. Every technical claim is grounded on a real run captured under
-     samples/output/, and the samples run on the REAL dotnet/extensions code (preview2 +
-     #7588), packed into a local feed, not a vendored copy. The through-line: document parsing is
+     samples/output/, and the samples run on the REAL dotnet/extensions code from the exact
+     provisional Documents, extraction, and composition commits, packed into a local feed, not a
+     vendored copy. The through-line: document parsing is
      fragmented and vendor-locked; a provider-neutral capability (IDocumentExtractionClient) fixes it; a thin reader
-     (OcrDocumentReader) bridges it into the MEDI pipeline; per-page chunking keeps the answers
+     (DocumentExtractionReader) bridges it into the MEDI pipeline; per-page chunking keeps the answers
      citable on the shipping API; and the PdfPig reader (CommunityToolkit #14) shows the same
      seam composed a second way. The work spans two repos. -->
 
@@ -76,7 +77,7 @@ Everything else builds on these.
 
 ## From bytes to a cited answer
 
-<img class="diagram" src="assets/diagrams/d2-data-flow.svg" alt="Data flow across a boundary. On the left, IDocumentExtractionClient is a capability usable directly: a PDF or image enters IDocumentExtractionClient.ExtractAsync and becomes an DocumentExtractionResult of pages carrying markdown, tables, blocks, images/figures, and confidence. On the right, the MEDI pipeline: OcrDocumentReader WRAPS the IDocumentExtractionClient (a dashed composition arrow shows it calls ExtractAsync), then maps the result into an IngestionDocument with typed PageNumber values and ocr_source metadata. Page provenance rides the shipping API: the reader emits one section per page, and per-page chunking carries the page number through chunking, retrieval, and page-level citations. A dashed boundary separates IDocumentExtractionClient (a capability) from the reader/pipeline. The figure/image path is highlighted from images to an optional enricher.">
+<img class="diagram" src="assets/diagrams/d2-data-flow.svg" alt="Data flow across a boundary. On the left, IDocumentExtractionClient is a capability usable directly: a PDF or image enters the page-streaming contract and becomes a Documents-backed result of pages carrying text, tables, images, and opaque evidence. On the right, the MEDI pipeline: DocumentExtractionReader wraps IDocumentExtractionClient, then maps the result into an IngestionDocument with page metadata. Page provenance rides the in-memory result: the reader emits one section per page, and per-page chunking carries the page number through chunking, retrieval, and page-level citations. A dashed boundary separates IDocumentExtractionClient (a capability) from the reader/pipeline.">
 
 Note:
 This is the map for the whole deck. Left of the dashed line is the OCR capability — bytes to
@@ -127,8 +128,8 @@ a rewrite, not a config change. That is the problem worth removing.
 .NET already turned "talk to a model" into `IChatClient`: one interface, any provider, swap with a
 line. Embeddings did it with `IEmbeddingGenerator`.
 
-Reading a document is the same shape of problem. It deserves the same seam — and that seam is
-dotnet/extensions **#7588**: `Microsoft.Extensions.DocumentExtraction`, its own provider-neutral
+Reading a document is the same shape of problem. It deserves the same seam — the provisional
+`Microsoft.Extensions.DocumentExtraction` contract in the exact local feed, its own provider-neutral
 library beside `Microsoft.Extensions.AI`.
 
 </div>
@@ -137,16 +138,10 @@ library beside `Microsoft.Extensions.AI`.
 ```csharp
 public interface IDocumentExtractionClient : IDisposable
 {
-    Task<DocumentExtractionResult> ExtractAsync(
+    IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
         Stream document,
+        string identifier,
         string mediaType,
-        DocumentExtractionOptions? options = null,
-        CancellationToken cancellationToken = default);
-
-    IAsyncEnumerable<DocumentExtractionPageResult> ExtractPagesAsync(
-        Stream document,
-        string mediaType,
-        DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default);
 
     object? GetService(
@@ -159,11 +154,11 @@ public interface IDocumentExtractionClient : IDisposable
 </div>
 
 Note:
-This is the proposed shape from dotnet/extensions #7588. Stream in, a normalized DocumentExtractionResult out — or
-ExtractPagesAsync for OcrResponseUpdates, one per page, so a RAG pipeline can chunk page 1 while
-page 100 is still being read. That unary + streaming twin (replacing an IProgress callback) plus the
-GetService escape hatch is the exact family shape of IChatClient, so middleware and callers can reach
-the concrete engine. Everything in this deck runs on this exact type, packed locally from the real branch.
+This is the provisional shape from the requested dotnet/extensions commit chain. Stream in, receive one
+DocumentExtractionPage per page, then finalize the in-memory sequence into a Documents-backed
+DocumentExtractionResult. The identifier is explicit because it anchors the result without inventing
+provider-specific document IDs. The GetService escape hatch keeps composition possible, and every
+sample runs on this exact type from the local validation feed.
 
 ---
 
@@ -175,19 +170,16 @@ the concrete engine. Everything in this deck runs on this exact type, packed loc
 <div class="col-left">
 
 ```csharp
-class DocumentExtractionResult
-{
-    IReadOnlyList<DocumentPage> Pages;
-    string Text;          // pages joined, in order
-}
+// The client streams these observations:
+IAsyncEnumerable<DocumentExtractionPage> pages =
+    client.ExtractPagesAsync(stream, identifier, mediaType);
 
-class DocumentPage
-{
-    int PageNumber;       // 1-based page number
-    string Text;
-    IReadOnlyList<DocumentElement> Elements;  // blocks, tables,
-                                              // images — reading order
-}
+// The consumer finalizes the in-memory sequence:
+DocumentExtractionResult result =
+    pages.ToDocumentExtractionResult(identifier);
+
+// result.Document is the canonical Documents tree.
+// result.Pages retains page boundaries and opaque evidence.
 ```
 
 </div>
@@ -200,8 +192,9 @@ later, so it is a first-class field, not an afterthought in a metadata bag.
 </div>
 
 Note:
-Keep this slide short. The one field to point at is DocumentPage.PageNumber. It is the thread we pull all the
-way through the reader and the chunker to the citation.
+Keep this slide short. The one field to point at is the page number carried by each
+DocumentExtractionPage. It is the thread we pull all the way through the reader and the chunker to
+the citation.
 
 ---
 
@@ -213,17 +206,13 @@ way through the reader and the chunker to the citation.
 <div class="col-left">
 
 ```csharp
-// Figures arrive as DocumentImage elements,
-// across BOTH document-native engines:
+// Images arrive as observations in the page stream:
 var r = await ocr.ExtractAsync(stream, type);
 
-foreach (var img in r.Pages[0].Elements.OfType<DocumentImage>())
-    Save(img.Content,      // rendered bytes
-         img.BoundingRegion,
-         img.Caption);     // may be null
-
-// symmetric with the DataContent overload:
-await ocr.ExtractAsync(new UriContent(uri));
+foreach (var img in r.Pages
+    .SelectMany(page => page.Observations)
+    .OfType<DocumentExtractionImage>())
+    Report(img.Content is not null); // portable fact only
 ```
 
 </div>
@@ -233,11 +222,9 @@ await ocr.ExtractAsync(new UriContent(uri));
 <span class="output-label">captured output</span>
 
 ```text
-mistral-ocr: 1 image  bbox+bytes (28KB jpeg)
-azure-di:    3 figures bbox+bytes; one caption
-  "Figure 1. Map showing the four
-   continuous assessment units (AUs)..."
-UriContent (data:) -> same DocumentExtractionResult
+mistral-ocr: 1 image observation, optional content present
+azure-di:    3 image observations, optional content present
+no geometry, URLs, provider payloads, or document-derived bytes printed
 ```
 </div>
 
@@ -249,11 +236,9 @@ UriContent (data:) -> same DocumentExtractionResult
 </div>
 
 Note:
-Prototype-first. `DocumentImage` (nullable Content) in the reading-order element model, validated across two document-native
-engines — Mistral returns inline image bytes, Azure DI returns cropped figure bytes plus a caption — and
-degrades to caption-only for a vision LLM that can't emit bytes. That cross-provider evidence is what
-earns the change a place *in* the #7588 proposal, not just the demo. The UriContent overload is the
-symmetric partner to the shipped DataContent one. Details in docs/api-notes.md.
+Prototype-first. `DocumentExtractionImage` observations are validated across document-native engines,
+while the shared proof reports only portable presence/count facts. Provider payloads, geometry, URLs,
+and document-derived bytes stay behind the adapter boundary. Details in docs/api-notes.md.
 
 ---
 
@@ -324,7 +309,7 @@ chooses.
 **Document-native** (Mistral OCR, Azure DI, Content Understanding)
 
 - Whole PDF in one call, structured pages out
-- Native tables, confidence, page model
+- Native tables, page/evidence boundaries
 - 2 pages back from a 2-page PDF
 
 </div>
@@ -356,13 +341,11 @@ honest because the caller can pick it deliberately, and swap it out just as easi
 <div class="col-left">
 
 ```csharp
-// opt in: ask the vision model for
-// DocumentExtractionResult-shaped JSON, not prose
-var opt = new DocumentExtractionOptions {
-  AdditionalProperties = {
-    ["vision.structured"] = true } };
-var r = await visionOcr.ExtractAsync(s, type, opt);
-// -> pages, language, confidence, tables
+// opt in at construction: ask the vision model for
+// schema-constrained page observations, not prose
+using var visionOcr = new VisionLlmOcrClient(chat, structuredOutput: true);
+var pages = visionOcr.ExtractPagesAsync(s, "vision-proof", type);
+// -> finalize pages into the Documents-backed result
 
 // arbitrary typed extraction = composition,
 // reach the inner client, don't grow IDocumentExtractionClient
@@ -378,8 +361,8 @@ var summary = await chat
 <span class="output-label">captured output</span>
 
 ```text
-structured=OFF -> 1 page,  tables=0 figures=0  lang=? conf=?
-structured=ON  -> 2 pages, tables=3 figures=3  lang=en conf=0.98
+structured=OFF -> 1 page,  text observations only
+structured=ON  -> 2 pages, tables=3 figures=3
   (falls back to freeform if unsupported)
 
 typed POCO (OCR-then-extract):
@@ -400,10 +383,10 @@ typed POCO (OCR-then-extract):
 
 Note:
 MEAI ships first-class structured output (GetResponseAsync&lt;T&gt; + ForJsonSchema&lt;T&gt;). Two
-provider-neutral patterns: (1) opt-in structured *transcription* inside the vision client — it asks for
-DocumentExtractionResult-shaped JSON and gracefully degrades to freeform when the model can't honor a schema; (2)
-arbitrary typed *extraction* by composition — expose the inner IChatClient via GetService, don't add
-&lt;T&gt; to IDocumentExtractionClient. This is our implementation guidance, not a #7588 ask.
+provider-neutral patterns: (1) opt in to structured *transcription* at construction — schema
+incompatibility alone may fall back to freeform, while cancellation, auth, quota, transport, and
+timeout failures remain failures; (2) arbitrary typed *extraction* by composition — expose the inner
+IChatClient via GetService, don't add &lt;T&gt; to IDocumentExtractionClient.
 
 ---
 
@@ -414,7 +397,7 @@ arbitrary typed *extraction* by composition — expose the inner IChatClient via
 <div class="cols">
 <div class="col-left">
 
-**`IDocumentExtractionClient` — a capability.** Bytes in, `DocumentExtractionResult` out. Knows nothing about pipelines. Mistral /
+**`IDocumentExtractionClient` — a capability.** Bytes in, page observations out, then a Documents-backed result. Knows nothing about pipelines. Mistral /
 Azure DI / Content Understanding / vision LLM are just providers behind it.
 
 **`IngestionDocumentReader` — a pipeline stage.** The MEDI front door: `ReadAsync(stream, id, type)
@@ -423,10 +406,10 @@ Azure DI / Content Understanding / vision LLM are just providers behind it.
 </div>
 <div class="col-left callout">
 
-**`OcrDocumentReader : IngestionDocumentReader` — the bridge.**
+**`DocumentExtractionReader : IngestionDocumentReader` — the bridge.**
 
-One reader that **composes any `IDocumentExtractionClient`**, mapping `DocumentExtractionResult -> IngestionDocument`, carrying
-page as `PageNumber`, and stamping `ocr_source` / `confidence` / bbox metadata aligned with `PdfPigReader`.
+One reader that **composes any `IDocumentExtractionClient`**, mapping the finalized Documents result
+into `IngestionDocument` and carrying page/evidence associations without inventing provider claims.
 
 No per-engine reader. No `VisionOnly` flag. The engine is injected.
 
@@ -435,7 +418,7 @@ No per-engine reader. No `VisionOnly` flag. The engine is injected.
 
 Note:
 This is the question the demo is really about: where does OCR stop and the pipeline begin? IDocumentExtractionClient
-is the capability; IngestionDocumentReader is the stage; OcrDocumentReader is the one small adapter
+is the capability; IngestionDocumentReader is the stage; DocumentExtractionReader is the one small adapter
 between them. Draw that line once and every engine drops in without touching the pipeline.
 
 ---
@@ -444,7 +427,7 @@ between them. Draw that line once and every engine drops in without touching the
 
 ## One contract, top to bottom
 
-<img class="diagram" src="assets/diagrams/d1-stack.svg" alt="A foundation-up four-layer .NET AI dependency stack, with a legend distinguishing solid boxes (components) from dashed boxes (notes). Bottom layer, dotnet/extensions foundation abstractions: two provider-neutral capability libraries side by side — Microsoft.Extensions.AI (IChatClient, IEmbeddingGenerator) and Microsoft.Extensions.DocumentExtraction (IDocumentExtractionClient, highlighted) — with a note that OCR is its own foundation library beside Microsoft.Extensions.AI, building on its content primitives, not bolted on per app. Next layer up, Microsoft.Extensions.DataIngestion (MEDI): IngestionDocumentReader, chunkers, IngestionPipeline, IngestionChunkWriter. Next, CommunityToolkit concretes: vision-LLM OCR providers, Mistral / Azure DI / Content Understanding, PdfPigReader, OcrDocumentReader. Top, the application: Aspire AppHost, hero web app, ingest-retrieve-answer, provider-agnostic UX. Each layer is marked BUILT ON the one below; every inner block is the same width.">
+<img class="diagram" src="assets/diagrams/d1-stack.svg" alt="A foundation-up four-layer .NET AI dependency stack, with a legend distinguishing solid boxes (components) from dashed boxes (notes). Bottom layer, dotnet/extensions foundation abstractions: two provider-neutral capability libraries side by side — Microsoft.Extensions.AI and Microsoft.Extensions.DocumentExtraction (IDocumentExtractionClient, highlighted). Next layer up, Microsoft.Extensions.DataIngestion (MEDI): IngestionDocumentReader, chunkers, IngestionPipeline, and writers. Next, CommunityToolkit concretes: vision-LLM OCR providers, Mistral / Azure DI / Content Understanding, and PdfPigReader. Top, the application: Aspire AppHost, hero web app, ingest-retrieve-answer, provider-agnostic UX. Each layer is marked BUILT ON the one below; every inner block is the same width.">
 
 Note:
 A single visual to hold in your head — and the whole argument in one picture. At the base,
@@ -468,7 +451,7 @@ dotnet/extensions          ── ABSTRACTIONS (provider-neutral) ────�
   Microsoft.Extensions.AI
     IChatClient · IEmbeddingGenerator
   Microsoft.Extensions.DocumentExtraction
-    IDocumentExtractionClient                         (#7588)  bytes -> DocumentExtractionResult
+    IDocumentExtractionClient                         (provisional)  bytes -> page observations -> Documents result
   Microsoft.Extensions.DataIngestion (MEDI)
     IngestionDocumentReader                     the pipeline front door
     IngestionDocument / Section / Element  (PageNumber + Metadata)
@@ -502,8 +485,8 @@ PdfPigReader are concretes. Nothing in the core knows about Mistral or PdfPig.
 <div class="col-left">
 
 ```csharp
-// OcrDocumentReader bridges IDocumentExtractionClient into MEDI
-var reader = new OcrDocumentReader(ocr);
+// DocumentExtractionReader bridges IDocumentExtractionClient into MEDI
+var reader = new DocumentExtractionReader(ocr);
 var doc = await reader.ReadAsync(pdf, name, "application/pdf");
 
 // One section per OCR page (page_number stamped) —
@@ -541,9 +524,9 @@ answer ends: … [page 0]
 
 Note:
 A retriever can find the right text and still be unable to say where it came from. You do not need a
-new chunking API for that. `OcrDocumentReader` already emits one section per OCR page with
+new chunking API for that. `DocumentExtractionReader` emits one section per OCR page with
 `page_number` in the section metadata; chunk each page-section on its own and every chunk is tagged
-with its source page. The page `PageNumber` on `DocumentExtractionResult` (#7588) plus per-page chunking makes answers
+with its source page. The page `PageNumber` on the finalized Documents result plus per-page chunking makes answers
 citable today. We explored propagating element metadata through the chunker in dotnet/extensions
 #7516; it closed unmerged (2026-07-09) and the demo doesn't need it.
 
@@ -556,11 +539,11 @@ citable today. We explored propagating element metadata through the chunker in d
 <img class="diagram" src="assets/diagrams/d5-medi-architecture.svg" alt="MEDI ingestion pipeline left to right: IngestionDocumentReader produces an IngestionDocument with sections, elements, typed page numbers, and metadata, then document processors, a chunker, chunk processors, and a writer decide what persists to a vector store, while emitting OpenTelemetry traces and logs. Per-page chunking carries the page number from the reader to the citable chunk; ocr_source and other enrichment stay in metadata.">
 
 Note:
-Zoom out from the one reader to the whole MEDI pipeline. OcrDocumentReader is just the first stage;
+Zoom out from the one reader to the whole MEDI pipeline. DocumentExtractionReader is just the first stage;
 because it emits one section per page, per-page chunking carries the page number through the in-memory
 stages: document processors, the chunker, and chunk processors. The page rides on each chunk; other
 enrichment, like `ocr_source`,
-`confidence`, and bbox, stays in metadata. The writer still decides what persists to the vector store.
+provider-specific confidence and geometry stay out of the shared evidence. The writer still decides what persists to the vector store.
 And because it's MEDI, the whole pipeline is instrumented: OpenTelemetry traces and logs fall out for
 free, which is exactly what the Aspire hero app surfaces on its dashboard.
 
@@ -623,7 +606,7 @@ reader depends on IDocumentExtractionClient only, never a chat model directly.
 
 ## One reader, cheapest-first across the whole range
 
-<img class="diagram" src="assets/diagrams/d7-extraction-spectrum.svg" alt="Horizontal spectrum of extraction choices from cheapest local native text (DefaultPageSegmenter, OcrPolicy.Never) through ONNX layout analysis, to scanned-page OCR using an injected IDocumentExtractionClient with OcrPolicy.FallbackForEmptyPages, to whole-document OCR through OcrDocumentReader with OcrPolicy.AllPages. PdfPigReader composes the same two seams (IPageSegmenter and IDocumentExtractionClient) across the whole range; cost and fidelity rise left to right.">
+<img class="diagram" src="assets/diagrams/d7-extraction-spectrum.svg" alt="Horizontal spectrum of extraction choices from cheapest local native text (DefaultPageSegmenter, OcrPolicy.Never) through ONNX layout analysis, to scanned-page OCR using an injected IDocumentExtractionClient with OcrPolicy.FallbackForEmptyPages, to whole-document OCR through DocumentExtractionReader with OcrPolicy.AllPages. PdfPigReader composes the same two seams (IPageSegmenter and IDocumentExtractionClient) across the whole range; cost and fidelity rise left to right.">
 
 Note:
 The same PdfPigReader spans this whole range — you don't switch types as the document gets harder, you
@@ -638,7 +621,7 @@ the survival-kit baseline to the scanned USGS twin is a walk across this axis.
 
 ## The reader owns WHEN; the client owns HOW
 
-<img class="diagram" src="assets/diagrams/d3-composition.svg" alt="PdfPigReader (CommunityToolkit #14) decides WHEN to OCR via OcrPolicy (Never, FallbackForEmptyPages, AllPages) and composes an IDocumentExtractionClient (dotnet/extensions #7588) that decides HOW — VisionLmOcrClient #15, Mistral OCR, Azure DI, or Content Understanding. The reader depends on IDocumentExtractionClient only, zero IChatClient; swapping the engine is one constructor argument and swapping the policy never touches the provider.">
+<img class="diagram" src="assets/diagrams/d3-composition.svg" alt="PdfPigReader decides WHEN to OCR via OcrPolicy (Never, FallbackForEmptyPages, AllPages) and composes an IDocumentExtractionClient from the provisional local stack that decides HOW — VisionLmOcrClient, Mistral OCR, Azure DI, or Content Understanding. The reader depends on IDocumentExtractionClient only, zero IChatClient; swapping the engine is one constructor argument and swapping the policy never touches the provider.">
 
 Note:
 The composition picture behind the last slide. WHEN-to-OCR is a policy on the reader; HOW-to-OCR is a
@@ -657,7 +640,7 @@ model — so the vision path is just one provider among four, swappable on a sin
 ```csharp
 using IDocumentExtractionClient ocr =                 // swap engine
     new FoundryMistralOcrClient(foundry, cred);
-var doc = await new OcrDocumentReader(ocr)
+var doc = await new DocumentExtractionReader(ocr)
               .ReadAsync(pdf, name, "application/pdf");
 var chunks = ChunkByPage(doc, chunker);        // page-tagged
 
@@ -739,8 +722,8 @@ discriminating structural signal is **Tables+Figures**, not Coverage. No gold ac
 
 **dotnet/extensions — the abstractions**
 
-- **#7588** `IDocumentExtractionClient` — the provider-neutral OCR seam
-  - adds `DocumentImage` + the reading-order element model, a `UriContent` overload, and the `ExtractAsync` rename
+- **provisional H stack** `IDocumentExtractionClient` — the provider-neutral OCR seam
+  - streams `DocumentExtractionPage` observations, then finalizes to the Documents element model
 - page provenance rides the shipping API (per-page chunking); the earlier chunk-propagation proposal **#7516** closed unmerged
 
 </div>
@@ -755,7 +738,7 @@ discriminating structural signal is **Tables+Figures**, not Coverage. No gold ac
 </div>
 </div>
 
-<p class="small muted">Every sample runs on real preview2 + #7588 bits (<code>scripts/build-local-feed.sh</code>, not a mock), with cross-provider evidence in <code>docs/api-notes.md</code>. Review the shape, run the samples, push back.</p>
+<p class="small muted">Every sample runs on the exact provisional commit chain via <code>scripts/build-local-feed.sh</code>, not a mock, with cross-provider evidence in <code>docs/api-notes.md</code>. Review the shape, run the samples, push back.</p>
 
 Note:
 Make the call to action concrete. Five PRs across two repos are the deliverable; this talk is the
@@ -769,7 +752,7 @@ prove the whole thing composes on real code.
 ## Try it, then shape it
 
 - Clone the repo, run `scripts/build-local-feed.sh`, then `05-one-loop-four-clients.cs` on your own PDF
-- Read the seam: `#7588` (IDocumentExtractionClient) in `dotnet/extensions` — provenance rides per-page chunking on it
+- Read the seam: `IDocumentExtractionClient` in the provisional local feed — provenance rides per-page chunking on it
 - See it composed: `#13/#14/#15` in `CommunityToolkit/AI` — the reader composes the client
 - Remember: OCR is a capability, the reader is the bridge, and provenance makes answers citable
 

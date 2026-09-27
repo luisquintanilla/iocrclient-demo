@@ -1,47 +1,34 @@
-# `local-feed/` — unofficial local dev packages (READ THIS)
+# Provisional local feed
 
-**These are NOT official Microsoft packages.** They are local, unofficial builds produced solely so
-this demo is clone-and-run while the APIs it showcases are still in review. Do not depend on them in
-real projects, and do not redistribute them as if they were shipped Microsoft packages.
+These packages are unofficial local builds used only by this demo. They are not public releases
+and must not be treated as a supported Microsoft package source.
 
-## What these are
+## Exact provenance
 
-The `Microsoft.Extensions.DocumentExtraction` API shown in this demo (the
-`IDocumentExtractionClient` extraction surface) is **proposed** in an open pull request against
-[dotnet/extensions](https://github.com/dotnet/extensions) and is **not on nuget.org yet**.
-Rather than vendor a hand-copied snapshot, `../scripts/build-local-feed.sh` packs the *real*
-dotnet/extensions source into this folder at version `10.8.0-dev`, so the samples bind to the actual
-`Microsoft.Extensions.*` types. `../nuget.config` resolves these from `local-feed`; everything else
-(Azure SDKs, OpenAI, PdfPig, vector-store connectors) resolves from nuget.org.
+`scripts/build-local-feed.sh` checks out the composition bridge commit below and packs one coherent
+`10.10.0-dev` package line:
 
-## Provenance (what went into the build)
+| Slice | Commit |
+| --- | --- |
+| Documents abstractions | `d35d5cb74695c4ba970d6ad198006b84354badc0` |
+| DocumentExtraction abstractions and implementation | `2d28dfd57712b55f941fbb1dbf41311eeaee8c8b` |
+| DataIngestion composition bridge | `8ae3d2436d105c8449a712d58618ff444b617f7b` |
 
-Packed **2026-08-03** at version `10.8.0-dev` from this composition:
+The commits are an ancestry chain. The script uses the final commit as one source snapshot, so AI,
+DataIngestion, Documents, DocumentExtraction, and the bridge share assembly identities. The source
+checkout is created outside this repository and is never copied into the sample.
 
-- base: `dotnet/extensions` branch **`data-ingestion-preview2`** at commit **`da091f9e`** (latest MEDI: non-generic `IngestionChunk` + `IngestionChunkVectorRecord`; the public upstream branch, no in-flight PRs merged in)
-- **+ PR [#7588](https://github.com/dotnet/extensions/pull/7588)** — `Microsoft.Extensions.DocumentExtraction(.Abstractions)` (the extraction peer library; the two self-contained DE project folders grafted from the PR head, since #7588 targets `main`)
-- one const the grafted `[Experimental]` attributes reference (`DiagnosticIds.Experiments.DocumentExtraction = "MEDE0001"`) — see the build script
+```bash
+WORK="$HOME/dev/extensions-n-g4" scripts/build-local-feed.sh
+```
 
-The exact recipe (and the branch/PR heads used) lives in
-[`../scripts/build-local-feed.sh`](../scripts/build-local-feed.sh); it reproduces this feed from
-public GitHub refs so these binaries are verifiable, not opaque.
+The checked-in `.nupkg` files are only a feed placeholder. Rebuild the feed before restoring after
+changing the provisional stack. Do not replace the package line with a guessed public version.
 
-## Committed contents
+## Proof boundary
 
-Only the **runtime** `*.nupkg` files are committed. `*.symbols.nupkg` are intentionally left out
-(`.gitignore`) — they are not needed to run the samples.
-
-## License
-
-The packaged code is from `dotnet/extensions`, licensed under the
-**[MIT License](https://github.com/dotnet/extensions/blob/main/LICENSE)**
-(Copyright (c) .NET Foundation and Contributors). The MIT license text and copyright are retained
-inside each `.nupkg`. This repository's own sample code is likewise MIT (see `../LICENSE`).
-
-## When to delete this feed
-
-The moment #7588 ships on nuget.org, this whole folder becomes unnecessary:
-
-1. delete `local-feed/`,
-2. remove the `<clear/>` + `local-feed` source from `../nuget.config`,
-3. bump the samples to the published package versions.
+The required proof is the in-memory page-observation sequence finalized by
+`DocumentExtractionDocumentBuilder`. `samples/17-deterministic-extraction.cs` is credential-free
+and does not serialize or freeze a neutral-tree shape. Provider payloads, credentials, bearer
+tokens, private identifiers, geometry, confidence, and document-derived evidence are not emitted.
+Any future JSON round-trip is experimental and separate from the canonical in-memory proof.

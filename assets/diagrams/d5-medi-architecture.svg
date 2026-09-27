@@ -90,6 +90,6 @@
   <line x1="1030" y1="510" x2="1030" y2="324" stroke="#d600aa" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrowM)"/>
 
   <rect class="legend" x="82" y="520" width="470" height="70" rx="10"/>
-  <text class="sub" x="106" y="550">Readers can be PdfPigReader, OcrDocumentReader, or custom sources.</text>
+  <text class="sub" x="106" y="550">Readers can be PdfPigReader, DocumentExtractionReader, or custom sources.</text>
   <text class="sub" x="106" y="574">Downstream stages stay document-shaped.</text>
 </svg>

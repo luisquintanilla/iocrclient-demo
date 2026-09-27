@@ -28,8 +28,8 @@ Same job, very different fidelity, latency, and cost. The point of the whole tal
 archetypes through *one* contract, so the caller chooses on fidelity and cost, not on API shape.
 
 **Where OCR sits** (second primer slide, diagram `assets/diagrams/d2-data-flow.svg`): the document
-enters `IDocumentExtractionClient` on the left and becomes an `DocumentExtractionResult` of pages — markdown, tables, blocks,
-figure images, confidence. A thin reader maps that into the MEDI pipeline, which chunks, retrieves,
+enters `IDocumentExtractionClient` on the left and becomes a stream of page observations finalized into
+the in-memory Documents result — text, tables, image observations, and opaque evidence. A thin reader maps that into the MEDI pipeline, which chunks, retrieves,
 and answers with page-level citations. A dashed line separates the OCR *capability* from the pipeline
 *stage*. That line is the whole idea; the deck walks it left to right.
 

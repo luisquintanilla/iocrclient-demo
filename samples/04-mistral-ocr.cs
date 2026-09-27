@@ -22,19 +22,18 @@ string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
 using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential(), model);
 
 await using FileStream doc = File.OpenRead(pdf);
-DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf");
+using DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf");
 
 Report(result);
 return 0;
 
 static void Report(DocumentExtractionResult r)
 {
-    Console.WriteLine($"model  : {r.GetModelId()}");
     Console.WriteLine($"pages  : {r.Pages.Count}");
     Console.WriteLine();
-    DocumentPage first = r.Pages[0];
-    Console.WriteLine($"--- page {first.PageNumber}  ({first.Elements.OfType<DocumentTable>().Count()} table(s)) ---");
-    string md = first.Text;
+    DocumentExtractionPage first = r.Pages[0];
+    Console.WriteLine($"--- page {first.PageNumber}  ({first.Observations.OfType<DocumentExtractionTable>().Count()} table(s)) ---");
+    string md = first.GetMarkdown();
     Console.WriteLine(md.Length > 900 ? md[..900] + "\n…" : md);
 }
 
