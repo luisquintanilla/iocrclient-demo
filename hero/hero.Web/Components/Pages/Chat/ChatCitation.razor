@@ -7,9 +7,17 @@
         </svg>
         <div class="citation-content">
             <div class="citation-file">@File</div>
+            @if (Pages.Count > 0)
+            {
+                <div>Source pages: @string.Join(", ", Pages)</div>
+            }
             <div>@Quote</div>
         </div>
     </a>
+    @if (RecordKey is { } key)
+    {
+        <a href="@($"source/{key:D}")">Inspect source and extraction regions</a>
+    }
 }
 
 @code {
@@ -19,11 +27,21 @@
     [Parameter]
     public string? Quote { get; set; }
 
+    [Parameter]
+    public IReadOnlyList<int> Pages { get; set; } = [];
+
+    [Parameter]
+    public Guid? RecordKey { get; set; }
+
     private string? viewerUrl;
 
     protected override void OnParametersSet()
     {
         viewerUrl = null;
+        if (Path.IsPathFullyQualified(File) || File.Split(['/', '\\']).Any(part => part is ".." or "."))
+        {
+            return;
+        }
 
         // If you ingest other types of content besides Markdown or PDF files, construct a URL to an appropriate viewer here
         if (File.EndsWith(".md"))
@@ -33,7 +51,8 @@
         else if (File.EndsWith(".pdf"))
         {
             var search = Quote?.Trim('.', ',', ' ', '\n', '\r', '\t', '"', '\'');
-            viewerUrl = $"lib/pdf_viewer/viewer.html?file=/Data/{HttpUtility.UrlEncode(File)}#search={HttpUtility.UrlEncode(search)}&phrase=true";
+            string page = Pages.Count > 0 ? $"page={Pages[0]}&" : "";
+            viewerUrl = $"lib/pdf_viewer/viewer.html?file=/Data/{HttpUtility.UrlEncode(File)}#{page}search={HttpUtility.UrlEncode(search)}&phrase=true";
         }
     }
 }

@@ -1,5 +1,7 @@
 #:project ocr-shape/OcrShape.csproj
 #:project bench/OcrBench/OcrBench.csproj
+#:package Azure.AI.OpenAI@2.5.0-beta.1
+#:package Microsoft.Extensions.AI.OpenAI@[10.10.0-dev.e2e.cf60fa88.1]
 #pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 using Microsoft.Extensions.DocumentExtraction;
 // 10-eval-ocr-vs-pdfpig.cs — do OCR engines actually beat "naive" PdfPig? Measure it, apples-to-apples.
@@ -54,12 +56,12 @@ BenchQuestionSet set = BenchQuestionSet.LoadDefault();
 IReadOnlyList<string> knownFacts = set.AllKnownFacts();
 Console.WriteLine($"documents: {docs.Length}   questions: {set.Questions.Count}   known facts: {knownFacts.Count}\n");
 
-IChatClient chat = new AzureOpenAIClient(new Uri(Require("OCR:OpenAIEndpoint")), cred)
+using IChatClient chat = new AzureOpenAIClient(new Uri(Require("OCR:OpenAIEndpoint")), cred)
     .GetChatClient(DemoOcr.DemoConfig.Config["OCR:VisionDeployment"] ?? "gpt-4.1-mini")
     .AsIChatClient();
 
 // Real retriever, held identical across rows, when embeddings are configured; else lexical offline.
-IEmbeddingGenerator<string, Embedding<float>>? embedder = Opt("OCR:OpenAIEndpoint") is { } embHost
+using IEmbeddingGenerator<string, Embedding<float>>? embedder = Opt("OCR:OpenAIEndpoint") is { } embHost
     ? new AzureOpenAIClient(new Uri(embHost), cred)
         .GetEmbeddingClient(Opt("OCR:EmbedDeployment") ?? "text-embedding-3-small")
         .AsIEmbeddingGenerator()

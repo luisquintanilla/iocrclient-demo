@@ -1,13 +1,11 @@
 # Provisional Documents and extraction API notes
 
-This repository consumes an experimental, unmerged stack from `dotnet/extensions`:
-
-- Documents: `d35d5cb74695c4ba970d6ad198006b84354badc0`
-- DocumentExtraction: `2d28dfd57712b55f941fbb1dbf41311eeaee8c8b`
-- composition bridge: `8ae3d2436d105c8449a712d58618ff444b617f7b`
-
-The local feed is rebuilt at `10.10.0-dev` by `scripts/build-local-feed.sh`. These are provenance
-pins, not a public package release.
+This validation branch uses the experimental integrated candidate
+`10.10.0-dev.e2e.cf60fa88.1`: the corrected Documents/Extraction PR heads plus the reconciled
+MEDI Preview 2 and #7488 design, migrated onto shared Documents. See
+[`samples/README.md`](../samples/README.md) for exact source pins and import commands.
+The complete 16-package manifest records source overlays, hashes and evidence. This is not a
+public release, accepted upstream design, or the older `10.10.0-dev` composition bridge.
 
 ## Consumer contract
 
@@ -17,7 +15,8 @@ Providers implement:
 IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
     Stream document,
     string identifier,
-    string mediaType,
+    string? mediaType,
+    DocumentExtractionOptions? options = null,
     CancellationToken cancellationToken = default);
 ```
 
@@ -40,14 +39,31 @@ associations with their supplied order and multiplicity.
 
 ## Evidence boundaries
 
-The shared result does not invent provider geometry, confidence, raw payloads, credentials, signed
-URLs, or grounding claims. Adapters may retain provider-specific richness internally, but the
-neutral tree exposes only fields represented by the provisional contract. Images may carry optional
-content; the credential-free proof reports presence only and never writes document-derived bytes.
+Shared Documents carries optional source-page frames, arbitrary polygons, annotations, confidence
+with its meaning, table cells/spans/header associations and operation-scoped raw output. Adapters
+must not fabricate absent page identity, geometry, OCR confidence or table structure. A layout
+detector's score and a vision model's self-reported confidence are not OCR confidence.
 
-The DataIngestion bridge maps the finalized tree into one section per extraction page. Page numbers
-and opaque references become metadata. Unsupported document artifacts are rejected rather than
-silently dropped.
+Native objects and original result bytes have separate availability states. Capture is on by
+default; `DocumentExtractionOptions` provides per-call model/format/provider options and raw
+capture opt-outs. A reserialized SDK result, normalized ChatResponse or input PDF is not original
+provider response data. Native borrowed objects must stay usable for their promised lifetime;
+document-owned response artifacts are disposed with the shared document, once.
+
+The MEDI `DocumentExtractionReader` now returns that shared `Document` directly. There is no
+neutral-tree-to-old-IngestionDocument conversion and no legacy bridge package. Reader-first
+pipeline entry points own documents they create; `ProcessAsync(Document, ...)` borrows the
+caller's document. Callers retain ownership of injected extraction clients and input streams.
+
+Chunks retain AIContent, context and token metadata plus `SourceElements`. Built-in chunkers
+preserve contributing elements; consumers resolve page frames through those elements and their
+ancestor sections, exact `DocumentPageReference` identifiers and annotation regions. Section
+indexes, parsing identifier strings and full-page invented polygons are not page attribution.
+
+The typed `VectorStoreWriter<TRecord>.CreateRecord` override persists safe citation metadata,
+not raw provider payloads. The default `IncrementalIngestion=true` replaces old rows for the same
+document with fresh row keys. `false` is append behavior, not a forced replacement switch.
+Citation identity is a separate stable hash of source/content evidence, not the vector row GUID.
 
 ## Structured output
 
@@ -58,3 +74,16 @@ propagate. The deterministic proof exercises both categories without a live prov
 
 The in-memory Documents tree is canonical. No old serialized neutral-tree shape is frozen, and any
 JSON round-trip remains an experimental, separately validated concern.
+
+## Validation boundaries
+
+The native E2E runner uses actual PdfPig, MEDI and reopened SqliteVec, with labelled deterministic
+embedding/chat doubles. Live mode requires configured extraction, embedding and chat services
+and explicit `--allow-live`; blocked services are not passes. Optional RT-DETR requires a pinned
+compatible model and actual page rasterization. It detects regions, not scanned-page text or
+table-cell structure, and does not imply Docling parity.
+
+The hero source viewer verifies persisted source hashes and renders original PDF pages before
+projecting known geometry. Unknown coordinate frames, rotated pages and crop offsets without a
+verified transform produce explicit unsupported status. Passing projection tests is not a claim
+that provider detection is accurate.

@@ -11,6 +11,12 @@ obj/
 # Local captures you are still editing
 samples/output/*.draft.txt
 samples/output/images/
+samples/output/e2e/
+validation-feed/
+.packages-e2e/
+hero/hero.Web/wwwroot/Data/synthetic-source.pdf
+*.onnx
+*.onnx_data
 
 # local grounding env (endpoints/account names — never commit)
 samples/.env.grounding
@@ -20,7 +26,7 @@ samples/.env.grounding
 # Internal reconciliation notes (never publish)
 DEMO-RECONCILIATION-NOTES.md
 
-# Local-feed: the runtime nupkgs ARE committed so the repo is clone-and-run.
-# They are unofficial local dev builds — see local-feed/README.md for provenance.
+# Historical local-feed runtime packages are committed; integrated candidates are not.
+# See samples/README.md for the verified validation-feed import.
 # Symbols packages are not needed to run, so keep them out.
 local-feed/*.symbols.nupkg

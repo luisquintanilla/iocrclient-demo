@@ -1,0 +1,343 @@
+{
+  "counts": {
+    "total": "64",
+    "executed": "63",
+    "passed": "63",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  },
+  "tests": [
+    {
+      "name": "DemoOcr.Tests.ContentUnderstandingMappingTests.ExtractPageMarkdown_SpanlessMarkerMismatchIsRejected",
+      "outcome": "Passed",
+      "duration": "00:00:00.0038244"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigDocumentExtractionClientTests.ExtractPages_PreservesBlankPageBetweenTextPages",
+      "outcome": "Passed",
+      "duration": "00:00:00.0026932"
+    },
+    {
+      "name": "DemoOcr.Tests.FoundryMistralOcrClientTests.ExtractPages_NonRetryableFailureThrowsImmediately",
+      "outcome": "Passed",
+      "duration": "00:00:00.1157070"
+    },
+    {
+      "name": "DemoOcr.Tests.RtDetrLayoutDetectorTests.Constructor_BlankAndMissingModelPathsReportExplicitPrerequisite",
+      "outcome": "Passed",
+      "duration": "00:00:00.0124034"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderAdapterHelpersTests.ResolveModel_UsesDefaultAllowsOverrideAndRejectsForbiddenOverride",
+      "outcome": "Passed",
+      "duration": "00:00:00.0010469"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigReaderTests.ReadAsync_NeverPolicyPreservesPdfPigPagesAndIdentifiers",
+      "outcome": "Passed",
+      "duration": "00:00:00.0028171"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPageRasterizerTests.RenderPage_ImageOnlyPageUsesRealPdfiumAndProducesNonBlankPng",
+      "outcome": "Passed",
+      "duration": "00:00:00.0104824"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderReplayTests.DocumentIntelligence_CompletedLroMapsBlankPagesAndHonorsRawCapture(captureRawOutput: True)",
+      "outcome": "Passed",
+      "duration": "00:00:00.2829612"
+    },
+    {
+      "name": "DemoOcr.Tests.AzureDocumentIntelligenceMappingTests.ExtractPageMarkdown_EmptyAndConcreteSpansAreHandledExactly",
+      "outcome": "Passed",
+      "duration": "00:00:00.0269946"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPageRasterizerTests.RenderPage_NormalTextPageUsesRealPdfiumAndExactTransform",
+      "outcome": "Passed",
+      "duration": "00:00:00.1594388"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPageRasterizerTests.RenderPage_RotatedOrOffsetCropTransformsAreRejected(rotation: 0, left: 0, bottom: 5, right: 300, top: 400)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0000517"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderAdapterHelpersTests.RejectUnsupportedProperties_ReportsSortedUnsupportedNames",
+      "outcome": "Passed",
+      "duration": "00:00:00.0183816"
+    },
+    {
+      "name": "DemoOcr.Tests.FoundryMistralOcrClientTests.ExtractPages_RetainsExactResponseBytesAndDetachedJsonElement",
+      "outcome": "Passed",
+      "duration": "00:00:00.0077031"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.CanFallbackToFreeform_ClassifiesOnlyLocalCapabilityFailures(message: \"structured output is unsupported\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0000200"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_SchemaCapabilityFailureFallsBackOnceAndRecordsProvenance",
+      "outcome": "Passed",
+      "duration": "00:00:00.0027127"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderReplayTests.ContentUnderstanding_CompletedLroMapsBlankPagesAndHonorsRawCapture(captureRawOutput: True)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0779383"
+    },
+    {
+      "name": "DemoOcr.Tests.AzureDocumentIntelligenceMappingTests.RoleAndConfidenceMapping_PreserveAvailableValues",
+      "outcome": "Passed",
+      "duration": "00:00:00.0181838"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderAdapterHelpersTests.CreateSourceOutput_CaptureEnabledWithBytesRetainsNativeAndExactRawContent",
+      "outcome": "Passed",
+      "duration": "00:00:00.0015318"
+    },
+    {
+      "name": "DemoOcr.Tests.ContentUnderstandingMappingTests.ExtractPageMarkdown_SpanPresentPathWinsOverPageBreakFallback",
+      "outcome": "Passed",
+      "duration": "00:00:00.0028264"
+    },
+    {
+      "name": "DemoOcr.Tests.RtDetrLayoutDetectorTests.Detect_NonSquareRenderedPageAlignsWithNativeTextRegion",
+      "outcome": "NotExecuted",
+      "duration": "00:00:00.0010000"
+    },
+    {
+      "name": "DemoOcr.Tests.IngestionChunkExtensionsTests.GetSourcePages_PrefersRegionPagesAndDeduplicatesThem",
+      "outcome": "Passed",
+      "duration": "00:00:00.0630851"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderReplayTests.DocumentIntelligence_CompletedLroMapsBlankPagesAndHonorsRawCapture(captureRawOutput: False)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0125810"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPageRasterizerTests.RenderPage_RotatedOrOffsetCropTransformsAreRejected(rotation: 90, left: 0, bottom: 0, right: 300, top: 400)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0000504"
+    },
+    {
+      "name": "DemoOcr.Tests.RtDetrLayoutDetectorTests.Constructor_BadModelHashIsRejectedBeforeOnnxLoad",
+      "outcome": "Passed",
+      "duration": "00:00:00.0116383"
+    },
+    {
+      "name": "DemoOcr.Tests.IngestionChunkExtensionsTests.GetSourcePages_ResolvesOnlyExactPageIdentifiers",
+      "outcome": "Passed",
+      "duration": "00:00:00.0010848"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigReaderTests.ReadAsync_FallbackPolicyReplacesOnlyRequestedBlankPage",
+      "outcome": "Passed",
+      "duration": "00:00:00.6334272"
+    },
+    {
+      "name": "DemoOcr.Tests.FoundryMistralOcrClientTests.ExtractPages_TableMarkdownCreatesTableWithoutFabricatedCells",
+      "outcome": "Passed",
+      "duration": "00:00:00.0025328"
+    },
+    {
+      "name": "DemoOcr.Tests.ContentUnderstandingMappingTests.ExtractPageMarkdown_EmptyAndConcreteSpansAreHandledExactly",
+      "outcome": "Passed",
+      "duration": "00:00:00.0251462"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigDocumentExtractionClientTests.ExtractPages_NativeLayoutNeverFabricatesTableCells",
+      "outcome": "Passed",
+      "duration": "00:00:00.5128509"
+    },
+    {
+      "name": "DemoOcr.Tests.IngestionChunkExtensionsTests.EnumerateSourceElements_IncludesAncestorsOnceByReference",
+      "outcome": "Passed",
+      "duration": "00:00:00.0093233"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPageRasterizerTests.RenderPage_RotatedOrOffsetCropTransformsAreRejected(rotation: 0, left: 10, bottom: 0, right: 300, top: 400)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0000695"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigReaderTests.ReadAsync_NeverPolicyUsesCallerProvidedWordExtractor",
+      "outcome": "Passed",
+      "duration": "00:00:00.0244177"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigReaderTests.ReadAsync_AllPagesUsesExplicitClientAndCountsOneCall",
+      "outcome": "Passed",
+      "duration": "00:00:00.0025788"
+    },
+    {
+      "name": "DemoOcr.Tests.FoundryMistralOcrClientTests.ExtractPages_EachRetryRequestCarriesLocalBearerAuthAndFifthResponseSucceeds",
+      "outcome": "Passed",
+      "duration": "00:00:00.0509362"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_StructuredOutOfRangeConfidenceIsRejected",
+      "outcome": "Passed",
+      "duration": "00:00:00.1287647"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigDocumentExtractionClientTests.ExtractPages_InvalidLayoutOptionsAreRejected(layoutMode: \"native\", threshold: 1.00999999)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0008574"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderAdapterHelpersTests.CreateSourceOutput_CaptureDisabledMarksDisabledAndDropsRepresentations",
+      "outcome": "Passed",
+      "duration": "00:00:00.0305387"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderAdapterHelpersTests.NormalizeOptions_ClonesCallerOptions",
+      "outcome": "Passed",
+      "duration": "00:00:00.0167201"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderAdapterHelpersTests.CreateSourceOutput_CaptureEnabledWithoutBytesDistinguishesUnavailableRawContent",
+      "outcome": "Passed",
+      "duration": "00:00:00.0003654"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigDocumentExtractionClientTests.ExtractPages_BindsEveryReferenceToItsExactSourcePageIdentifier",
+      "outcome": "Passed",
+      "duration": "00:00:00.0035529"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigDocumentExtractionClientTests.ExtractPages_InvalidLayoutOptionsAreRejected(layoutMode: \"unsupported\", threshold: null)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0702042"
+    },
+    {
+      "name": "DemoOcr.Tests.ContentUnderstandingMappingTests.MissingSpanMapper_DoesNotCrashOrInventSpan",
+      "outcome": "Passed",
+      "duration": "00:00:00.0019698"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigDocumentExtractionClientTests.ExtractPages_InvalidLayoutOptionsAreRejected(layoutMode: \"native\", threshold: -0.00999999978)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0001493"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigDocumentExtractionClientTests.ExtractPages_UsesPointBottomLeftFrameAndRealBlockPolygon",
+      "outcome": "Passed",
+      "duration": "00:00:00.0280469"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPigDocumentExtractionClientTests.ExtractPages_RtDetrModeRequiresRasterizerAndDetector",
+      "outcome": "Passed",
+      "duration": "00:00:00.0015514"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderAdapterHelpersTests.CreateSourceOutput_CaptureEnabledWithoutRepresentationsMarksBothUnavailable",
+      "outcome": "Passed",
+      "duration": "00:00:00.0005511"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_FreeformAnnotationUsesOnlyResponseRawRepresentation",
+      "outcome": "Passed",
+      "duration": "00:00:00.0888851"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderReplayTests.ContentUnderstanding_CompletedLroMapsBlankPagesAndHonorsRawCapture(captureRawOutput: False)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0015744"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_PdfCancellationStopsBeforeChatCalls",
+      "outcome": "Passed",
+      "duration": "00:00:00.0018694"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.CanFallbackToFreeform_ClassifiesOnlyLocalCapabilityFailures(message: \"response format is unsupported\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0090246"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.CanFallbackToFreeform_ClassifiesOnlyLocalCapabilityFailures(message: \"schema is unsupported\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0002932"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_FreeformRejectsNonImageBeforeCallingChatClient",
+      "outcome": "Passed",
+      "duration": "00:00:00.0022648"
+    },
+    {
+      "name": "DemoOcr.Tests.AzureDocumentIntelligenceMappingTests.BuildTableMarkdown_EmptyCellsRemainEmptyWithoutFabrication",
+      "outcome": "Passed",
+      "duration": "00:00:00.0130665"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPageRasterizerTests.RenderPage_RotatedOrOffsetCropTransformsAreRejected(rotation: 0, left: 0, bottom: 0, right: 290, top: 400)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0009013"
+    },
+    {
+      "name": "DemoOcr.Tests.ProviderAdapterHelpersTests.CreatePageFrame_BindsReferenceToExactSourcePageIdentifier",
+      "outcome": "Passed",
+      "duration": "00:00:00.0096652"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_StructuredSchemaFailureOnPdfFallsBackPerRenderedPage",
+      "outcome": "Passed",
+      "duration": "00:00:00.3394708"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_StructuredTablePreservesMarkdownWithoutFabricatedCells",
+      "outcome": "Passed",
+      "duration": "00:00:00.0042096"
+    },
+    {
+      "name": "DemoOcr.Tests.PdfPageRasterizerTests.RenderPage_RotatedOrOffsetCropTransformsAreRejected(rotation: 0, left: 0, bottom: 0, right: 300, top: 390)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0586876"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_StructuredFailureThrowsWithoutFreeformFallback",
+      "outcome": "Passed",
+      "duration": "00:00:00.0038363"
+    },
+    {
+      "name": "DemoOcr.Tests.IngestionChunkExtensionsTests.GetSourcePages_DoesNotParseIntegerReferencesOrFabricatePageOne",
+      "outcome": "Passed",
+      "duration": "00:00:00.0011965"
+    },
+    {
+      "name": "DemoOcr.Tests.FoundryMistralOcrClientTests.ExtractPages_FifthServiceUnavailableEndsRetrySequence",
+      "outcome": "Passed",
+      "duration": "00:00:00.0050318"
+    },
+    {
+      "name": "DemoOcr.Tests.ContentUnderstandingMappingTests.BuildTableMarkdown_EmptyCellsRemainEmptyWithoutFabrication",
+      "outcome": "Passed",
+      "duration": "00:00:00.0299810"
+    },
+    {
+      "name": "DemoOcr.Tests.VisionLlmOcrClientTests.ExtractPages_PdfRendersEveryPageToPngAndPreservesBlankPageIdentity",
+      "outcome": "Passed",
+      "duration": "00:00:00.0330828"
+    },
+    {
+      "name": "DemoOcr.Tests.ContentUnderstandingMappingTests.RoleAndConfidenceMapping_PreserveAvailableValues",
+      "outcome": "Passed",
+      "duration": "00:00:00.0082149"
+    }
+  ],
+  "sanitization": "Only test names, outcomes, durations and counters exported; users, machines, paths, output and error bodies excluded."
+}

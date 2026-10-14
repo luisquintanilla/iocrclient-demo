@@ -1,70 +1,55 @@
 #:project ocr-shape/OcrShape.csproj
-#pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
-// 05-one-loop-four-clients.cs — the payoff. FOUR engines, FOUR wire protocols, ONE interface.
-//
-// Vision LLM, Mistral OCR, Azure Document Intelligence, Azure Content Understanding each speak a
-// completely different API. Behind IDocumentExtractionClient they are IDocumentExtractionClient. The loop below is the ENTIRE
-// consumer: same call, same DocumentExtractionResult, swap the provider with one line. That is the whole point of
-// putting a seam here — your pipeline stops caring which engine read the page.
-//
-//   az login   # then set the endpoints (see .env header comments in the single-provider samples)
-//   dotnet run 05-one-loop-four-clients.cs -- data/usgs-petroleum-assessment.pdf
+#:package Azure.AI.OpenAI@2.5.0-beta.1
+#:package Microsoft.Extensions.AI.OpenAI@[10.10.0-dev.e2e.cf60fa88.1]
+#pragma warning disable EXTEXP0019, MEAI001, MEDE0001, MEAI002, MEAI003
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.Documents;
 using DemoOcr;
 
-string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
-var cred = new Azure.Identity.DefaultAzureCredential();
-
-// The only provider-specific code in the whole program: constructing each client. After this line,
-// nothing downstream knows or cares which engine it is talking to.
-var clients = new (string Name, IDocumentExtractionClient Client)[]
+string pdf = args.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal))
+    ?? "data/usgs-petroleum-assessment.pdf";
+if (args.Any(argument => argument.StartsWith("--", StringComparison.Ordinal) && argument is not ("--allow-live" or "--no-raw")))
 {
-    ("vision-llm (gpt-4.1-mini)", new VisionLlmOcrClient(
-        new AzureOpenAIClient(new Uri(Require("OCR:OpenAIEndpoint")), cred)
-            .GetChatClient(DemoOcr.DemoConfig.Config["OCR:VisionDeployment"] ?? "gpt-4.1-mini")
-            .AsIChatClient())),
-    ("mistral-ocr", new FoundryMistralOcrClient(new Uri(Require("OCR:FoundryEndpoint")), cred)),
-    ("azure-document-intelligence", new AzureDocumentIntelligenceClient(new Uri(Require("OCR:DocIntelEndpoint")), cred)),
-    ("azure-content-understanding", new ContentUnderstandingClient(new Uri(Require("OCR:ContentUnderstandingEndpoint")), cred)),
+    throw new ArgumentException("Use an optional PDF path, --allow-live and --no-raw.");
+}
+bool live = args.Contains("--allow-live", StringComparer.Ordinal);
+var credential = new Azure.Identity.DefaultAzureCredential();
+using IChatClient? chat = live && Config("OCR:OpenAIEndpoint") is { } openAi
+    ? new AzureOpenAIClient(new Uri(openAi), credential)
+        .GetChatClient(Config("OCR:VisionDeployment") ?? "gpt-4.1-mini").AsIChatClient()
+    : null;
+var clients = new List<(string Name, IDocumentExtractionClient Client)>
+{
+    ("pdfpig-native", new PdfPigDocumentExtractionClient()),
 };
-
-byte[] bytes = await File.ReadAllBytesAsync(pdf);
-
-Console.WriteLine($"{"provider",-30} {"pages",6} {"tables",7} {"chars",8}  first-heading");
-Console.WriteLine(new string('-', 90));
-foreach (var (name, client) in clients)
+try
 {
-    using (client)
+    if (live)
     {
-        // Identical call for every engine. This block never changes when you add or swap a provider.
-        using var stream = new MemoryStream(bytes, writable: false);
-        using DocumentExtractionResult r = await client.ExtractAsync(stream, "application/pdf");
-
-        int tables = r.CountElements<DocumentTableElement>();
-        int chars = r.GetMarkdown().Length;
-        string heading = FirstHeading(r.GetMarkdown());
-        Console.WriteLine($"{name,-30} {r.Pages.Count,6} {tables,7} {chars,8}  {heading}");
+        if (chat is not null) clients.Add(("vision", new VisionLlmOcrClient(chat)));
+        if (Config("OCR:FoundryEndpoint") is { } mistral) clients.Add(("mistral", new FoundryMistralOcrClient(new Uri(mistral), credential)));
+        if (Config("OCR:DocIntelEndpoint") is { } di) clients.Add(("document-intelligence", new AzureDocumentIntelligenceClient(new Uri(di), credential)));
+        if (Config("OCR:ContentUnderstandingEndpoint") is { } cu) clients.Add(("content-understanding", new ContentUnderstandingClient(new Uri(cu), credential)));
     }
+    byte[] bytes = await File.ReadAllBytesAsync(pdf);
+    Console.WriteLine("Only constructed providers run. Unconfigured cloud providers and local model inference are not passing evidence.");
+    Console.WriteLine($"{"provider",-25} {"observed pages",14} {"source frames",13} {"tables",7} {"chars",8}");
+    foreach (var (name, client) in clients)
+    {
+        using var stream = new MemoryStream(bytes, writable: false);
+        var options = new DocumentExtractionOptions { CaptureRawOutput = !args.Contains("--no-raw", StringComparer.Ordinal) };
+        string identifier = Path.GetFileName(pdf);
+        using DocumentExtractionResult result = await client.ExtractPagesAsync(stream, identifier, "application/pdf", options)
+            .ToDocumentExtractionResultAsync(identifier);
+        Console.WriteLine($"{name,-25} {result.Pages.Count,14} {result.Document.SourcePages.Count,13} {result.CountElements<DocumentTableElement>(),7} {result.GetMarkdown().Length,8}");
+    }
+}
+finally
+{
+    foreach (var (_, client) in clients) client.Dispose();
 }
 return 0;
 
-static string FirstHeading(string md)
-{
-    foreach (string line in md.Split('\n'))
-    {
-        string t = line.Trim();
-        if (t.Length > 0)
-        {
-            return (t.Length > 40 ? t[..40] + "…" : t).Replace('#', ' ').Trim();
-        }
-    }
-
-    return "";
-}
-
-static string Require(string name) =>
-    DemoOcr.DemoConfig.Config[name]
-    ?? throw new InvalidOperationException($"Set {name} (see the single-provider sample headers).");
+static string? Config(string key) => DemoConfig.Config[key];

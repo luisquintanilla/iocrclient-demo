@@ -1,0 +1,51 @@
+{
+  "status": "incomplete",
+  "mode": "live",
+  "layout": "native",
+  "layoutModelSha256": null,
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "452F3387B14D2042BCC858FBA86F354BB54C5BE430B26792A869769A43A89FC9",
+  "results": [
+    {
+      "provider": "pdfpig",
+      "status": "blocked",
+      "errorType": "CredentialUnavailableException",
+      "statusCode": null,
+      "reason": null
+    },
+    {
+      "provider": "document-intelligence",
+      "status": "blocked",
+      "errorType": "CredentialUnavailableException",
+      "statusCode": null,
+      "reason": null
+    },
+    {
+      "provider": "content-understanding",
+      "status": "blocked",
+      "errorType": "CredentialUnavailableException",
+      "statusCode": null,
+      "reason": null
+    },
+    {
+      "provider": "mistral",
+      "status": "blocked",
+      "errorType": "CredentialUnavailableException",
+      "statusCode": null,
+      "reason": null
+    },
+    {
+      "provider": "vision",
+      "status": "blocked",
+      "errorType": "CredentialUnavailableException",
+      "statusCode": null,
+      "reason": null
+    }
+  ],
+  "claims": {
+    "liveAi": false,
+    "allFiveProviders": false,
+    "onnxInference": false,
+    "releaseReady": false
+  }
+}

@@ -22,7 +22,7 @@ string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
 using IDocumentExtractionClient ocr = new FoundryMistralOcrClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential(), model);
 
 await using FileStream doc = File.OpenRead(pdf);
-using DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf");
+using DocumentExtractionResult result = await ocr.ExtractAsync(doc, Path.GetFileName(pdf), "application/pdf");
 
 Report(result);
 return 0;

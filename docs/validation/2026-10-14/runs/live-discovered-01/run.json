@@ -1,0 +1,51 @@
+{
+  "status": "incomplete",
+  "mode": "live",
+  "layout": "native",
+  "layoutModelSha256": null,
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "8B403A31603D30D2FA0B2043B99F7D8DBFB45CF09613CE4F03CF5E75271F3398",
+  "results": [
+    {
+      "provider": "pdfpig",
+      "status": "failed",
+      "errorType": "FileNotFoundException",
+      "statusCode": null,
+      "reason": null
+    },
+    {
+      "provider": "document-intelligence",
+      "status": "failed",
+      "errorType": "FileNotFoundException",
+      "statusCode": null,
+      "reason": null
+    },
+    {
+      "provider": "content-understanding",
+      "status": "failed",
+      "errorType": "FileNotFoundException",
+      "statusCode": null,
+      "reason": null
+    },
+    {
+      "provider": "mistral",
+      "status": "failed",
+      "errorType": "FileNotFoundException",
+      "statusCode": null,
+      "reason": null
+    },
+    {
+      "provider": "vision",
+      "status": "failed",
+      "errorType": "FileNotFoundException",
+      "statusCode": null,
+      "reason": null
+    }
+  ],
+  "claims": {
+    "liveAi": false,
+    "allFiveProviders": false,
+    "onnxInference": false,
+    "releaseReady": false
+  }
+}

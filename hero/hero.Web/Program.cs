@@ -1,5 +1,6 @@
 using Azure.AI.OpenAI;
 using Azure.Identity;
+using CommunityToolkit.VectorData.SqliteVec;
 using DemoOcr;
 using hero.Web.Components;
 using hero.Web.Services;
@@ -24,26 +25,38 @@ var azureOpenAIClient = new AzureOpenAIClient(new Uri(openAiEndpoint), new Defau
 builder.Services.AddChatClient(azureOpenAIClient.GetChatClient(chatDeployment).AsIChatClient())
     .UseFunctionInvocation()
     .UseOpenTelemetry(configure: c =>
-        c.EnableSensitiveData = builder.Environment.IsDevelopment());
+        c.EnableSensitiveData = false);
 builder.Services.AddEmbeddingGenerator(azureOpenAIClient.GetEmbeddingClient(embeddingDeployment).AsIEmbeddingGenerator())
     .UseOpenTelemetry(configure: c =>
-        c.EnableSensitiveData = builder.Environment.IsDevelopment());
+        c.EnableSensitiveData = false);
+builder.Services.AddSingleton<IEmbeddingGenerator<AIContent, Embedding<float>>>(sp =>
+    new TextEmbeddingAdapter(sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>()));
 builder.Services.AddSingleton<IDocumentExtractionClient>(sp =>
-    new VisionLlmOcrClient(sp.GetRequiredService<IChatClient>()));
+    ExtractionProviderFactory.Create(sp, builder.Configuration));
+builder.Services.AddSingleton(sp => new RtDetrLayoutDetector(
+    builder.Configuration.Require("OCR:LayoutModelPath"),
+    confidenceThreshold: builder.Configuration.GetValue("OCR:LayoutConfidenceThreshold", .5f),
+    expectedSha256: builder.Configuration.Require("OCR:LayoutModelSha256")));
 
-var configuredVectorStorePath = builder.Configuration["VectorStore:Path"] ?? "vector-store.db";
+var configuredVectorStorePath = builder.Configuration["VectorStore:Path"] ?? "vector-store-e2e-v2.db";
 var vectorStorePath = Path.IsPathFullyQualified(configuredVectorStorePath)
     ? configuredVectorStorePath
     : Path.Combine(AppContext.BaseDirectory, configuredVectorStorePath);
 var vectorStoreConnectionString = $"Data Source={vectorStorePath}";
-builder.Services.AddSqliteVectorStore(_ => vectorStoreConnectionString);
+builder.Services.AddSqliteVectorStore(_ => vectorStoreConnectionString, sp => new SqliteVectorStoreOptions
+{
+    EmbeddingGenerator = sp.GetRequiredService<IEmbeddingGenerator<AIContent, Embedding<float>>>(),
+});
 builder.Services.AddSingleton(sp => sp.GetRequiredService<VectorStore>().GetIngestionRecordCollection<IngestedChunk>(
     IngestedChunk.CollectionName,
     IngestedChunk.VectorDimensions,
     IngestedChunk.VectorDistanceFunction));
 builder.Services.AddSingleton<DataIngestor>();
 builder.Services.AddSingleton<SemanticSearch>();
-builder.Services.AddKeyedSingleton("ingestion_directory", new DirectoryInfo(Path.Combine(builder.Environment.WebRootPath, "Data")));
+builder.Services.AddScoped<CitationRegistry>();
+var ingestionDirectoryPath = builder.Configuration["Ingestion:Directory"] ?? Path.Combine(builder.Environment.WebRootPath, "Data");
+builder.Services.AddKeyedSingleton("ingestion_directory", new DirectoryInfo(
+    Path.GetFullPath(ingestionDirectoryPath, builder.Environment.ContentRootPath)));
 
 var app = builder.Build();
 
@@ -61,6 +74,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.UseStaticFiles();
+app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

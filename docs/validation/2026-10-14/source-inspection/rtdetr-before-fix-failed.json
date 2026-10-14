@@ -1,0 +1,18 @@
+{
+  "title": "Extraction source evidence",
+  "text": "Extraction source evidence\n\nBack to chat\n\nsynthetic-source.pdf\n\nSource SHA-256: c9fd4f6a158ee5c202710fce8b88d7b8b5d9b20c70fc9071087d742b77546ca1\n\nOpen verified source\n\nSource page \n1 (synthetic-source.pdf:pdfpig:page:1)\n\n2 source regions projected. Projection is not a claim of detection accuracy.\n\nRetrieved text supporting this citation\nThe validation code is ORBIT-742.",
+  "canvases": [
+    {
+      "width": 893,
+      "height": 1263
+    }
+  ],
+  "polygons": [
+    "152.65151596069336,129.20537567138675 605.7388916015625,129.20537567138675 605.7388916015625,114.2835960388183 152.65151596069336,114.2835960388183",
+    "108,183.00000000000006 428.96399999999994,183.00000000000006 428.96399999999994,167.52300000000008 108,167.52300000000008"
+  ],
+  "pages": [
+    "1 (synthetic-source.pdf:pdfpig:page:1)"
+  ],
+  "sourceUrl": "http://localhost:51847/Data/synthetic-source.pdf"
+}

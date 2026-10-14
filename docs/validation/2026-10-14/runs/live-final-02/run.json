@@ -1,0 +1,132 @@
+{
+  "status": "passed",
+  "mode": "live",
+  "layout": "native",
+  "authentication": "DefaultAzureCredential",
+  "layoutModelSha256": null,
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "504032DEF2582A6DB50B558BA164B2C95841101875F573327021163C9F554FCE",
+  "results": [
+    {
+      "provider": "pdfpig",
+      "status": "passed",
+      "mode": "live",
+      "layout": "native",
+      "loadedAssemblies": [
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1"
+      ],
+      "pages": 3,
+      "retrievedRecords": 2,
+      "citations": 1,
+      "realMediPipeline": true,
+      "realPersistedVectorStore": true,
+      "reopened": true,
+      "reingestion": true,
+      "borrowedDocumentUsable": true,
+      "inputKind": "synthetic public fixture",
+      "onnxInference": false,
+      "layoutGeometryMinimumIoU": null,
+      "layoutGeometryMeasuredIoU": null
+    },
+    {
+      "provider": "document-intelligence",
+      "status": "passed",
+      "mode": "live",
+      "layout": "provider-native",
+      "loadedAssemblies": [
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1"
+      ],
+      "pages": 3,
+      "retrievedRecords": 2,
+      "citations": 1,
+      "realMediPipeline": true,
+      "realPersistedVectorStore": true,
+      "reopened": true,
+      "reingestion": true,
+      "borrowedDocumentUsable": true,
+      "inputKind": "synthetic public fixture",
+      "onnxInference": false,
+      "layoutGeometryMinimumIoU": null,
+      "layoutGeometryMeasuredIoU": null
+    },
+    {
+      "provider": "content-understanding",
+      "status": "passed",
+      "mode": "live",
+      "layout": "provider-native",
+      "loadedAssemblies": [
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1"
+      ],
+      "pages": 3,
+      "retrievedRecords": 2,
+      "citations": 1,
+      "realMediPipeline": true,
+      "realPersistedVectorStore": true,
+      "reopened": true,
+      "reingestion": true,
+      "borrowedDocumentUsable": true,
+      "inputKind": "synthetic public fixture",
+      "onnxInference": false,
+      "layoutGeometryMinimumIoU": null,
+      "layoutGeometryMeasuredIoU": null
+    },
+    {
+      "provider": "mistral",
+      "status": "passed",
+      "mode": "live",
+      "layout": "provider-native",
+      "loadedAssemblies": [
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1"
+      ],
+      "pages": 3,
+      "retrievedRecords": 2,
+      "citations": 1,
+      "realMediPipeline": true,
+      "realPersistedVectorStore": true,
+      "reopened": true,
+      "reingestion": true,
+      "borrowedDocumentUsable": true,
+      "inputKind": "synthetic public fixture",
+      "onnxInference": false,
+      "layoutGeometryMinimumIoU": null,
+      "layoutGeometryMeasuredIoU": null
+    },
+    {
+      "provider": "vision",
+      "status": "passed",
+      "mode": "live",
+      "layout": "provider-native",
+      "loadedAssemblies": [
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1"
+      ],
+      "pages": 3,
+      "retrievedRecords": 3,
+      "citations": 1,
+      "realMediPipeline": true,
+      "realPersistedVectorStore": true,
+      "reopened": true,
+      "reingestion": true,
+      "borrowedDocumentUsable": true,
+      "inputKind": "synthetic public fixture",
+      "onnxInference": false,
+      "layoutGeometryMinimumIoU": null,
+      "layoutGeometryMeasuredIoU": null
+    }
+  ],
+  "claims": {
+    "liveAi": true,
+    "allFiveProviders": true,
+    "onnxInference": false,
+    "releaseReady": false
+  }
+}

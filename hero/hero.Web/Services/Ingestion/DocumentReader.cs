@@ -1,15 +1,17 @@
 using DemoOcr;
-using Microsoft.Extensions.AI;
+using System.Security.Cryptography;
 using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
+using Microsoft.Extensions.Documents;
 
 namespace hero.Web.Services.Ingestion;
 
-internal sealed class DocumentReader(DirectoryInfo rootDirectory, IDocumentExtractionClient ocrClient) : IngestionDocumentReader
+internal sealed class DocumentReader(DirectoryInfo rootDirectory, IDocumentExtractionClient ocrClient,
+    DocumentExtractionOptions? options = null) : IngestionDocumentReader
 {
-    private readonly DocumentExtractionReader _ocrReader = new(ocrClient);
+    private readonly DocumentExtractionReader _ocrReader = new(ocrClient, options);
 
-    public override Task<IngestionDocument> ReadAsync(FileInfo source, string identifier, string? mediaType = null, CancellationToken cancellationToken = default)
+    public override Task<Document> ReadAsync(FileInfo source, string identifier, string? mediaType = null, CancellationToken cancellationToken = default)
     {
         if (Path.IsPathFullyQualified(identifier))
         {
@@ -21,13 +23,21 @@ internal sealed class DocumentReader(DirectoryInfo rootDirectory, IDocumentExtra
         return base.ReadAsync(source, identifier, mediaType, cancellationToken);
     }
 
-    public override Task<IngestionDocument> ReadAsync(Stream source, string identifier, string mediaType, CancellationToken cancellationToken = default)
-        => mediaType switch
+    public override async Task<Document> ReadAsync(Stream source, string identifier, string mediaType, CancellationToken cancellationToken = default)
+    {
+        using var buffer = new MemoryStream();
+        await source.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        string sourceHash = Convert.ToHexString(SHA256.HashData(buffer.GetBuffer().AsSpan(0, checked((int)buffer.Length)))).ToLowerInvariant();
+        buffer.Position = 0;
+        Document document = mediaType switch
         {
-            "application/pdf" => _ocrReader.ReadAsync(source, identifier, mediaType, cancellationToken),
-            "text/markdown" => ReadMarkdownAsync(source, identifier, cancellationToken),
+            "application/pdf" => await _ocrReader.ReadAsync(buffer, identifier, mediaType, cancellationToken).ConfigureAwait(false),
+            "text/markdown" => await ReadMarkdownAsync(buffer, identifier, cancellationToken).ConfigureAwait(false),
             _ => throw new InvalidOperationException($"Unsupported media type '{mediaType}'"),
         };
+        document.Metadata["demo.source.sha256"] = sourceHash;
+        return document;
+    }
 
     private static string? GetCustomMediaType(FileInfo source)
         => source.Extension switch
@@ -37,17 +47,14 @@ internal sealed class DocumentReader(DirectoryInfo rootDirectory, IDocumentExtra
             _ => null
         };
 
-    private static async Task<IngestionDocument> ReadMarkdownAsync(Stream source, string identifier, CancellationToken cancellationToken)
+    private static async Task<Document> ReadMarkdownAsync(Stream source, string identifier, CancellationToken cancellationToken)
     {
-        using var reader = new StreamReader(source);
+        using var reader = new StreamReader(source, leaveOpen: true);
         string text = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
-        var document = new IngestionDocument(identifier);
-        var section = new IngestionDocumentSection();
-        section.Elements.Add(new IngestionDocumentParagraph(text)
-        {
-            Text = text,
-        });
+        var document = new Document(identifier);
+        var section = new DocumentSection(text);
+        section.Elements.Add(new DocumentTextElement(DocumentTextKind.Paragraph, text, text));
         document.Sections.Add(section);
 
         return document;

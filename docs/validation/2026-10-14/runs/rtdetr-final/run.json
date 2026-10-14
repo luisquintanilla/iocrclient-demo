@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "mode": "offline",
+  "layout": "rtdetr",
+  "layoutModelSha256": "3bf2fb0ee6df87435b7ae47f0f3930ec3dc97ec56fd824acc6d57bc7a6b89ef2",
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "8C8130B1E85CBFE7267B627DE569CC82B43AC03A7202B999207341E8DC4C53DA",
+  "results": [
+    {
+      "provider": "pdfpig",
+      "status": "passed",
+      "mode": "offline",
+      "layout": "rtdetr",
+      "loadedAssemblies": [
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1"
+      ],
+      "pages": 3,
+      "retrievedRecords": 2,
+      "citations": 1,
+      "realMediPipeline": true,
+      "realPersistedVectorStore": true,
+      "reopened": true,
+      "reingestion": true,
+      "borrowedDocumentUsable": true,
+      "inputKind": "synthetic public fixture",
+      "onnxInference": true,
+      "layoutGeometryMinimumIoU": 0.5,
+      "layoutGeometryMeasuredIoU": {
+        "b047691559e96046883388c7dc1931b4d0773a3e0d4fba87b6f4875141b1c7e6": 0.7182796589761801,
+        "b78d5555ac5c7a81ac3cd7738c96068f70392f92625cae92030d7c6e6e38b6e6": 0.6911692152145574
+      }
+    }
+  ],
+  "claims": {
+    "liveAi": false,
+    "allFiveProviders": false,
+    "onnxInference": true,
+    "releaseReady": false
+  }
+}

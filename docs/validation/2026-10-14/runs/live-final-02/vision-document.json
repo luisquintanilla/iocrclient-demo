@@ -1,0 +1,14 @@
+{
+  "fixture": "synthetic public fixture",
+  "markdown": "\u0060\u0060\u0060markdown\nThe validation code is ORBIT-742.\n\u0060\u0060\u0060\r\nThe backup code is **MAPLE-915**.\r\n\u0060\u0060\u0060markdown\n| HEADER 1 | HEADER 2 | HEADER 3 |\n|----------|----------|----------|\n| A1       | B1       | C1       |\n| A2       | B2       | C2       |\n\n* Bullet 1\n  * Listing in Bullet 1\n    - Sub-listing in bullet 1\n\n1. Numbered List 1\n\n    a. Sub-listing in Numbered List 1\n\n    b. Sub-listing in Numbered List 1\n\n   2. Numbered List 2\n\n\u003E This is a text blockquote.\n\nPlain Text\n\u0060\u0060\u0060",
+  "sourcePageNumbers": [
+    1,
+    2,
+    3
+  ],
+  "sourceOutputStatuses": [
+    "Retained",
+    "Retained",
+    "Retained"
+  ]
+}

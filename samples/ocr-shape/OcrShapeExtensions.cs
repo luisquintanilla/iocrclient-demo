@@ -16,12 +16,14 @@ public static class OcrShapeExtensions
         this IDocumentExtractionClient client,
         Stream document,
         string mediaType,
+        DocumentExtractionOptions? options = null,
         CancellationToken cancellationToken = default)
         => DocumentExtractionClientExtensions.ExtractAsync(
             client,
             document,
             "consumer-proof",
             mediaType,
+            options,
             cancellationToken);
 
     public static async IAsyncEnumerable<DocumentExtractionPage> StreamPages(

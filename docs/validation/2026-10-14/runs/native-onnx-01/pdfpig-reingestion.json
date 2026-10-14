@@ -1,0 +1,30 @@
+{
+  "first": [
+    {
+      "Key": "69a770e0-aa80-4615-9653-ca4e89432c12",
+      "CitationId": "3310453e4f2555678bb13f898807a3a0e36425d14c8e646e30e0e7f688be3283",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "c9fd4f6a158ee5c202710fce8b88d7b8b5d9b20c70fc9071087d742b77546ca1"
+    },
+    {
+      "Key": "4c1aac90-646a-49ed-9cf8-144fab272a65",
+      "CitationId": "abc2e40150859608fb66c5e7df0bce81fd85885635aa0185761911940c2f367c",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "c9fd4f6a158ee5c202710fce8b88d7b8b5d9b20c70fc9071087d742b77546ca1"
+    }
+  ],
+  "second": [
+    {
+      "Key": "be003eee-484d-48b5-9bce-cf94f70d9faf",
+      "CitationId": "3310453e4f2555678bb13f898807a3a0e36425d14c8e646e30e0e7f688be3283",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "c9fd4f6a158ee5c202710fce8b88d7b8b5d9b20c70fc9071087d742b77546ca1"
+    },
+    {
+      "Key": "c3053ce5-6708-4046-a61e-2dbe9a41a2fe",
+      "CitationId": "abc2e40150859608fb66c5e7df0bce81fd85885635aa0185761911940c2f367c",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "c9fd4f6a158ee5c202710fce8b88d7b8b5d9b20c70fc9071087d742b77546ca1"
+    }
+  ]
+}

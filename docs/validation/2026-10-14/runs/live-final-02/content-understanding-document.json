@@ -1,0 +1,12 @@
+{
+  "fixture": "synthetic public fixture",
+  "markdown": "The validation code is ORBIT-742.\r\nThe backup code is MAPLE-915.\r\n",
+  "sourcePageNumbers": [
+    1,
+    2,
+    3
+  ],
+  "sourceOutputStatuses": [
+    "Retained"
+  ]
+}

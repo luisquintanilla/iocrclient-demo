@@ -85,8 +85,9 @@ Check(FoundryMistralOcrClient.FindUnique("alpha beta", "beta") is { Start: 6, Le
     "unique Mistral replacement is located");
 Check(FoundryMistralOcrClient.FindUnique("same same", "same") is null,
     "ambiguous Mistral replacement is not applied");
-Check(ContentUnderstandingClient.NormalizePageNumber(0) == 1,
-    "missing Content Understanding page spans stay on a safe page boundary");
+ExpectThrows<ArgumentOutOfRangeException>(
+    () => new DocumentSourcePage("missing-page", 0),
+    "unknown source pages must not be fabricated as page one");
 Check(VisionLlmOcrClient.CanFallbackToFreeform(
         new InvalidOperationException("response format schema is not supported")),
     "VLM schema rejection may fall back");
@@ -99,7 +100,7 @@ var fake = new DeterministicExtractionClient();
 var reader = new PdfPigReader(fake, OcrPolicy.AllPages);
 await using (FileStream source = File.OpenRead("samples/data/survival-kit.pdf"))
 {
-    IngestionDocument document = await reader.ReadAsync(
+    using Document document = await reader.ReadAsync(
         source,
         "pdfpig-proof",
         "application/pdf");
@@ -148,7 +149,8 @@ sealed class DeterministicExtractionClient : IDocumentExtractionClient
     public async IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
         Stream document,
         string identifier,
-        string mediaType,
+        string? mediaType,
+        DocumentExtractionOptions? options = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ExtractCalls++;

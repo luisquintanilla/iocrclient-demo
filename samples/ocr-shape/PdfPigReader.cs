@@ -1,118 +1,173 @@
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.DocumentExtraction;
 using Microsoft.Extensions.DataIngestion;
-using UglyToad.PdfPig;
+using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
+
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
+using UglyToad.PdfPig.Util;
 
 namespace DemoOcr;
 
-// WHEN to OCR — a policy, NOT a model choice. Mirrors CommunityToolkit/AI #14's OcrPolicy.
 public enum OcrPolicy
 {
-    Never,                  // native PdfPig text only (the old TextOnly)
-    FallbackForEmptyPages,  // native first; OCR only pages with no digital text (the old Hybrid)
-    AllPages,               // OCR the whole document via the injected IDocumentExtractionClient (document-native)
+    Never,
+    FallbackForEmptyPages,
+    AllPages,
 }
 
-// Per-page telemetry the OCR predicate sees: policy in the caller's hands, mechanism in the reader.
 public readonly record struct PageOcrContext(int PageNumber, int NativeElementCount)
 {
     public bool HasNativeText => NativeElementCount > 0;
 }
 
-// A PdfPig-backed MEDI reader with TWO clean pluggable seams. This is CommunityToolkit/AI PR #14 in
-// miniature: native text first, OCR composed in as an injected enrichment (not bolted on downstream),
-// depending on IDocumentExtractionClient only. OCR is an injected capability, so the reader keeps the plain
-// PdfPigReader name — under OcrPolicy.Never it is a pure native-text reader. Stamps the same metadata
-// keys (page_number/ocr_source) as the other readers, so per-page chunking carries provenance into
-// chunks identically.
-//   seam 1 — IPageSegmenter: HOW to segment a page (DefaultPageSegmenter heuristic; swap in
-//            OnnxPageSegmenter from CommunityToolkit/AI PR 3's PdfPig.OnnxLayoutAnalysis for ML layout).
-//   seam 2 — IDocumentExtractionClient + OcrPolicy: WHEN/whether to OCR (Never / FallbackForEmptyPages / AllPages).
+/// <summary>
+/// MEDI reader that finalizes the shared document produced by an extraction client.
+/// </summary>
 public sealed class PdfPigReader(
     IDocumentExtractionClient? ocrClient = null,
     OcrPolicy policy = OcrPolicy.Never,
     IPageSegmenter? pageSegmenter = null,
-    Func<PageOcrContext, bool>? ocrPagePredicate = null) : IngestionDocumentReader
+    Func<PageOcrContext, bool>? ocrPagePredicate = null,
+    DocumentExtractionOptions? options = null,
+    IWordExtractor? wordExtractor = null) : IngestionDocumentReader
 {
     public int OcrCalls { get; private set; }
 
-    public override async Task<IngestionDocument> ReadAsync(
-        Stream source, string identifier, string mediaType, CancellationToken cancellationToken = default)
+    public override async Task<Document> ReadAsync(
+        Stream source,
+        string identifier,
+        string mediaType,
+        CancellationToken cancellationToken = default)
     {
-        if (policy != OcrPolicy.Never && ocrClient is null)
-            throw new ArgumentNullException(nameof(ocrClient), $"An {nameof(IDocumentExtractionClient)} is required when policy is {policy}.");
-
-        byte[] bytes;
-        using (var buffer = new MemoryStream())
+        ArgumentNullException.ThrowIfNull(source);
+        IDocumentExtractionClient client = policy switch
         {
-            await source.CopyToAsync(buffer, cancellationToken);
-            bytes = buffer.ToArray();
-        }
+            OcrPolicy.Never => new PdfPigDocumentExtractionClient(pageSegmenter, wordExtractor),
+            OcrPolicy.AllPages when ocrClient is not null => ocrClient,
+            OcrPolicy.AllPages => throw new ArgumentNullException(
+                nameof(ocrClient),
+                $"An {nameof(IDocumentExtractionClient)} is required when policy is {policy}."),
+            OcrPolicy.FallbackForEmptyPages when ocrClient is not null =>
+                new FallbackPdfPigExtractionClient(
+                    new PdfPigDocumentExtractionClient(pageSegmenter, wordExtractor),
+                    ocrClient,
+                    ocrPagePredicate,
+                    () => OcrCalls++),
+            OcrPolicy.FallbackForEmptyPages => throw new ArgumentNullException(
+                nameof(ocrClient),
+                $"An {nameof(IDocumentExtractionClient)} is required when policy is {policy}."),
+            _ => throw new ArgumentOutOfRangeException(nameof(policy)),
+        };
 
-        // Document-native archetype: one whole-document OCR call, its pages[] become sections.
-        if (policy == OcrPolicy.AllPages && ocrClient is not null)
+        bool ownsClient = policy is OcrPolicy.Never or OcrPolicy.FallbackForEmptyPages;
+        try
         {
-            using var docStream = new MemoryStream(bytes, writable: false);
-            var extractionReader = new Microsoft.Extensions.DataIngestion.DocumentExtractionReader(ocrClient);
-            IngestionDocument extracted = await extractionReader.ReadAsync(
-                docStream,
-                identifier,
-                mediaType,
-                cancellationToken);
-            OcrCalls++;
-            return extracted;
-        }
-
-        // Native PdfPig text, with image-per-page OCR only for pages that need it.
-        var document = new IngestionDocument(identifier);
-        using var pdf = PdfDocument.Open(new MemoryStream(bytes, writable: false));
-        IPageSegmenter segmenter = pageSegmenter ?? DefaultPageSegmenter.Instance;
-
-        for (int i = 1; i <= pdf.NumberOfPages; i++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            UglyToad.PdfPig.Content.Page page = pdf.GetPage(i);
-            var section = new IngestionDocumentSection();
-            section.Metadata["page_number"] = i;
-            section.Metadata["ocr_source"] = "pdfpig-native";
-
-            foreach (var block in segmenter.GetBlocks(page.GetWords()))
+            var reader = new DocumentExtractionReader(client, options);
+            Document document = await reader
+                .ReadAsync(source, identifier, mediaType, cancellationToken)
+                .ConfigureAwait(false);
+            if (policy == OcrPolicy.AllPages)
             {
-                if (string.IsNullOrWhiteSpace(block.Text)) continue;
-                var para = new IngestionDocumentParagraph(block.Text) { Text = block.Text, PageNumber = i };
-                para.Metadata["page_number"] = i;
-                para.Metadata["ocr_source"] = "pdfpig-native";
-                var b = block.BoundingBox;
-                para.Metadata["BoundingBox.Left"] = b.Left;
-                para.Metadata["BoundingBox.Bottom"] = b.Bottom;
-                para.Metadata["BoundingBox.Right"] = b.Right;
-                para.Metadata["BoundingBox.Top"] = b.Top;
-                section.Elements.Add(para);
+                OcrCalls++;
             }
 
-            // Fallback OCR: the caller's predicate decides per page (default = OCR only empty pages).
-            // The reader supplies the telemetry; the policy lives with the caller.
-            if (policy == OcrPolicy.FallbackForEmptyPages && ocrClient is not null)
+            return document;
+        }
+        finally
+        {
+            if (ownsClient)
             {
-                var ctx = new PageOcrContext(i, section.Elements.Count);
-                bool shouldOcr = (ocrPagePredicate ?? (static c => !c.HasNativeText))(ctx);
-                if (shouldOcr)
+                client.Dispose();
+            }
+        }
+    }
+
+    private sealed class FallbackPdfPigExtractionClient(
+        PdfPigDocumentExtractionClient nativeClient,
+        IDocumentExtractionClient fallbackClient,
+        Func<PageOcrContext, bool>? predicate,
+        Action onFallback) : IDocumentExtractionClient
+    {
+        public async IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
+            Stream document,
+            string identifier,
+            string mediaType,
+            DocumentExtractionOptions? options = null,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            using var buffer = new MemoryStream();
+            await document.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+            byte[] bytes = buffer.ToArray();
+            var nativeOptions = new DocumentExtractionOptions
+            {
+                CaptureRawOutput = options?.CaptureRawOutput ?? false,
+            };
+            var nativePages = new List<DocumentExtractionPage>();
+            await foreach (DocumentExtractionPage page in nativeClient.ExtractPagesAsync(
+                new MemoryStream(bytes, writable: false),
+                identifier,
+                mediaType,
+                nativeOptions,
+                cancellationToken).ConfigureAwait(false))
+            {
+                nativePages.Add(page);
+            }
+
+            int[] requestedPages = nativePages
+                .Where(page => (predicate ?? (static context => !context.HasNativeText))(
+                    new PageOcrContext(page.PageNumber, page.Observations.Count)))
+                .Select(page => page.PageNumber)
+                .ToArray();
+            if (requestedPages.Length == 0)
+            {
+                foreach (DocumentExtractionPage page in nativePages)
                 {
-                    // A scanned page: render it and OCR just this page. A born-digital PDF is fully
-                    // digital, so this never fires. Rendering a page to an image needs a rasterizer
-                    // (e.g. Docnet/PDFtoImage); wire one in for real scanned-PDF workloads. The seam —
-                    // per-page fallback into the injected IDocumentExtractionClient — is what #14 formalizes.
-                    throw new NotSupportedException(
-                        $"Page {i} has no digital text and would route to the injected IDocumentExtractionClient; " +
-                        "supply a page rasterizer to enable the scanned-page path.");
+                    yield return page;
+                }
+
+                yield break;
+            }
+
+            onFallback();
+            var fallbackPages = new Dictionary<int, DocumentExtractionPage>();
+            await foreach (DocumentExtractionPage page in fallbackClient.ExtractPagesAsync(
+                new MemoryStream(bytes, writable: false),
+                identifier,
+                mediaType,
+                options,
+                cancellationToken).ConfigureAwait(false))
+            {
+                if (!fallbackPages.TryAdd(page.PageNumber, page))
+                {
+                    throw new InvalidDataException(
+                        $"The fallback extraction client returned duplicate page {page.PageNumber}.");
                 }
             }
 
-            document.Sections.Add(section);
+            var requestedSet = requestedPages.ToHashSet();
+            foreach (DocumentExtractionPage nativePage in nativePages)
+            {
+                if (!requestedSet.Contains(nativePage.PageNumber))
+                {
+                    yield return nativePage;
+                    continue;
+                }
+
+                if (!fallbackPages.TryGetValue(
+                    nativePage.PageNumber,
+                    out DocumentExtractionPage? fallbackPage))
+                {
+                    throw new InvalidDataException(
+                        $"The fallback extraction client did not return requested page {nativePage.PageNumber}. " +
+                        "The reader will not fabricate or renumber pages.");
+                }
+
+                yield return fallbackPage;
+            }
         }
 
-        return document;
-    }
+        public object? GetService(Type serviceType, object? serviceKey = null)
+            => serviceType.IsInstanceOfType(this) ? this : null;
 
+        public void Dispose() => nativeClient.Dispose();
+    }
 }

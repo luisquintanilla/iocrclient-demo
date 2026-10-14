@@ -26,6 +26,7 @@ using System.Text;
 using Azure.Identity;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DocumentExtraction;
+using Microsoft.Extensions.Documents;
 using OllamaSharp;
 using UglyToad.PdfPig;
 using DemoOcr;
@@ -139,7 +140,8 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
     public async IAsyncEnumerable<DocumentExtractionPage> ExtractPagesAsync(
         Stream document,
         string identifier,
-        string mediaType,
+        string? mediaType,
+        DocumentExtractionOptions? options = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var buffer = new MemoryStream();
@@ -149,34 +151,32 @@ sealed class PdfImageOcrClient(IChatClient chat, string prompt) : IDocumentExtra
         int total = pdf.NumberOfPages;
         for (int i = 1; i <= total; i++)
         {
+            var frame = new DocumentSourcePage($"{identifier}:embedded-image:page:{i}", i);
             var img = pdf.GetPage(i).GetImages().FirstOrDefault();
             if (img is null || !img.TryGetPng(out byte[]? png) || png is null)
             {
-                yield return new DocumentExtractionPage(i, []);   // no extractable image on this page
+                yield return new DocumentExtractionPage(i, [],
+                    pageReferences: [new DocumentPageReference(frame.Identifier)], sourcePage: frame);
                 continue;
             }
 
-            using DocumentExtractionResult one = await _inner
-                .ExtractAsync(new MemoryStream(png), $"{identifier}:page:{i}", "image/png", cancellationToken)
-                .ConfigureAwait(false);
-            string markdown = one.GetMarkdown();
-            yield return new DocumentExtractionPage(
-                i,
-                string.IsNullOrWhiteSpace(markdown)
-                    ? []
-                    : [new DocumentExtractionText(
-                        $"{identifier}:page:{i}:text",
-                        0,
-                        DocumentTextKind.Paragraph,
-                        markdown,
-                        markdown)],
-                markdown,
-                [new DocumentPageReference($"page:{i}")]);
+            using var image = new MemoryStream(png, writable: false);
+            await foreach (DocumentExtractionPage page in _inner.ExtractPagesAsync(
+                image, $"{identifier}:page:{i}", "image/png", options, cancellationToken).ConfigureAwait(false))
+            {
+                yield return new DocumentExtractionPage(i, page.Observations,
+                    page.GetMarkdown(), pageReferences: [new DocumentPageReference(frame.Identifier)],
+                    sourcePage: frame, sourceOutputs: page.SourceOutputs);
+            }
         }
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null) =>
         serviceType.IsInstanceOfType(this) ? this : _inner.GetService(serviceType, serviceKey);
 
-    public void Dispose() => _inner.Dispose();
+    public void Dispose()
+    {
+        _inner.Dispose();
+        chat.Dispose();
+    }
 }

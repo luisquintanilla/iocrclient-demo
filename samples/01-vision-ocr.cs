@@ -1,4 +1,6 @@
 #:project ocr-shape/OcrShape.csproj
+#:package Azure.AI.OpenAI@2.5.0-beta.1
+#:package Microsoft.Extensions.AI.OpenAI@[10.10.0-dev.e2e.cf60fa88.1]
 #pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 // 01-vision-ocr.cs — a vision LLM behind IDocumentExtractionClient (the transcribe-by-seeing archetype).
 //
@@ -22,14 +24,14 @@ string image = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
 string mediaType = image.EndsWith(".pdf") ? "application/pdf"
     : image.EndsWith(".jpg") || image.EndsWith(".jpeg") ? "image/jpeg" : "image/png";
 
-IChatClient chat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
+using IChatClient chat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
     .GetChatClient(deployment)
     .AsIChatClient();
 
 using IDocumentExtractionClient ocr = new VisionLlmOcrClient(chat);
 
 await using FileStream doc = File.OpenRead(image);
-using DocumentExtractionResult result = await ocr.ExtractAsync(doc, mediaType);
+using DocumentExtractionResult result = await ocr.ExtractAsync(doc, Path.GetFileName(image), mediaType);
 
 Console.WriteLine($"pages  : {result.Pages.Count}");
 Console.WriteLine();
