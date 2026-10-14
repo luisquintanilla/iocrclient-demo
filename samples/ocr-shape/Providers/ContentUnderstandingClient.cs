@@ -148,7 +148,7 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                             ("rotationClockwiseDegrees", angle),
                             ("basis", "provider-page-top-left")),
                         sourceOutput: sourceOutput,
-                        rawRepresentation: frame.Page));
+                        rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, frame.Page)));
                 }
 
                 annotations.AddRange(MapBarcodes(frame.Page, frame.SourcePage, sourceOutput));
@@ -191,7 +191,7 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                     paragraph.Role?.ToString(),
                     pageRegions,
                     sourceOutput: sourceOutput,
-                    rawRepresentation: paragraph);
+                    rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, paragraph));
                 string text = paragraph.Content ?? string.Empty;
                 observationsByPage[pageNumber].Add(new DocumentExtractionText(
                     $"cu:content:{contentIndex}:paragraph:{paragraphIndex}:{pageNumber}",
@@ -238,7 +238,7 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                     cell.Kind?.ToString(),
                     cellRegions,
                     sourceOutput: sourceOutput,
-                    rawRepresentation: cell);
+                    rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, cell));
                 string text = cell.Content ?? string.Empty;
                 var cellContent = new DocumentExtractionText(
                     $"cu:content:{contentIndex}:table:{tableIndex}:cell:{cell.RowIndex}:{cell.ColumnIndex}",
@@ -266,11 +266,13 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                 table.Role?.ToString(),
                 tableRegions,
                 sourceOutput: sourceOutput,
-                rawRepresentation: table);
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, table));
             string markdown = BuildTableMarkdown(table.RowCount, table.ColumnCount, cells);
+            // Emit the logical table once; its references still cover every source page.
             foreach (int pageNumber in tableRegions
                 .Select(region => region.Page.PageNumber)
-                .Distinct())
+                .Distinct()
+                .Take(1))
             {
                 List<DocumentExtractionObservation> observations = observationsByPage[pageNumber];
                 observations.Add(new DocumentExtractionTable(
@@ -312,8 +314,8 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                 figure.Role?.ToString(),
                 regions,
                 sourceOutput: sourceOutput,
-                rawRepresentation: figure);
-            foreach (int pageNumber in regions.Select(region => region.Page.PageNumber).Distinct())
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, figure));
+            foreach (int pageNumber in regions.Select(region => region.Page.PageNumber).Distinct().Take(1))
             {
                 List<DocumentExtractionObservation> observations = observationsByPage[pageNumber];
                 observations.Add(new DocumentExtractionImage(
@@ -380,7 +382,7 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                 regions: regions,
                 confidence: ProviderAdapterHelpers.CreateConfidence(barcode.Confidence),
                 sourceOutput: sourceOutput,
-                rawRepresentation: barcode);
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, barcode));
         }
     }
 
@@ -404,7 +406,7 @@ public sealed class ContentUnderstandingClient : IDocumentExtractionClient
                 regions: regions,
                 confidence: ProviderAdapterHelpers.CreateConfidence(formula.Confidence),
                 sourceOutput: sourceOutput,
-                rawRepresentation: formula);
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, formula));
         }
     }
 

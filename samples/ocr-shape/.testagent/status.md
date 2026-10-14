@@ -1,5 +1,86 @@
 # Bounded OCR Shape Test Status
 
+## Exchange-fidelity follow-up result
+
+The bounded provider mapping checks pass: **84 passed, 0 failed, 1 existing
+external-model skip, 85 total**. This adds 21 deterministic cases across nine
+methods. The bounded nonincremental solution build has zero warnings/errors.
+No model or live service was invoked. This is a provider-mapping disposition,
+not comprehensive core-contract acceptance, recognition quality or release approval.
+Earlier counts below are historical and were not rewritten.
+
+### Demonstrated defects and repairs
+
+- Current Mistral table objects supply `id`, `content`, `format`, not just the
+  legacy `markdown` field. The adapter previously replaced supplied content
+  with `[table]`. It now preserves the literal body, explicit empty output,
+  format and ID; places tables only using unique, non-overlapping evidence;
+  and labels retained unplaced tables without claiming reading order.
+- Raw opt-out previously disabled source outputs but left native objects on
+  direct-stream annotations. A shared helper now applies the same policy to
+  every raw annotation assignment in DI, CU, Mistral and Vision.
+- DI/CU emitted a cross-page table or figure repeatedly with the same provider
+  ID. Finalization correctly rejected those duplicates. Adapters now emit the
+  logical object once, preserving all associated page references and regions;
+  core duplicate validation is unchanged.
+- DI's omitted optional cell kind becomes an empty extensible enum string.
+  Passing that to the nonblank exchange role failed. It now remains absent;
+  provided roles, including unknown producer-specific roles, remain literal.
+
+### Requirement-to-evidence mapping
+
+| Requirement | Exact test evidence |
+| --- | --- |
+| "Exchange and mapping fidelity are the preview gate." | `ProviderFidelityTests.AzureTables_PreserveCellsSpansRolesAndPageEvidence`: DI/CU, raw on/off, exact dimensions/coordinates/content/spans/roles, five-point polygons, source binding and explicit empty versus absent cells. |
+| Cross-page logical identity survives finalization | `ProviderFidelityTests.AzureTables_FinalizationPreservesCrossPageIdentityAndExplicitEmptyCell`; `ProviderFidelityTests.AzureFigures_FinalizationPreservesCrossPageIdentityAndEvidence`. |
+| Missing optional producer metadata is not invented | `ProviderFidelityTests.AzureTables_OmittedOptionalCellPropertiesPreserveSdkDefaults`. |
+| Mistral current table bodies remain literal without fabricated cells | `MistralTableFidelityTests.ExtractPages_CurrentTableContentPreservesFormatPlacementAndRawPolicy`: HTML/Markdown, raw on/off, reversed table array and identical bodies distinguished by IDs. |
+| No inferred placement when evidence is ambiguous | `MistralTableFidelityTests.ExtractPages_UnplaceableTablePreservesContentAndReportsUnknownPlacement`; `MistralTableFidelityTests.ExtractPages_OverlappingContentDoesNotClaimASecondPlacement`. |
+| Current content, including explicit empty/whitespace output, is authoritative | `MistralTableFidelityTests.ExtractPages_CurrentContentWinsOverLegacyMarkdownWithoutReplacingEmptyOutput`. |
+| Literal model output, unknown geometry and confidence meaning survive raw opt-out | `VisionLlmOcrClientTests.ExtractPages_StructuredOutputPreservesLiteralContentAndConfidenceWithoutRaw`. |
+| Native text is not table recognition | Existing `PdfPigDocumentExtractionClientTests.ExtractPages_NativeLayoutNeverFabricatesTableCells` remains green. |
+
+### Validation and quality review
+
+From the demo root, with an isolated output directory `$out` outside the worktree:
+
+```powershell
+dotnet build .\samples\ocr-shape\OcrShape.sln --no-restore --no-incremental "-p:BaseOutputPath=$out"
+dotnet test .\samples\ocr-shape\OcrShape.Tests\OcrShape.Tests.csproj --no-restore --no-build "-p:BaseOutputPath=$out"
+```
+
+Both commands exit 0. The model environment variable is cleared for this run.
+Isolation preserves the already-running preview and avoids locked DLLs; neither
+the preview nor frozen candidate packages were replaced. Detailed original TRX
+and red/green receipts remain in the private session evidence directory, not Git.
+
+Both `test-gap-analysis` and `assertion-quality` were invoked. The optional
+language-extension discovery skill is unavailable; review used the actual
+xUnit v2 source and existing assertions. All nine new methods were reread:
+none are assertion-free or trivial-only. Assertions exercise real SDK decoding,
+HTTP response mapping and structured model response parsing, not setter round
+trips. They check literal values, collections/deep structure, absent information,
+reference ownership, source polygons, native SDK cell identity and request counts.
+
+Two targeted mutations were empirically killed and immediately restored:
+raw-policy bypass fails five of nine covering cases; accepting the first
+ambiguous link fails one of two covering cases. Original pre-repair SDK/table
+failures are retained separately. The final unmutated suite is green.
+These are bounded checks, not a repository-wide mutation or coverage score.
+
+### Limits
+
+This is not exhaustive SDK-feature parity. DI/CU paragraphs are page-projected,
+and paragraphs/tables/figures are category-mapped; no global interleaved reading
+order is promised. Supplied source spans/regions remain evidence. Mistral
+Markdown/HTML and this sample's Vision schema do not provide typed cells.
+Provider-specific fields outside the advertised normalized subset may be
+available only through optional raw output. Markdown is not lossless interchange.
+Core representation/projection review is recorded separately by the extensions
+workstream. Its stored-versus-structural Markdown views remain distinct; no
+fallback/cleared-cell policy was added to exchange types. No consumer chunking
+or answer policy was changed.
+
 ## Result
 
 - Strategy: broad, sequential Research -> Plan -> Implement.

@@ -32,6 +32,13 @@ and operation-scoped raw output. Raw retention is on by default, with a per-call
 SDK objects and original wire bytes are distinct capabilities; neither is silently reserialized
 into the other. Raw output is not logged, embedded or persisted into vector records.
 
+The preview fidelity boundary is accurate representation of supplied provider output, not
+recognition accuracy or a prescribed table/chunking strategy. DI/CU supplied cells remain typed;
+Mistral table bodies remain literal Markdown/HTML with explicit format/placement metadata;
+the Vision sample schema does not supply cells. See
+[`docs/composition-and-degradation.md`](../docs/composition-and-degradation.md)
+for the exchange/consumer boundary and direct-stream raw opt-out behavior.
+
 Source pages resolve by exact registered frame identifiers, never section indexes or guessed
 page numbers. The hero persists safe source attribution and verifies the original file hash before
 displaying actual PDF pages with geometry. Unknown coordinate systems, rotation and crop offsets

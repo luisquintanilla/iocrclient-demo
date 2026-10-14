@@ -1,5 +1,26 @@
 # Bounded OCR Shape Test Plan
 
+## Exchange-fidelity follow-up
+
+1. Add real SDK transport-replay cases for DI and CU complex tables, including
+   merged spans, roles, imperfect transcription, explicit empty cells, absent
+   slots, two page frames and exact polygons, with raw capture on/off.
+2. Add Mistral HTTP-response cases for current `id`/`content`/`format` tables:
+   HTML and Markdown, unique page marker ordering, identical table bodies with
+   distinct IDs, unknown placement, retained/detached raw data and opt-out.
+   Preserve legacy `markdown` fixtures. Demonstrate failures before repair.
+3. Add a Vision structured response case preserving imperfect transcription,
+   unknown geometry, table dimensions without invented cells, and self-reported
+   confidence while raw capture is disabled.
+4. Repair only demonstrated adapter defects. Run focused tests, then the
+   existing whole bounded suite/build without a model or network. Retain the
+   existing optional external-model skip honestly.
+5. Run test-gap/assertion-quality review, record exact commands, test names,
+   limitations and disposition in status and a mapping-fidelity guide.
+
+No new chunking policy, core API, candidate repack, live call, credentials,
+publication, model loading or preview-server mutation.
+
 Implementation is sequential. Each phase is built and tested before the next.
 
 ## Final compatibility/replay phase

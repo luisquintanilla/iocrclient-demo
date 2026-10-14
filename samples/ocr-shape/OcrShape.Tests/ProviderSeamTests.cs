@@ -482,6 +482,45 @@ public sealed class VisionLlmOcrClientTests
         Assert.Contains("confidence '1.01' is outside [0,1]", error.Message);
     }
 
+    [Fact]
+    public async Task ExtractPages_StructuredOutputPreservesLiteralContentAndConfidenceWithoutRaw()
+    {
+        const string json =
+            """{"pages":[{"index":2,"markdown":"0RB1T\n| A |  |\n|---|---|","tables":[{"rowCount":2,"columnCount":2,"markdown":"| A |  |\n|---|---|"}],"figures":[],"language":"und","confidence":0}]}""";
+        using var chat = new FakeChatClient(
+            new ChatResponse(new ChatMessage(ChatRole.Assistant, json)) { RawRepresentation = new object() });
+        using var client = new VisionLlmOcrClient(chat, useStructuredOutput: true);
+
+        DocumentExtractionPage page = Assert.Single(await CollectAsync(
+            client, "image/png", new DocumentExtractionOptions { CaptureRawOutput = false }));
+
+        Assert.Equal(3, page.PageNumber);
+        Assert.Equal("0RB1T\n| A |  |\n|---|---|", page.Markdown);
+        DocumentExtractionText text = Assert.Single(page.Observations.OfType<DocumentExtractionText>());
+        Assert.Equal(page.Markdown, text.Text);
+        DocumentExtractionTable table = Assert.Single(page.Observations.OfType<DocumentExtractionTable>());
+        Assert.Equal((2, 2), (table.RowCount, table.ColumnCount));
+        Assert.Equal("| A |  |\n|---|---|", table.Markdown);
+        Assert.Empty(table.Cells);
+        DocumentSourcePage frame = Assert.IsType<DocumentSourcePage>(page.SourcePage);
+        Assert.Null(frame.Dimensions);
+        Assert.Null(frame.CoordinateUnit);
+        Assert.Null(frame.CoordinateOrigin);
+        Assert.Equal(frame.Identifier, Assert.Single(table.PageReferences).Value);
+        DocumentAnnotation annotation = Assert.Single(page.Annotations);
+        Assert.Equal("und", Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(annotation.Value)["language"]);
+        DocumentConfidence confidence = Assert.IsType<DocumentConfidence>(annotation.Confidence);
+        Assert.Equal(0, confidence.Value);
+        Assert.Equal("model-self-reported", confidence.Kind);
+        Assert.Empty(annotation.Regions);
+        Assert.Null(annotation.GetRawRepresentation());
+        DocumentSourceOutput output = Assert.Single(page.SourceOutputs);
+        Assert.Equal(DocumentRawContentStatus.Disabled, output.NativeStatus);
+        Assert.Null(output.GetRawRepresentation());
+        Assert.Null(output.GetRawContent());
+        Assert.Equal(1, chat.Calls);
+    }
+
     private static async Task<DocumentExtractionPage[]> CollectAsync(
         VisionLlmOcrClient client,
         string mediaType,

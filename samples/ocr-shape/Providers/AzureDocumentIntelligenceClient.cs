@@ -144,7 +144,7 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                             ("rotationClockwiseDegrees", page.Angle.Value),
                             ("basis", "provider-page-top-left")),
                         sourceOutput: sourceOutput,
-                        rawRepresentation: page));
+                        rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, page)));
                 }
 
                 annotations.AddRange(MapSelectionMarks(page, frame.SourcePage, sourceOutput));
@@ -189,7 +189,7 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                     NormalizeRole(paragraph.Role),
                     regions,
                     sourceOutput: sourceOutput,
-                    rawRepresentation: paragraph);
+                    rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, paragraph));
 
                 observationsByPage[pageRegions.Key].Add(new DocumentExtractionText(
                     $"di:paragraph:{paragraphIndex}:{pageRegions.Key}",
@@ -245,14 +245,20 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                     .DistinctBy(reference => reference.Value)
                     .ToArray();
                 string text = cell.Content ?? string.Empty;
+                string? kind = cell.Kind.ToString();
+                if (string.IsNullOrEmpty(kind))
+                {
+                    kind = null;
+                }
+
                 var cellAnnotation = new DocumentAnnotation(
                     "table-cell",
                     ProviderAdapterHelpers.StructuredValue(
                         ("spans", cell.Spans.Select(span => new { span.Offset, span.Length }).ToArray())),
-                    cell.Kind.ToString(),
+                    kind,
                     cellRegions,
                     sourceOutput: sourceOutput,
-                    rawRepresentation: cell);
+                    rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, cell));
                 var content = new DocumentExtractionText(
                     $"di:table:{tableIndex}:cell:{cell.RowIndex}:{cell.ColumnIndex}",
                     cell.RowIndex * Math.Max(table.ColumnCount, 1) + cell.ColumnIndex,
@@ -267,7 +273,7 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                     content,
                     cell.RowSpan ?? 1,
                     cell.ColumnSpan ?? 1,
-                    cell.Kind.ToString(),
+                    kind,
                     [cellAnnotation]));
             }
 
@@ -277,7 +283,7 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                     ("spans", table.Spans.Select(span => new { span.Offset, span.Length }).ToArray())),
                 regions: tableRegions,
                 sourceOutput: sourceOutput,
-                rawRepresentation: table);
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, table));
             string markdown = BuildTableMarkdown(table.RowCount, table.ColumnCount, cells);
             var mappedTable = new DocumentExtractionTable(
                 $"di:table:{tableIndex++}",
@@ -289,10 +295,12 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                 pageReferences,
                 annotations: [tableAnnotation]);
 
+            // Emit the logical table once; its references still cover every source page.
             foreach (int pageNumber in table.BoundingRegions
                 .Select(region => region.PageNumber)
                 .Where(frames.ContainsKey)
-                .Distinct())
+                .Distinct()
+                .Take(1))
             {
                 List<DocumentExtractionObservation> observations = observationsByPage[pageNumber];
                 observations.Add(new DocumentExtractionTable(
@@ -348,7 +356,7 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                     ("spans", figure.Spans.Select(span => new { span.Offset, span.Length }).ToArray())),
                 regions: regions,
                 sourceOutput: sourceOutput,
-                rawRepresentation: figure);
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, figure));
             var image = new DocumentExtractionImage(
                 $"di:image:{imageIndex++}",
                 0,
@@ -362,7 +370,8 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
             foreach (int pageNumber in figure.BoundingRegions
                 .Select(region => region.PageNumber)
                 .Where(frames.ContainsKey)
-                .Distinct())
+                .Distinct()
+                .Take(1))
             {
                 List<DocumentExtractionObservation> observations = observationsByPage[pageNumber];
                 observations.Add(new DocumentExtractionImage(
@@ -396,7 +405,7 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                 regions: region is null ? null : [region],
                 confidence: new DocumentConfidence(mark.Confidence, "provider"),
                 sourceOutput: sourceOutput,
-                rawRepresentation: mark);
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, mark));
         }
     }
 
@@ -417,7 +426,7 @@ public sealed class AzureDocumentIntelligenceClient : IDocumentExtractionClient
                 regions: region is null ? null : [region],
                 confidence: new DocumentConfidence(barcode.Confidence, "provider"),
                 sourceOutput: sourceOutput,
-                rawRepresentation: barcode);
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, barcode));
         }
     }
 

@@ -221,7 +221,7 @@ public sealed class VisionLlmOcrClient(
                     ("exceptionType", fallbackReason.GetType().FullName),
                     ("structuredOutputRequested", true)),
                 sourceOutput: sourceOutput,
-                rawRepresentation: response.RawRepresentation));
+                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, response.RawRepresentation)));
         }
 
         string markdown = response.Text;
@@ -243,7 +243,7 @@ public sealed class VisionLlmOcrClient(
                             new DocumentAnnotation(
                                 "text",
                                 sourceOutput: sourceOutput,
-                                rawRepresentation: response.RawRepresentation),
+                                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, response.RawRepresentation)),
                         ]),
                 ],
             markdown,
@@ -316,7 +316,7 @@ public sealed class VisionLlmOcrClient(
                     ProviderAdapterHelpers.StructuredValue(("language", page.Language)),
                     confidence: new DocumentConfidence(confidence, "model-self-reported"),
                     sourceOutput: sourceOutput,
-                    rawRepresentation: response.RawRepresentation));
+                    rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, response.RawRepresentation)));
             }
             else if (!string.IsNullOrWhiteSpace(page.Language))
             {
@@ -324,7 +324,7 @@ public sealed class VisionLlmOcrClient(
                     "vision-page",
                     ProviderAdapterHelpers.StructuredValue(("language", page.Language)),
                     sourceOutput: sourceOutput,
-                    rawRepresentation: response.RawRepresentation));
+                    rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, response.RawRepresentation)));
             }
 
             if (!string.IsNullOrWhiteSpace(page.Markdown))
@@ -341,7 +341,7 @@ public sealed class VisionLlmOcrClient(
                         new DocumentAnnotation(
                             "text",
                             sourceOutput: sourceOutput,
-                            rawRepresentation: response.RawRepresentation),
+                            rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, response.RawRepresentation)),
                     ]));
             }
 
@@ -365,7 +365,7 @@ public sealed class VisionLlmOcrClient(
                             ProviderAdapterHelpers.StructuredValue(
                                 ("cellStatus", "unavailable-from-provider")),
                             sourceOutput: sourceOutput,
-                            rawRepresentation: response.RawRepresentation),
+                            rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, response.RawRepresentation)),
                     ]));
             }
 
@@ -386,7 +386,7 @@ public sealed class VisionLlmOcrClient(
                                 "figure",
                                 ProviderAdapterHelpers.StructuredValue(("caption", figure.Caption)),
                                 sourceOutput: sourceOutput,
-                                rawRepresentation: response.RawRepresentation),
+                                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, response.RawRepresentation)),
                         ]));
                 }
             }

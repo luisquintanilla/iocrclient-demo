@@ -176,27 +176,52 @@ public sealed class FoundryMistralOcrClient : IDocumentExtractionClient
                 int tableIndex = 0;
                 foreach (JsonElement table in tables.EnumerateArray())
                 {
-                    string? tableMarkdown = table.TryGetProperty("markdown", out JsonElement tableMarkdownElement)
-                        && tableMarkdownElement.ValueKind == JsonValueKind.String
-                            ? tableMarkdownElement.GetString()
-                            : null;
+                    string? tableMarkdown = GetString(table, "content") ?? GetString(table, "markdown");
+                    string? tableId = GetString(table, "id");
+                    string? format = GetString(table, "format")
+                        ?? (table.TryGetProperty("content", out _) ? null : "markdown");
+                    (int Start, int Length)? match = string.IsNullOrEmpty(tableId)
+                        ? null
+                        : FindUnique(markdown, $"[{tableId}]({tableId})");
+                    string placement = match.HasValue ? "provider-link" : "unplaced";
+                    if (match is null && !string.IsNullOrEmpty(tableMarkdown))
+                    {
+                        match = FindUnique(markdown, tableMarkdown);
+                        if (match.HasValue)
+                        {
+                            placement = "inline-content";
+                        }
+                    }
+
+                    if (match is { } candidate && replacements.Any(replacement =>
+                        replacement.Start < candidate.Start + candidate.Length
+                        && candidate.Start < replacement.Start + replacement.Length))
+                    {
+                        match = null;
+                        placement = "unplaced";
+                    }
+
                     var tableAnnotation = new DocumentAnnotation(
                         "table",
+                        ProviderAdapterHelpers.StructuredValue(
+                            ("id", tableId),
+                            ("format", format),
+                            ("placement", placement),
+                            ("cellStatus", "unavailable-from-provider")),
                         sourceOutput: sourceOutput,
-                        rawRepresentation: table.Clone());
+                        rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, table.Clone()));
                     var extractionTable = new DocumentExtractionTable(
                         $"mistral:{index}:table:{tableIndex}",
                         tableIndex,
-                        string.IsNullOrWhiteSpace(tableMarkdown) ? "[table]" : tableMarkdown,
+                        tableMarkdown ?? "[table]",
                         0,
                         0,
                         [],
                         [pageReference],
                         annotations: [tableAnnotation]);
-                    if (!string.IsNullOrEmpty(tableMarkdown)
-                        && FindUnique(markdown, tableMarkdown) is { } match)
+                    if (match is { } position)
                     {
-                        replacements.Add((match.Start, match.Length, extractionTable));
+                        replacements.Add((position.Start, position.Length, extractionTable));
                     }
                     else
                     {
@@ -211,12 +236,6 @@ public sealed class FoundryMistralOcrClient : IDocumentExtractionClient
             foreach ((int start, int length, DocumentExtractionTable table) in
                 replacements.OrderBy(item => item.Start))
             {
-                if (start < cursor)
-                {
-                    unplacedTables.Add(table);
-                    continue;
-                }
-
                 AddText(markdown[cursor..start]);
                 observations.Add(new DocumentExtractionTable(
                     table.ProviderId,
@@ -253,7 +272,7 @@ public sealed class FoundryMistralOcrClient : IDocumentExtractionClient
                         "figure",
                         regions: region is null ? null : [region],
                         sourceOutput: sourceOutput,
-                        rawRepresentation: image.Clone());
+                        rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, image.Clone()));
                     observations.Add(new DocumentExtractionImage(
                         $"mistral:{index}:image:{imageIndex++}",
                         observations.Count,
@@ -289,7 +308,7 @@ public sealed class FoundryMistralOcrClient : IDocumentExtractionClient
                             new DocumentAnnotation(
                                 "text",
                                 sourceOutput: sourceOutput,
-                                rawRepresentation: page.Clone()),
+                                rawRepresentation: ProviderAdapterHelpers.RetainRawRepresentation(sourceOutput, page.Clone())),
                         ]));
                 }
             }
@@ -356,6 +375,12 @@ public sealed class FoundryMistralOcrClient : IDocumentExtractionClient
 
         return (null, null);
     }
+
+    private static string? GetString(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out JsonElement value)
+            && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
 
     private static ReadOnlyMemory<byte>? DecodeImage(JsonElement image)
     {

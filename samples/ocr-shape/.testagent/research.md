@@ -1,5 +1,38 @@
 # Bounded OCR Shape Test Research
 
+## Exchange-fidelity follow-up
+
+This follow-up tests producer-to-exchange fidelity, not recognition, table
+interpretation, chunking or answer quality. Earlier results below are historical.
+The mapping oracle is supplied SDK/wire content, including imperfect transcription.
+
+Roslyn pairing was executed once for this follow-up over `samples/ocr-shape`:
+13 source files, 9 test files, 10 paired and 3 unpaired, exit 0. All five provider
+adapters are paired. The unpaired files are DemoConfig, OcrShapeExtensions and
+assembly metadata, outside this focused mapping work. This is static pairing,
+not evidence of behavioral coverage.
+
+| Provider | Supplied common seam | Existing mapping and remaining check |
+| --- | --- | --- |
+| DI | Dimensions, cells, spans, roles, multi-page polygons | Typed cells are mapped; complex tables need actual SDK replay, including omitted optional kind and confidence annotations. |
+| CU | Dimensions, cells, spans, roles, source expressions | Typed cells are mapped; complex tables and source expressions need SDK replay. |
+| Mistral | Page Markdown; table `id`, `content`, `format`; page link markers | Concrete loss: adapter reads only legacy `markdown`, producing `[table]` instead of supplied content. Unique link placement also needs coverage. |
+| Vision | Model Markdown, table dimensions, language, self-reported confidence | No supplied cells in this sample schema; do not manufacture them. Preserve literal model output and confidence meaning under raw opt-out. |
+| PdfPig | Native text blocks and point/bottom-left polygons | Existing native/blank-page and no-fabricated-table tests cover this seam; no OCR or table-recognition claim. |
+
+Authoritative Mistral shape:
+`mistralai/client-python`, `packages/azure/src/mistralai/azure/client/models/ocrtableobject.py`
+defines `id`, `content`, `format` (Markdown/HTML). Its publisher cookbook,
+`mistral/ocr/documentChunking/document_chunking_cookbook.ipynb`, shows
+`[tbl-0.html](tbl-0.html)` in page Markdown. No real response or private input is
+needed for these regressions.
+
+Acceptance: exact supplied cell dimensions/coordinates/content/roles/spans and
+page polygons; explicit empty versus absent cells; source binding and raw policy;
+literal Mistral table payloads without fabricated cells or inferred ordering;
+literal Vision transcription and explicitly self-reported confidence.
+Only demonstrated mapping defects may change production code.
+
 ## Scope and constraints
 
 - Root: `samples/ocr-shape`

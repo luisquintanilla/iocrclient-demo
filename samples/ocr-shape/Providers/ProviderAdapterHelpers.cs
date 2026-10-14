@@ -89,6 +89,13 @@ internal static class ProviderAdapterHelpers
             modelId);
     }
 
+    public static object? RetainRawRepresentation(
+        DocumentSourceOutput sourceOutput,
+        object? representation)
+        => sourceOutput.NativeStatus == DocumentRawContentStatus.Disabled
+            ? null
+            : representation;
+
     public static byte[]? GetBufferedResponseBytes(Response response)
     {
         Stream? stream = response.ContentStream;
