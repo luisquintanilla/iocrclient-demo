@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <NoWarn>$(NoWarn);EXTEXP0019;MEAI001;MEDE0001;MEAI002;MEAI003</NoWarn>
   </PropertyGroup>
   <ItemGroup>

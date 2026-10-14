@@ -1,0 +1,152 @@
+@page "/source/{RecordKey:guid}"
+@using System.Security.Cryptography
+@using System.Text.Json
+@using hero.Web.Services.Ingestion
+@inject SemanticSearch Search
+@inject IWebHostEnvironment Environment
+@inject IJSRuntime JS
+@inject ILogger<Source> Logger
+@implements IAsyncDisposable
+
+<PageTitle>Extraction source evidence</PageTitle>
+
+<h1>Extraction source evidence</h1>
+<p><a href="/">Back to chat</a></p>
+
+@if (record is null || sourceUrl is null)
+{
+    <p role="status">@status</p>
+}
+else
+{
+    <p>@record.DocumentId</p>
+    <p>Source SHA-256: <code>@record.SourceHash</code></p>
+    <p><a href="@sourceUrl" target="_blank" rel="noopener">Open verified source</a></p>
+    @if (pages.Length > 0 && record.DocumentId.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+    {
+        <label>
+            Source page
+            <select value="@selectedPage" @onchange="SelectPage">
+                @foreach (SourcePageEvidence frame in pages)
+                {
+                    <option value="@frame.Identifier">@frame.PageNumber (@frame.Identifier)</option>
+                }
+            </select>
+        </label>
+        <p role="status">@status</p>
+        <div @ref="viewer" style="position:relative;max-width:1200px"></div>
+    }
+    else
+    {
+        <p>No page-frame evidence was supplied. No page number or overlay is inferred.</p>
+    }
+    <details>
+        <summary>Retrieved text supporting this citation</summary>
+        <pre style="white-space:pre-wrap">@((record.Content as TextContent)?.Text)</pre>
+    </details>
+}
+
+@code {
+    [Parameter]
+    public Guid RecordKey { get; set; }
+
+    private IngestedChunk? record;
+    private SourcePageEvidence[] pages = [];
+    private SourceRegionEvidence[] regions = [];
+    private string selectedPage = "";
+    private string? sourceUrl;
+    private string status = "Loading persisted source evidence.";
+    private ElementReference viewer;
+    private IJSObjectReference? module;
+    private bool renderPending;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        sourceUrl = null;
+        record = await Search.GetRecordAsync(RecordKey);
+        if (record is null)
+        {
+            status = "This record is unavailable. Reingestion may have replaced it; retrieve the document again.";
+            return;
+        }
+
+        string relative = record.DocumentId.Replace('\\', '/');
+        if (Path.IsPathFullyQualified(relative) || relative.Split('/').Any(part => part is "." or ".." or ""))
+        {
+            throw new InvalidOperationException("The persisted source identifier is not a relative document path.");
+        }
+
+        string root = Path.GetFullPath(Path.Combine(Environment.WebRootPath, "Data")) + Path.DirectorySeparatorChar;
+        string path = Path.GetFullPath(Path.Combine(root, relative));
+        if (!path.StartsWith(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The persisted source path escapes the document directory.");
+        }
+
+        if (!File.Exists(path))
+        {
+            status = "The source file is no longer available.";
+            return;
+        }
+
+        await using FileStream stream = File.OpenRead(path);
+        string actualHash = Convert.ToHexString(await SHA256.HashDataAsync(stream)).ToLowerInvariant();
+        if (string.IsNullOrEmpty(record.SourceHash) || actualHash != record.SourceHash)
+        {
+            status = "The current file does not match this record's source hash. Reingest before inspecting its geometry.";
+            return;
+        }
+
+        pages = JsonSerializer.Deserialize<SourcePageEvidence[]>(record.SourcePagesJson)
+            ?? throw new InvalidOperationException("Persisted source pages are null.");
+        regions = JsonSerializer.Deserialize<SourceRegionEvidence[]>(record.SourceRegionsJson)
+            ?? throw new InvalidOperationException("Persisted source regions are null.");
+        sourceUrl = "/Data/" + string.Join("/", relative.Split('/').Select(Uri.EscapeDataString));
+        selectedPage = pages.FirstOrDefault()?.Identifier ?? "";
+        renderPending = pages.Length > 0 && relative.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void SelectPage(ChangeEventArgs args)
+    {
+        selectedPage = args.Value as string ?? throw new InvalidOperationException("No source page was selected.");
+        renderPending = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!renderPending)
+        {
+            return;
+        }
+
+        renderPending = false;
+        module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./source-viewer.js");
+        SourcePageEvidence page = pages.Single(p => p.Identifier == selectedPage);
+        try
+        {
+            status = await module.InvokeAsync<string>("render", viewer, sourceUrl, page,
+                regions.Where(r => r.PageIdentifier == selectedPage).ToArray());
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "Source-page rendering failed.");
+            status = "Source-page rendering failed. No successful overlay validation is claimed.";
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            try
+            {
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The browser circuit has already disconnected.
+            }
+        }
+    }
+}

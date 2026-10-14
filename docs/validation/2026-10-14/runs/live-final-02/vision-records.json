@@ -1,0 +1,65 @@
+[
+  {
+    "key": "DC89873E-12A3-4BF6-BD68-3A76CE328396",
+    "citationId": "2760c3b383040492c3f9da748c31b3c979d0c9758e2ad17d2e8a375978878055",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "504032def2582a6db50b558ba164b2c95841101875f573327021163c9f554fce",
+    "serializedContent": {
+      "$type": "text",
+      "text": "The backup code is **MAPLE-915**."
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:vision-llm:page:2",
+        "PageNumber": 2,
+        "Width": 595,
+        "Height": 842,
+        "Unit": "Point",
+        "Origin": "BottomLeft"
+      }
+    ],
+    "sourceRegions": []
+  },
+  {
+    "key": "F9959909-C0F9-4854-8801-1C8D65FCA33D",
+    "citationId": "c4b05fe1c6a22dafcaff0438b1e568c5cc9db989ebb23ebbfb3ca9cdf0ce51df",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "504032def2582a6db50b558ba164b2c95841101875f573327021163c9f554fce",
+    "serializedContent": {
+      "$type": "text",
+      "text": "```markdown\n| HEADER 1 | HEADER 2 | HEADER 3 |\n|----------|----------|----------|\n| A1       | B1       | C1       |\n| A2       | B2       | C2       |\n\n* Bullet 1\n  * Listing in Bullet 1\n    - Sub-listing in bullet 1\n\n1. Numbered List 1\n\n    a. Sub-listing in Numbered List 1\n\n    b. Sub-listing in Numbered List 1\n\n   2. Numbered List 2\n\n> This is a text blockquote.\n\nPlain Text\n```"
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:vision-llm:page:3",
+        "PageNumber": 3,
+        "Width": 595,
+        "Height": 842,
+        "Unit": "Point",
+        "Origin": "BottomLeft"
+      }
+    ],
+    "sourceRegions": []
+  },
+  {
+    "key": "5CE0C700-9629-4E19-8683-ABF79D4230FE",
+    "citationId": "da907c464874cd7e1b053622f53bb87b2753ef3b54d0192a3b542b16f60f6610",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "504032def2582a6db50b558ba164b2c95841101875f573327021163c9f554fce",
+    "serializedContent": {
+      "$type": "text",
+      "text": "```markdown\nThe validation code is ORBIT-742.\n```"
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:vision-llm:page:1",
+        "PageNumber": 1,
+        "Width": 595,
+        "Height": 842,
+        "Unit": "Point",
+        "Origin": "BottomLeft"
+      }
+    ],
+    "sourceRegions": []
+  }
+]

@@ -1,0 +1,21 @@
+{
+  "status": "incomplete",
+  "mode": "offline",
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "58D0261D33E8A2C68278B67C62BA76DB7B84F332828771C48DD0B9B8B54C5D7C",
+  "results": [
+    {
+      "provider": "pdfpig",
+      "status": "failed",
+      "errorType": "ProofFailureException",
+      "statusCode": null,
+      "reason": "Reingestion duplicated chunks or changed stable source/content identities."
+    }
+  ],
+  "claims": {
+    "liveAi": false,
+    "allFiveProviders": false,
+    "onnxInference": false,
+    "releaseReady": false
+  }
+}

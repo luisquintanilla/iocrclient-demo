@@ -1,10 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The provisional Documents + DocumentExtraction + DataIngestion bridge stack is consumed from
-    the local feed built by scripts/build-local-feed.sh (version 10.10.0-dev). Provider adapters
-    implement the real Microsoft.Extensions.DocumentExtraction.IDocumentExtractionClient and the
-    bridge package maps its finalized Documents tree into IngestionDocument.
+    The provisional Documents + DocumentExtraction + DataIngestion stack is consumed as one exact,
+    immutable E2E candidate. Provider adapters implement the real
+    Microsoft.Extensions.DocumentExtraction.IDocumentExtractionClient.
   -->
 
   <PropertyGroup>
@@ -17,23 +16,27 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Real Documents + extraction + bridge + MEDI pipeline packages (local-pack). -->
-    <PackageReference Include="Microsoft.Extensions.Documents.Abstractions" Version="10.10.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.DocumentExtraction" Version="10.10.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.DataIngestion.DocumentExtraction" Version="10.10.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.0-dev" />
-    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.10.0-dev" />
+    <!-- Exact immutable integrated E2E candidate. Core, AI, and MEDI move as one unit. -->
+    <PackageReference Include="Microsoft.Extensions.Documents.Abstractions" Version="10.10.0-dev.e2e.cf60fa88.1" />
+    <PackageReference Include="Microsoft.Extensions.DocumentExtraction" Version="10.10.0-dev.e2e.cf60fa88.1" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0-dev.e2e.cf60fa88.1" />
+    <PackageReference Include="Microsoft.Extensions.DataIngestion" Version="10.10.0-dev.e2e.cf60fa88.1" />
     <!-- Credentials for every sample come from user-secrets (id iocrclient-demo), env fallback. -->
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.12" />
     <!-- Provider SDKs (nuget.org). -->
-    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="Azure.AI.DocumentIntelligence" Version="1.0.0" />
     <PackageReference Include="Azure.AI.ContentUnderstanding" Version="1.1.0" />
-    <!-- Native PDF text + heuristic layout for the shared PdfPigReader building block. -->
+    <!-- Native PDF text, faithful PDFium rendering, and optional CPU RT-DETR layout inference. -->
+    <PackageReference Include="Docnet.Core" Version="2.6.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.1" />
     <PackageReference Include="PdfPig" Version="0.1.15" />
+    <PackageReference Include="SkiaSharp" Version="3.119.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="OcrShape.Tests\**\*.cs" />
   </ItemGroup>
 
 </Project>

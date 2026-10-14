@@ -2,10 +2,11 @@
 
 A grounded talk and runnable sample set showing `IDocumentExtractionClient`, a provider-neutral seam for document
 parsing in .NET. Four OCR engines (a vision LLM, Mistral OCR, Azure Document Intelligence, and Azure
-Content Understanding) run through one interface; the provisional `DocumentExtractionReader` bridge composes
-that capability into a real Microsoft.Extensions.DataIngestion (MEDI) pipeline; the page model is carried through
-chunking so answers cite their source page; and the PdfPig reader shows the same seam composed a second way
-(digital text first, OCR only the pages that need it).
+Content Understanding) and native PdfPig run through one interface. This validation branch migrates
+`DocumentExtractionReader`, MEDI Preview 2 and #7488 onto shared Documents, then exercises the real
+typed writer and persisted retrieval path. Chunks carry source elements so citations resolve actual
+registered page frames, not section indexes. Optional local RT-DETR adds layout detection on actual
+page pixels; it is not a scanned-page OCR recognizer or Docling replacement.
 
 - **Slides:** [`slides.md`](slides.md) (message-first, every claim grounded on a real run)
 - **Speaker outline + abstract + primer:** [`talk/`](talk/) — the deck opens with a 90-second
@@ -17,13 +18,14 @@ chunking so answers cite their source page; and the PdfPig reader shows the same
   transcription from the vision path).
 - **Diagrams:** [`assets/diagrams/`](assets/diagrams/) — four hand-authored branded SVGs (stack,
   data-flow/boundary, composition, eval harness) embedded in the deck and reusable standalone.
-- **Reproducible feed:** [`scripts/build-local-feed.sh`](scripts/build-local-feed.sh) packs the real
-  `dotnet/extensions` code at the exact provisional Documents, extraction, and composition commits into
-  `local-feed/` — the samples run on the real types, not a vendored copy.
+- **Integrated validation:** [`samples/README.md`](samples/README.md) records the exact immutable
+  16-package candidate, native/offline versus opt-in live commands and honest blocked states.
+  [`scripts/README.md`](scripts/README.md) describes verified imports and source repacking.
 - **The body of work this drives, across two repos:**
   - dotnet/extensions provisional Documents + DocumentExtraction + composition stack (the exact
-    commits are recorded in `local-feed/README.md`) — the live seam. Page provenance rides the
-    in-memory page/evidence model (the bridge emits one section per page; the samples chunk per page), so an earlier chunk-propagation proposal,
+    commits for this branch are recorded in `samples/README.md`) — the experimental seam.
+    Page provenance rides shared Documents and MEDI chunk source elements; this branch
+    does not load the historical model-conversion bridge. An earlier chunk-propagation proposal,
     [#7516](https://github.com/dotnet/extensions/pull/7516), closed unmerged and is no longer needed
   - CommunityToolkit/AI [#13](https://github.com/CommunityToolkit/AI/issues/13) (design),
     [#15](https://github.com/CommunityToolkit/AI/pull/15) (VisionLMOcrClient, closes #13),
@@ -95,11 +97,11 @@ See [`AGENTS.md`](AGENTS.md) for the full map and conventions.
 want to try. See **[`docs/SETUP.md`](docs/SETUP.md)** for a per-engine walkthrough (with official
 Microsoft Learn links) and the `dotnet user-secrets` keys each one needs.
 
-The samples run on the real `IDocumentExtractionClient` + MEDI bits. Those APIs aren't on nuget.org yet, so this
-repo **ships them prebuilt in [`local-feed/`](local-feed/README.md)** — *unofficial* local dev
-builds; read that NOTICE — and `nuget.config` resolves them from there. Nothing to build first:
-`az login`, set your endpoints, run a sample. (To rebuild/refresh the feed from public GitHub refs,
-run `scripts/build-local-feed.sh`.)
+The migrated samples use the real `10.10.0-dev.e2e.cf60fa88.1` integration candidate, not the older
+committed bridge packages. Import its verified manifest first. Native E2E needs no credentials;
+live E2E requires configured providers, embedding/chat deployments and explicit `--allow-live`.
+The deck and historical captured outputs still describe their earlier source pins; they do not
+establish acceptance of this new stack.
 
 ```bash
 az login                                            # keyless DefaultAzureCredential
@@ -107,7 +109,7 @@ az login                                            # keyless DefaultAzureCreden
 dotnet run samples/05-one-loop-four-clients.cs                     # defaults to the complex USGS fact sheet
 dotnet run samples/05-one-loop-four-clients.cs -- samples/data/survival-kit.pdf  # the simple born-digital baseline
 dotnet run samples/06-medi-pipeline.cs              # DocumentExtractionReader -> MEDI chunker; per-page provenance
-dotnet run samples/07-e2e-rag.cs                    # USGS default + its oil-estimate question
+dotnet run samples/07-e2e-rag.cs -- --mode offline --provider pdfpig
 dotnet run samples/08-pdfpig-reader.cs              # native text + OCR fallback on USGS
 dotnet run samples/09-images-and-uris.cs            # figures + UriContent overload
 (cd samples && dotnet run 10-eval-ocr-vs-pdfpig.cs)                # eval: OCR vs naive PdfPig on the USGS twins

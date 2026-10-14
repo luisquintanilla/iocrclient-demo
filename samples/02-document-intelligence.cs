@@ -21,7 +21,7 @@ using IDocumentExtractionClient ocr = new AzureDocumentIntelligenceClient(
     new Uri(endpoint), new Azure.Identity.DefaultAzureCredential());
 
 await using FileStream doc = File.OpenRead(pdf);
-using DocumentExtractionResult result = await ocr.ExtractAsync(doc, "application/pdf");
+using DocumentExtractionResult result = await ocr.ExtractAsync(doc, Path.GetFileName(pdf), "application/pdf");
 
 Console.WriteLine($"pages  : {result.Pages.Count}");
 Console.WriteLine($"tables : {result.CountElements<DocumentTableElement>()}");

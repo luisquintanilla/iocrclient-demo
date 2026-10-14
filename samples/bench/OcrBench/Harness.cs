@@ -40,7 +40,8 @@ public static class Harness
     {
         var sw = Stopwatch.StartNew();
         await using FileStream doc = File.OpenRead(pdfPath);
-        using DocumentExtractionResult result = await ocr.ExtractAsync(doc, mediaType, ct);
+        using DocumentExtractionResult result = await ocr.ExtractAsync(doc,
+            identifier: Path.GetFileName(pdfPath), mediaType: mediaType, cancellationToken: ct);
         sw.Stop();
 
         string text = result.GetMarkdown();

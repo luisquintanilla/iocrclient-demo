@@ -44,7 +44,7 @@ Console.WriteLine();
 
 // Local GLM-OCR as an IChatClient. All three glm-ocr quirks above are patched HERE, on the Ollama
 // client ONLY — VisionLlmOcrClient and the cloud engines stay byte-for-byte identical.
-IChatClient chat = ((IChatClient)new OllamaApiClient(new Uri(host), model))
+using IChatClient chat = ((IChatClient)new OllamaApiClient(new Uri(host), model))
     .AsBuilder()                                                    // cast disambiguates AsBuilder (client is also IEmbeddingGenerator)
     .ConfigureOptions(o =>
     {
@@ -61,7 +61,8 @@ IChatClient chat = ((IChatClient)new OllamaApiClient(new Uri(host), model))
 using IDocumentExtractionClient ocr = new VisionLlmOcrClient(chat, "Text Recognition:");
 
 var sw = Stopwatch.StartNew();
-using DocumentExtractionResult result = await ocr.ExtractAsync(new MemoryStream(imageBytes), mediaType);
+using var source = new MemoryStream(imageBytes, writable: false);
+using DocumentExtractionResult result = await ocr.ExtractAsync(source, Path.GetFileName(input), mediaType);
 sw.Stop();
 
 string md = result.Pages.Count > 0 ? result.Pages[0].GetMarkdown() : "";

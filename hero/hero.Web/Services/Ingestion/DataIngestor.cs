@@ -13,26 +13,35 @@ public class DataIngestor(
     ILoggerFactory loggerFactory,
     VectorStoreCollection<Guid, IngestedChunk> vectorCollection,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
-    IDocumentExtractionClient ocrClient)
+    IDocumentExtractionClient ocrClient,
+    IConfiguration configuration)
 {
-    public async Task IngestDataAsync(DirectoryInfo directory, string searchPattern)
+    public async Task IngestDataAsync(DirectoryInfo directory, string searchPattern, CancellationToken cancellationToken = default)
     {
-        using var writer = new VectorStoreWriter<IngestedChunk>(vectorCollection, new()
-        {
-            IncrementalIngestion = false,
-        });
+        using var writer = new CitationVectorStoreWriter(vectorCollection);
 
         using var pipeline = new IngestionPipeline(
-            reader: new DocumentReader(directory, ocrClient),
             chunker: new SemanticSimilarityChunker(
                 embeddingGenerator.AsTextContentEmbeddingGenerator(),
                 new(TiktokenTokenizer.CreateForModel("gpt-4o"))),
             writer: writer,
             loggerFactory: loggerFactory);
 
-        await foreach (var result in pipeline.ProcessAsync(directory, searchPattern))
+        int failed = 0;
+        await foreach (var result in pipeline.ProcessAsync(
+            new DocumentReader(directory, ocrClient, ExtractionProviderFactory.CreateOptions(configuration)), directory, searchPattern,
+            cancellationToken: cancellationToken))
         {
             logger.LogInformation("Completed processing '{id}'. Succeeded: '{succeeded}'.", result.DocumentId, result.Succeeded);
+            if (!result.Succeeded)
+            {
+                failed++;
+            }
+        }
+
+        if (failed > 0)
+        {
+            throw new InvalidOperationException($"Ingestion failed for {failed} document(s). See the ingestion error logs.");
         }
     }
 }

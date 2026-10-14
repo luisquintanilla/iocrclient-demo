@@ -1,0 +1,96 @@
+[
+  {
+    "key": "E245D85B-9CD7-4C02-8B7D-4212D6DA62A1",
+    "citationId": "711448bde8e38641574c0abb43336db0b66cd4fcdb15d2d8adbe39e11250c904",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "504032def2582a6db50b558ba164b2c95841101875f573327021163c9f554fce",
+    "serializedContent": {
+      "$type": "text",
+      "text": "The backup code is MAPLE-915."
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:azure-document-intelligence:page:2",
+        "PageNumber": 2,
+        "Width": 8.263899803161621,
+        "Height": 11.6943998336792,
+        "Unit": "Inch",
+        "Origin": "TopLeft"
+      }
+    ],
+    "sourceRegions": [
+      {
+        "PageIdentifier": "synthetic-source.pdf:azure-document-intelligence:page:2",
+        "Kind": "paragraph",
+        "Role": null,
+        "Polygon": [
+          [
+            0.9879999756813049,
+            1.5286999940872192
+          ],
+          [
+            3.8399999141693115,
+            1.5217000246047974
+          ],
+          [
+            3.8405001163482666,
+            1.73989999294281
+          ],
+          [
+            0.9886000156402588,
+            1.746899962425232
+          ]
+        ],
+        "ConfidenceKind": null,
+        "Confidence": null
+      }
+    ]
+  },
+  {
+    "key": "DC2B7758-0936-4191-BE4E-FF5134877B5B",
+    "citationId": "ee467fc75c001f1c083b61e4c3b0c30791b750e62b0d46ef6726fcab3d179c7f",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "504032def2582a6db50b558ba164b2c95841101875f573327021163c9f554fce",
+    "serializedContent": {
+      "$type": "text",
+      "text": "The validation code is ORBIT-742."
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:azure-document-intelligence:page:1",
+        "PageNumber": 1,
+        "Width": 8.263899803161621,
+        "Height": 11.6943998336792,
+        "Unit": "Inch",
+        "Origin": "TopLeft"
+      }
+    ],
+    "sourceRegions": [
+      {
+        "PageIdentifier": "synthetic-source.pdf:azure-document-intelligence:page:1",
+        "Kind": "paragraph",
+        "Role": null,
+        "Polygon": [
+          [
+            0.986299991607666,
+            1.5313999652862549
+          ],
+          [
+            3.9653000831604004,
+            1.5240999460220337
+          ],
+          [
+            3.9658000469207764,
+            1.7267999649047852
+          ],
+          [
+            0.9868000149726868,
+            1.7340999841690063
+          ]
+        ],
+        "ConfidenceKind": null,
+        "Confidence": null
+      }
+    ]
+  }
+]

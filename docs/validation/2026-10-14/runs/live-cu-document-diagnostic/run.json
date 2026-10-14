@@ -1,0 +1,25 @@
+{
+  "status": "incomplete",
+  "mode": "live",
+  "layout": "native",
+  "authentication": "DefaultAzureCredential",
+  "layoutModelSha256": null,
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "6F1E23AD5B3480B4A40B83D575946E3DA7F089C8E87B84534D768CE116964BB0",
+  "results": [
+    {
+      "provider": "content-understanding",
+      "status": "failed",
+      "errorType": "ProofFailureException",
+      "statusCode": null,
+      "reason": "The known source fact was not extracted.",
+      "authenticationDiagnostics": null
+    }
+  ],
+  "claims": {
+    "liveAi": false,
+    "allFiveProviders": false,
+    "onnxInference": false,
+    "releaseReady": false
+  }
+}

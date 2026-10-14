@@ -1,0 +1,67 @@
+{
+  "status": "incomplete",
+  "mode": "live",
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "A03918360AD766E70F55D590748CBDCBC920FA4CB5B2503A94267B5922E503F2",
+  "results": [
+    {
+      "provider": "pdfpig",
+      "status": "blocked",
+      "reason": "Missing configuration keys",
+      "keys": [
+        "OCR:OpenAIEndpoint",
+        "OCR:EmbedDeployment",
+        "OCR:VisionDeployment"
+      ]
+    },
+    {
+      "provider": "document-intelligence",
+      "status": "blocked",
+      "reason": "Missing configuration keys",
+      "keys": [
+        "OCR:OpenAIEndpoint",
+        "OCR:EmbedDeployment",
+        "OCR:VisionDeployment",
+        "OCR:DocIntelEndpoint"
+      ]
+    },
+    {
+      "provider": "content-understanding",
+      "status": "blocked",
+      "reason": "Missing configuration keys",
+      "keys": [
+        "OCR:OpenAIEndpoint",
+        "OCR:EmbedDeployment",
+        "OCR:VisionDeployment",
+        "OCR:ContentUnderstandingEndpoint"
+      ]
+    },
+    {
+      "provider": "mistral",
+      "status": "blocked",
+      "reason": "Missing configuration keys",
+      "keys": [
+        "OCR:OpenAIEndpoint",
+        "OCR:EmbedDeployment",
+        "OCR:VisionDeployment",
+        "OCR:FoundryEndpoint"
+      ]
+    },
+    {
+      "provider": "vision",
+      "status": "blocked",
+      "reason": "Missing configuration keys",
+      "keys": [
+        "OCR:OpenAIEndpoint",
+        "OCR:EmbedDeployment",
+        "OCR:VisionDeployment"
+      ]
+    }
+  ],
+  "claims": {
+    "liveAi": false,
+    "allFiveProviders": false,
+    "onnxInference": false,
+    "releaseReady": false
+  }
+}

@@ -1,0 +1,96 @@
+[
+  {
+    "key": "3A2F76EF-1124-4CA6-97C7-06BC4EC398CA",
+    "citationId": "20693e558e23e0f686233cba4cced9a4c678eb247b196dd45db61809f1392140",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "47802b799e58e65799ade6c13c1d6f6cc45b36d5bd7699b35aa3ebdf02c541a2",
+    "serializedContent": {
+      "$type": "text",
+      "text": "The backup code is MAPLE-915."
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:pdfpig:page:2",
+        "PageNumber": 2,
+        "Width": 595,
+        "Height": 842,
+        "Unit": "Point",
+        "Origin": "BottomLeft"
+      }
+    ],
+    "sourceRegions": [
+      {
+        "PageIdentifier": "synthetic-source.pdf:pdfpig:page:2",
+        "Kind": "native-text-block",
+        "Role": null,
+        "Polygon": [
+          [
+            72,
+            720
+          ],
+          [
+            276.65199999999993,
+            720
+          ],
+          [
+            276.65199999999993,
+            730.052
+          ],
+          [
+            72,
+            730.052
+          ]
+        ],
+        "ConfidenceKind": null,
+        "Confidence": null
+      }
+    ]
+  },
+  {
+    "key": "5B16A3D0-675E-44C0-B373-6D6415C08D11",
+    "citationId": "7c193922f47a285bfa4fe073fdd5401c35587c82dd766e1b38ff08f4e95e7b83",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "47802b799e58e65799ade6c13c1d6f6cc45b36d5bd7699b35aa3ebdf02c541a2",
+    "serializedContent": {
+      "$type": "text",
+      "text": "The validation code is ORBIT-742."
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:pdfpig:page:1",
+        "PageNumber": 1,
+        "Width": 595,
+        "Height": 842,
+        "Unit": "Point",
+        "Origin": "BottomLeft"
+      }
+    ],
+    "sourceRegions": [
+      {
+        "PageIdentifier": "synthetic-source.pdf:pdfpig:page:1",
+        "Kind": "native-text-block",
+        "Role": null,
+        "Polygon": [
+          [
+            72,
+            720
+          ],
+          [
+            285.97599999999994,
+            720
+          ],
+          [
+            285.97599999999994,
+            730.318
+          ],
+          [
+            72,
+            730.318
+          ]
+        ],
+        "ConfidenceKind": null,
+        "Confidence": null
+      }
+    ]
+  }
+]

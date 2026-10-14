@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "mode": "offline",
+  "layout": "native",
+  "layoutModelSha256": null,
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "47802B799E58E65799ADE6C13C1D6F6CC45B36D5BD7699B35AA3EBDF02C541A2",
+  "results": [
+    {
+      "provider": "pdfpig",
+      "status": "passed",
+      "mode": "offline",
+      "layout": "native",
+      "loadedAssemblies": [
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1"
+      ],
+      "pages": 3,
+      "retrievedRecords": 2,
+      "citations": 1,
+      "realMediPipeline": true,
+      "realPersistedVectorStore": true,
+      "reopened": true,
+      "reingestion": true,
+      "borrowedDocumentUsable": true,
+      "inputKind": "synthetic public fixture",
+      "onnxInference": false,
+      "layoutGeometryMinimumIoU": null,
+      "layoutGeometryMeasuredIoU": null
+    }
+  ],
+  "claims": {
+    "liveAi": false,
+    "allFiveProviders": false,
+    "onnxInference": false,
+    "releaseReady": false
+  }
+}

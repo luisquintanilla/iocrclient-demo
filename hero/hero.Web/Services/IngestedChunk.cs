@@ -7,5 +7,17 @@ public class IngestedChunk : IngestionChunkVectorRecord
 {
     public const int VectorDimensions = 1536; // 1536 is the default vector size for the OpenAI text-embedding-3-small model
     public const string VectorDistanceFunction = DistanceFunction.CosineDistance;
-    public const string CollectionName = "data-hero-chunks";
+    public const string CollectionName = "data-hero-chunks-e2e-v2";
+
+    [VectorStoreData]
+    public string CitationId { get; set; } = "";
+
+    [VectorStoreData]
+    public string SourceHash { get; set; } = "";
+
+    [VectorStoreData]
+    public string SourcePagesJson { get; set; } = "[]";
+
+    [VectorStoreData]
+    public string SourceRegionsJson { get; set; } = "[]";
 }

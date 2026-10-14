@@ -1,0 +1,66 @@
+{
+  "first": [
+    {
+      "Key": "a4a4ad0a-ae1e-4bf9-b68c-56fb2dad4c82",
+      "CitationId": "bc3ab5c990f3f7b6c9157b4c62596ec2ec89bee80adf65f5abeedb0b42eab8c3",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    },
+    {
+      "Key": "8f54992d-f8f4-4349-a1d1-491b35a012be",
+      "CitationId": "f9413d211331932a669988fe1f108e00987786ce8a20d1308bc283d005eb387a",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    },
+    {
+      "Key": "eea3fd96-478e-41d8-ba91-6a415388c4ed",
+      "CitationId": "6caa4319128996cafccd07e7773602d0ec3c8a82d3eeee07945a03476269593f",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    },
+    {
+      "Key": "8204abd9-4293-41c4-9d0d-3187196b3f7f",
+      "CitationId": "fee0fa72cb179e5c6750c1e0eec95553c275dce9d53ab09df51391455759b1ef",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    },
+    {
+      "Key": "9c6385c8-9ed8-459f-9df3-ea7752e611d0",
+      "CitationId": "0631ed733aa538ad957ba128cd4424c33d29ca70bca16250448a0a641bff2581",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    }
+  ],
+  "second": [
+    {
+      "Key": "8435a314-06e5-49bf-9349-554689d5a836",
+      "CitationId": "bc3ab5c990f3f7b6c9157b4c62596ec2ec89bee80adf65f5abeedb0b42eab8c3",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    },
+    {
+      "Key": "717dd7d3-cf21-4976-b403-3cf7dd2eb349",
+      "CitationId": "f9413d211331932a669988fe1f108e00987786ce8a20d1308bc283d005eb387a",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    },
+    {
+      "Key": "eaee349a-aaeb-4d52-9d48-b513fe571e9c",
+      "CitationId": "6caa4319128996cafccd07e7773602d0ec3c8a82d3eeee07945a03476269593f",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    },
+    {
+      "Key": "313e146d-356f-45d5-b058-75248eec236e",
+      "CitationId": "fee0fa72cb179e5c6750c1e0eec95553c275dce9d53ab09df51391455759b1ef",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    },
+    {
+      "Key": "1ba13e4b-d085-42c4-ae32-42850958d14b",
+      "CitationId": "0631ed733aa538ad957ba128cd4424c33d29ca70bca16250448a0a641bff2581",
+      "DocumentId": "synthetic-source.pdf",
+      "SourceHash": "b5fecc1d4ed21eaeecc614b045ce0c2248380bd47990a4c13649d87b12284349"
+    }
+  ]
+}

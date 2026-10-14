@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);EXTEXP0019;MEAI001;MEAI002;MEAI003;MEDE0001;IL2026;IL3050</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="FullE2EProof.cs" />
+    <Compile Include="FullE2E.cs" />
+    <ProjectReference Include="..\..\hero\hero.Web\hero.Web.csproj" />
+  </ItemGroup>
+</Project>

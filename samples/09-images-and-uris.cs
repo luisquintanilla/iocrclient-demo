@@ -28,7 +28,7 @@ using IDocumentExtractionClient client = new FoundryMistralOcrClient(
     includeImages: false);
 
 await using var document = new MemoryStream(bytes, writable: false);
-using DocumentExtractionResult result = await client.ExtractAsync(document, "application/pdf");
+using DocumentExtractionResult result = await client.ExtractAsync(document, Path.GetFileName(pdf), "application/pdf");
 
 IReadOnlyList<DocumentExtractionImage> images = result.Pages
     .SelectMany(static page => page.Observations)

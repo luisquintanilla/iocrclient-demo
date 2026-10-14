@@ -1,0 +1,783 @@
+{
+  "counts": {
+    "total": "152",
+    "executed": "152",
+    "passed": "152",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  },
+  "tests": [
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.ThrowsOnInvalidThreshold(threshold: 1.1000000000000001)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0385962"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SentimentEnricherTests.ThrowsOnInvalidThreshold(threshold: -0.10000000000000001)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0387745"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.ClassificationEnricherTests.ThrowsOnEmptyPredefinedClasses",
+      "outcome": "Passed",
+      "duration": "00:00:00.0389694"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownMcpReaderTests.ReadAsync_ThrowsWhenFileDoesNotExist",
+      "outcome": "Passed",
+      "duration": "00:00:00.0393776"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionChunkTests.Constructor_ThrowsWhenTokenCountIsNegative",
+      "outcome": "Passed",
+      "duration": "00:00:00.0384998"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.ThrowsOnInvalidThreshold(threshold: -0.10000000000000001)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0007435"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SentimentEnricherTests.ThrowsOnInvalidThreshold(threshold: 1.1000000000000001)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0007744"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.ClassificationEnricherTests.ThrowsOnNullOptions",
+      "outcome": "Passed",
+      "duration": "00:00:00.0011945"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.ThrowsOnInvalidMaxKeywords(keywordCount: -1)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0011968"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.ClassificationEnricherTests.ThrowsOnFallbackInPredefinedClasses",
+      "outcome": "Passed",
+      "duration": "00:00:00.0006027"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.ThrowsOnInvalidMaxKeywords(keywordCount: 0)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0007081"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.ThrowsOnDuplicateKeywords",
+      "outcome": "Passed",
+      "duration": "00:00:00.0022089"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.ThrowsOnNullOptions",
+      "outcome": "Passed",
+      "duration": "00:00:00.0068117"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownMcpReaderTests.ReadAsync_ThrowsWhenIdentifierIsNull",
+      "outcome": "Passed",
+      "duration": "00:00:00.0177454"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionChunkTests.Constructor_SetsTokenCountProperty",
+      "outcome": "Passed",
+      "duration": "00:00:00.0178317"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownMcpReaderTests.Constructor_ThrowsWhenMcpServerUriIsNull",
+      "outcome": "Passed",
+      "duration": "00:00:00.0008212"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionChunkTests.Constructor_ThrowsWhenTokenCountIsZero",
+      "outcome": "Passed",
+      "duration": "00:00:00.0011456"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownMcpReaderTests.ReadAsync_ThrowsWhenSourceIsNull",
+      "outcome": "Passed",
+      "duration": "00:00:00.0046778"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.ThrowsOnNullChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0122749"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.VectorStoreWriterOptionsTests.BatchTokenCount_CanBeSetToPositiveValue",
+      "outcome": "Passed",
+      "duration": "00:00:00.0010041"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.VectorStoreWriterOptionsTests.BatchTokenCount_ShouldThrow_OnZeroOrNegative",
+      "outcome": "Passed",
+      "duration": "00:00:00.0013381"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.VectorStoreWriterOptionsTests.DefaultValues_ShouldBeSetCorrectly",
+      "outcome": "Passed",
+      "duration": "00:00:00.0009218"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.ChunkerOptionsTests.MaxTokensPerChunk_ShouldThrow_WhenLessOrEqualThanOverlapTokens",
+      "outcome": "Passed",
+      "duration": "00:00:00.9081119"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.ChunkerOptionsTests.TokenizerIsRequired",
+      "outcome": "Passed",
+      "duration": "00:00:00.0011396"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.ChunkerOptionsTests.DefaultValues_ShouldBeSetCorrectly",
+      "outcome": "Passed",
+      "duration": "00:00:00.0004095"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.ChunkerOptionsTests.OverlapTokensCanBeZero",
+      "outcome": "Passed",
+      "duration": "00:00:00.0002437"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.ChunkerOptionsTests.Properties_ShouldThrow_OnZeroOrNegative",
+      "outcome": "Passed",
+      "duration": "00:00:00.0007465"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.ChunkerOptionsTests.DefaultOverlapTokensIsZeroForSmallMaxTokensPerChunk",
+      "outcome": "Passed",
+      "duration": "00:00:00.0002197"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.ChunkerOptionsTests.OverlapTokens_ShouldThrow_WhenGreaterOrEqualThanMaxTokens",
+      "outcome": "Passed",
+      "duration": "00:00:00.0006518"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsImages",
+      "outcome": "Passed",
+      "duration": "00:00:00.7661923"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SummaryEnricherTests.ThrowsOnInvalidMaxKeywords(wordCount: 0)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0015192"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SummaryEnricherTests.ThrowsOnInvalidMaxKeywords(wordCount: -1)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0006761"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SummaryEnricherTests.ThrowsOnNullOptions",
+      "outcome": "Passed",
+      "duration": "00:00:00.0008571"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.FileFailureCleansOwnedDocumentAndContinues",
+      "outcome": "Passed",
+      "duration": "00:00:01.0943696"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.CanRespectTokenLimit",
+      "outcome": "Passed",
+      "duration": "00:00:01.1507192"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.BatchesChunks(batchTokenCount: 100, chunkTokenCounts: [60, 60, 60, 60])",
+      "outcome": "Passed",
+      "duration": "00:00:01.0141563"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.BatchesChunks(batchTokenCount: 100, chunkTokenCounts: [200, 10])",
+      "outcome": "Passed",
+      "duration": "00:00:00.0100734"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.BatchesChunks(batchTokenCount: 1, chunkTokenCounts: [10, 10, 10])",
+      "outcome": "Passed",
+      "duration": "00:00:00.0054068"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.AlternativeTextEnricherTests.SendsOneRequestPerBatchSize(batchSize: 1, batchCount: 3)",
+      "outcome": "Passed",
+      "duration": "00:00:01.1958345"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.EmptyDocument",
+      "outcome": "Passed",
+      "duration": "00:00:00.0451231"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.AlternativeTextEnricherTests.SendsOneRequestPerBatchSize(batchSize: 3, batchCount: 7)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0073353"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.AlternativeTextEnricherTests.SendsOneRequestPerBatchSize(batchSize: 15, batchCount: 3)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0013012"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.AlternativeTextEnricherTests.ThrowsOnNullOptions",
+      "outcome": "Passed",
+      "duration": "00:00:00.0006365"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.BatchesChunks(batchTokenCount: null, chunkTokenCounts: [1000, 1000, 1000])",
+      "outcome": "Passed",
+      "duration": "00:00:00.0156448"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.AlternativeTextEnricherTests.ThrowsOnNullDocument",
+      "outcome": "Passed",
+      "duration": "00:00:00.0030180"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.ProcessAsync_ThrowsArgumentNullException_WhenDocumentIsNull",
+      "outcome": "Passed",
+      "duration": "00:00:00.0030953"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.ThrowsWhenLimitIsTooLowToFitAnythingMoreThanContext",
+      "outcome": "Passed",
+      "duration": "00:00:00.0765157"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.CanChunkNonTrivialDocument",
+      "outcome": "Passed",
+      "duration": "00:00:00.0097636"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.ThrowsWhenHeaderSeparatorAndSingleRowExceedTokenLimit",
+      "outcome": "Passed",
+      "duration": "00:00:00.0127937"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.CanSplitLargeTableIntoMultipleChunks_MultipleRowsPerChunk",
+      "outcome": "Passed",
+      "duration": "00:00:00.0096321"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.CanSplitLargeTableIntoMultipleChunks_OneRowPerChunk",
+      "outcome": "Passed",
+      "duration": "00:00:00.0108031"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.VerifyTokenCountIsSet",
+      "outcome": "Passed",
+      "duration": "00:00:00.1387293"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.HeaderChunkerTests.CanSplitLongerParagraphsOnNewLine",
+      "outcome": "Passed",
+      "duration": "00:00:00.0050818"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.AlternativeTextEnricherTests.FailureDoesNotStopTheProcessing",
+      "outcome": "Passed",
+      "duration": "00:00:00.3000006"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.AlternativeTextEnricherTests.CanGenerateImageAltText",
+      "outcome": "Passed",
+      "duration": "00:00:00.0062011"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsStreams(source: \"https://raw.githubusercontent.com/microsoft/markit\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:00.6075920"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SentimentEnricherTests.FailureDoesNotStopTheProcessing",
+      "outcome": "Passed",
+      "duration": "00:00:01.4756776"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SummaryEnricherTests.FailureDoesNotStopTheProcessing",
+      "outcome": "Passed",
+      "duration": "00:00:00.6172413"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.ClassificationEnricherTests.FailureDoesNotStopTheProcessing",
+      "outcome": "Passed",
+      "duration": "00:00:01.5304142"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.CanExtractKeywords(predefined: [\"AI\", \"MEAI\", \"Animals\", \"Rabbits\"])",
+      "outcome": "Passed",
+      "duration": "00:00:01.5152451"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.CanExtractKeywords(predefined: [])",
+      "outcome": "Passed",
+      "duration": "00:00:00.0013073"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SummaryEnricherTests.CanProvideSummary",
+      "outcome": "Passed",
+      "duration": "00:00:00.0117308"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SentimentEnricherTests.CanProvideSentiment",
+      "outcome": "Passed",
+      "duration": "00:00:00.0678374"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SummaryEnricherTests.ThrowsOnNullChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0037540"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.KeywordEnricherTests.FailureDoesNotStopTheProcessing",
+      "outcome": "Passed",
+      "duration": "00:00:00.0059509"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SentimentEnricherTests.ThrowsOnNullChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0059024"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.NoOverlapTokenChunkerTests.VerifyTokenCount",
+      "outcome": "Passed",
+      "duration": "00:00:01.6159292"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.SentimentEnricherTests.ThrowsOnNullOptions",
+      "outcome": "Passed",
+      "duration": "00:00:00.0008238"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.NoOverlapTokenChunkerTests.EmptyDocument",
+      "outcome": "Passed",
+      "duration": "00:00:00.0015330"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.NoOverlapTokenChunkerTests.ProcessAsync_ThrowsArgumentNullException_WhenDocumentIsNull",
+      "outcome": "Passed",
+      "duration": "00:00:00.0012234"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.ClassificationEnricherTests.CanClassify",
+      "outcome": "Passed",
+      "duration": "00:00:00.0235808"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.ClassificationEnricherTests.ThrowsOnNullChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0036759"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.ClassificationEnricherTests.ThrowsOnPredefinedClassesContainingFallback",
+      "outcome": "Passed",
+      "duration": "00:00:00.0008076"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Processors.Tests.ClassificationEnricherTests.ThrowsOnDuplicatePredefinedClasses",
+      "outcome": "Passed",
+      "duration": "00:00:00.0007002"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.NoOverlapTokenChunkerTests.TwoChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0099628"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsStreams(source: \"https://raw.githubusercontent.com/microsoft/markit\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0962368"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.NoOverlapTokenChunkerTests.ManyChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0269404"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.DoesSupportIncrementalIngestion",
+      "outcome": "Passed",
+      "duration": "00:00:00.4477750"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.NoOverlapTokenChunkerTests.SingleChunkText",
+      "outcome": "Passed",
+      "duration": "00:00:00.0031834"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.CanWriteChunksWithCustomDefinition",
+      "outcome": "Passed",
+      "duration": "00:00:00.1573603"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SectionChunkerTests.ProcessAsync_ThrowsArgumentNullException_WhenDocumentIsNull",
+      "outcome": "Passed",
+      "duration": "00:00:01.8187061"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SemanticSimilarityChunkerTests.SingleParagraph",
+      "outcome": "Passed",
+      "duration": "00:00:01.6766610"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SemanticSimilarityChunkerTests.EmptyDocument",
+      "outcome": "Passed",
+      "duration": "00:00:00.0016060"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.SingleFailureDoesNotTearDownEntirePipeline",
+      "outcome": "Passed",
+      "duration": "00:00:00.7412098"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.CanWriteChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0151902"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SectionChunkerTests.SizeLimit_TwoChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0189823"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SectionChunkerTests.EmptyDocument",
+      "outcome": "Passed",
+      "duration": "00:00:00.0005258"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.OverlapTokenChunkerTests.SingleChunkText",
+      "outcome": "Passed",
+      "duration": "00:00:01.8420948"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SectionChunkerTests.EmptySection",
+      "outcome": "Passed",
+      "duration": "00:00:00.0028599"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.OverlapTokenChunkerTests.EmptyDocument",
+      "outcome": "Passed",
+      "duration": "00:00:00.0007748"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.OverlapTokenChunkerTests.ProcessAsync_ThrowsArgumentNullException_WhenDocumentIsNull",
+      "outcome": "Passed",
+      "duration": "00:00:00.0006153"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionDocumentTests.ChunkingFlattensTheStructureAndPreservesOrder",
+      "outcome": "Passed",
+      "duration": "00:00:01.8460658"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SectionChunkerTests.NestedSections",
+      "outcome": "Passed",
+      "duration": "00:00:00.0055579"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.OverlapTokenChunkerTests.TokenChunking_WithOverlap",
+      "outcome": "Passed",
+      "duration": "00:00:00.0062055"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SectionChunkerTests.OneSection",
+      "outcome": "Passed",
+      "duration": "00:00:00.0040676"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SemanticSimilarityChunkerTests.TwoTopicsParagraphs",
+      "outcome": "Passed",
+      "duration": "00:00:00.0227631"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SemanticSimilarityChunkerTests.ProcessAsync_ThrowsArgumentNullException_WhenDocumentIsNull",
+      "outcome": "Passed",
+      "duration": "00:00:00.0010584"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SectionChunkerTests.TwoSections",
+      "outcome": "Passed",
+      "duration": "00:00:00.0043749"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsFiles(source: \"https://raw.githubusercontent.com/microsoft/markit\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:00.2169444"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SectionChunkerTests.SectionWithHeader",
+      "outcome": "Passed",
+      "duration": "00:00:00.0032498"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Chunkers.Tests.SemanticSimilarityChunkerTests.TwoSeparateTopicsWithAllKindsOfElements",
+      "outcome": "Passed",
+      "duration": "00:00:00.0094427"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.BuiltInChunkersRetainContributingSourceElements(kind: 3)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0351110"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.BuiltInChunkersRetainContributingSourceElements(kind: 2)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0114878"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.IncrementalIngestion_WithManyRecords_DeletesAllPreExistingChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.0473075"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.BuiltInChunkersRetainContributingSourceElements(kind: 0)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0080571"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.BuiltInChunkersRetainContributingSourceElements(kind: 1)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0085820"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.CanWriteChunksWithMetadata",
+      "outcome": "Passed",
+      "duration": "00:00:00.0164167"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.InMemoryVectorStoreWriterTests.ThrowsWhenChunksFromMultipleDocuments",
+      "outcome": "Passed",
+      "duration": "00:00:00.0066089"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsFiles(source: \"https://raw.githubusercontent.com/microsoft/markit\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0589276"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsTablesWithoutTrailingPipes",
+      "outcome": "Passed",
+      "duration": "00:00:00.0046772"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.ThrowsIfCancellationRequestedFile",
+      "outcome": "Passed",
+      "duration": "00:00:00.0082122"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsMultipleInlineHtmlElements",
+      "outcome": "Passed",
+      "duration": "00:00:00.0106126"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.ExtractionReaderTransfersDocumentArtifactsAndBorrowsClientAndStream",
+      "outcome": "Passed",
+      "duration": "00:00:00.0489916"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.ThrowsWhenIdentifierIsNotProvided",
+      "outcome": "Passed",
+      "duration": "00:00:00.0063773"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsTables",
+      "outcome": "Passed",
+      "duration": "00:00:00.0050799"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.AbandonedOwnedReplacementsAreDisposedOnFailureOrCancellation(cancel: False)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0107807"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsTablesWithImages",
+      "outcome": "Passed",
+      "duration": "00:00:00.0024774"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.ThrowsIfCancellationRequestedStream",
+      "outcome": "Passed",
+      "duration": "00:00:00.0029401"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.AbandonedOwnedReplacementsAreDisposedOnFailureOrCancellation(cancel: True)",
+      "outcome": "Passed",
+      "duration": "00:00:00.0078072"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsInlineHtml",
+      "outcome": "Passed",
+      "duration": "00:00:00.0040324"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkdownReaderTests.SupportsImagesWithUrl",
+      "outcome": "Passed",
+      "duration": "00:00:00.0026735"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.BorrowedInputAndReturnedReplacementRemainUsable",
+      "outcome": "Passed",
+      "duration": "00:00:00.0067357"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.CanProcessDocumentsInDirectory",
+      "outcome": "Passed",
+      "duration": "00:00:00.0376333"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.ReturningBorrowedInputAfterReplacementDoesNotTransferOwnership",
+      "outcome": "Passed",
+      "duration": "00:00:00.0069006"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.CanProcessDocuments",
+      "outcome": "Passed",
+      "duration": "00:00:00.0304134"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.FileCancellationPropagatesAndCleansOwnedDocument",
+      "outcome": "Passed",
+      "duration": "00:00:00.0080336"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.PipelineWorksWithEmbeddingGenerator",
+      "outcome": "Passed",
+      "duration": "00:00:00.0260502"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.DoesSupportIncrementalIngestion",
+      "outcome": "Passed",
+      "duration": "00:00:02.0930169"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.ChunksCanBeMoreThanJustText",
+      "outcome": "Passed",
+      "duration": "00:00:00.0262182"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.ChunkerCanProduceMultipleContentTypes",
+      "outcome": "Passed",
+      "duration": "00:00:00.0154932"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Tests.IngestionPipelineTests.CanProcessDocumentWithoutReader",
+      "outcome": "Passed",
+      "duration": "00:00:00.0518121"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.CanWriteChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.1279222"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.BatchesChunks(batchTokenCount: 100, chunkTokenCounts: [200, 10])",
+      "outcome": "Passed",
+      "duration": "00:00:00.1179005"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.BatchesChunks(batchTokenCount: 100, chunkTokenCounts: [60, 60, 60, 60])",
+      "outcome": "Passed",
+      "duration": "00:00:00.1931836"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.BatchesChunks(batchTokenCount: 1, chunkTokenCounts: [10, 10, 10])",
+      "outcome": "Passed",
+      "duration": "00:00:00.1367484"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.BatchesChunks(batchTokenCount: null, chunkTokenCounts: [1000, 1000, 1000])",
+      "outcome": "Passed",
+      "duration": "00:00:00.0752698"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.PipelinePersistsSourceIdentitiesAcrossRepeatIngestionAndReopen",
+      "outcome": "Passed",
+      "duration": "00:00:00.1747112"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.IncrementalIngestion_WithManyRecords_DeletesAllPreExistingChunks",
+      "outcome": "Passed",
+      "duration": "00:00:00.9036318"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.ThrowsWhenChunksFromMultipleDocuments",
+      "outcome": "Passed",
+      "duration": "00:00:00.0390614"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.CanWriteChunksWithMetadata",
+      "outcome": "Passed",
+      "duration": "00:00:00.0597488"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Writers.Tests.SqliteVectorStoreWriterTests.CanWriteChunksWithCustomDefinition",
+      "outcome": "Passed",
+      "duration": "00:00:00.0769118"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.SupportsStreams(source: \"https://winprotocoldocs-bhdugrdyduf5h2e4.b02.azure\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:09.9574944"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.SupportsStreams(source: \"https://www.bondcap.com/report/pdf/Trends_Artifici\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:22.1440367"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.SupportsStreams(source: \"https://winprotocoldocs-bhdugrdyduf5h2e4.b02.azure\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:25.4329020"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.SupportsTables",
+      "outcome": "Passed",
+      "duration": "00:00:12.8106707"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.SupportsFiles(source: \"https://winprotocoldocs-bhdugrdyduf5h2e4.b02.azure\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:15.1374821"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.SupportsFiles(source: \"https://www.bondcap.com/report/pdf/Trends_Artifici\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:23.9301299"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.SupportsFiles(source: \"https://winprotocoldocs-bhdugrdyduf5h2e4.b02.azure\"\u00b7\u00b7\u00b7)",
+      "outcome": "Passed",
+      "duration": "00:00:05.5879116"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.ThrowsIfCancellationRequestedStream",
+      "outcome": "Passed",
+      "duration": "00:00:00.0019189"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.ThrowsIfCancellationRequestedFile",
+      "outcome": "Passed",
+      "duration": "00:00:00.0172181"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.ThrowsWhenIdentifierIsNotProvided",
+      "outcome": "Passed",
+      "duration": "00:00:00.0004816"
+    },
+    {
+      "name": "Microsoft.Extensions.DataIngestion.Readers.Tests.MarkItDownReaderTests.SupportsImages",
+      "outcome": "Passed",
+      "duration": "00:00:03.8740050"
+    }
+  ],
+  "sanitization": "Only test names, outcomes, durations and counters exported; users, machines, paths, output and error bodies excluded."
+}

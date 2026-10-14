@@ -3,6 +3,7 @@
 @inject IChatClient ChatClient
 @inject NavigationManager Nav
 @inject SemanticSearch Search
+@inject CitationRegistry Citations
 @implements IDisposable
 
 <PageTitle>Chat</PageTitle>
@@ -34,9 +35,10 @@
         Use the Search tool to find relevant information. When you do this, end your
         reply with citations in the special XML format:
 
-        <citation filename='string'>exact quote here</citation>
+        <citation id='the exact citation id from the result'>exact quote here</citation>
 
-        Always include the citation in your response if there are results.
+        Cite only retrieved results that support your answer. Never invent a citation id,
+        filename or page number. If the results do not support an answer, say so.
 
         The quote must be max 5 words, taken word-for-word from the search result, and is the basis for why the citation is relevant.
         Don't refer to the presence of citations; just emit these tags right at the end, with no surrounding text.
@@ -103,6 +105,7 @@
     private async Task ResetConversationAsync()
     {
         CancelAnyCurrentResponse();
+        Citations.Clear();
         messages.Clear();
         messages.Add(new(ChatRole.System, SystemPrompt));
         chatOptions.ConversationId = null;
@@ -125,8 +128,10 @@
     {
         await InvokeAsync(StateHasChanged);
         var results = await Search.SearchAsync(searchPhrase, filenameFilter, maxResults: 5);
+        Citations.Register(results);
         return results.Select(result =>
-            $"<result filename=\"{result.DocumentId}\">{result.Content}</result>");
+            $"<result id=\"{result.CitationId}\" filename=\"{System.Security.SecurityElement.Escape(result.DocumentId)}\">" +
+            $"{System.Security.SecurityElement.Escape((result.Content as TextContent)?.Text ?? "")}</result>");
     }
 
     public void Dispose()

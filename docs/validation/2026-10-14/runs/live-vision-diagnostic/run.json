@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "mode": "live",
+  "layout": "native",
+  "layoutModelSha256": null,
+  "candidateVersion": "10.10.0-dev.e2e.cf60fa88.1",
+  "sourceSha256": "BF537FDE5A45391EF5DED52858456FB92E5C9405CFA17D2C8B1C86CAF98E2F7F",
+  "results": [
+    {
+      "provider": "vision",
+      "status": "passed",
+      "mode": "live",
+      "layout": "provider-native",
+      "loadedAssemblies": [
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1",
+        "10.10.0-dev.e2e.cf60fa88.1"
+      ],
+      "pages": 3,
+      "retrievedRecords": 3,
+      "citations": 1,
+      "realMediPipeline": true,
+      "realPersistedVectorStore": true,
+      "reopened": true,
+      "reingestion": true,
+      "borrowedDocumentUsable": true,
+      "inputKind": "synthetic public fixture",
+      "onnxInference": false,
+      "layoutGeometryMinimumIoU": null,
+      "layoutGeometryMeasuredIoU": null
+    }
+  ],
+  "claims": {
+    "liveAi": true,
+    "allFiveProviders": false,
+    "onnxInference": false,
+    "releaseReady": false
+  }
+}

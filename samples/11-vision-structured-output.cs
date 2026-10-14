@@ -1,4 +1,6 @@
 #:project ocr-shape/OcrShape.csproj
+#:package Azure.AI.OpenAI@2.5.0-beta.1
+#:package Microsoft.Extensions.AI.OpenAI@[10.10.0-dev.e2e.cf60fa88.1]
 #pragma warning disable MEAI001, MEDE0001, MEAI002, MEAI003
 // 11-vision-structured-output.cs — two structured-output patterns on a vision-LLM IDocumentExtractionClient.
 //
@@ -31,10 +33,10 @@ string pdf = args.Length > 0 ? args[0] : "data/usgs-petroleum-assessment.pdf";
 string mediaType = pdf.EndsWith(".pdf") ? "application/pdf"
     : pdf.EndsWith(".jpg") || pdf.EndsWith(".jpeg") ? "image/jpeg" : "image/png";
 
-IChatClient freeformChat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
+using IChatClient freeformChat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
     .GetChatClient(deployment)
     .AsIChatClient();
-IChatClient structuredChat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
+using IChatClient structuredChat = new AzureOpenAIClient(new Uri(endpoint), new Azure.Identity.DefaultAzureCredential())
     .GetChatClient(deployment)
     .AsIChatClient();
 
@@ -97,7 +99,7 @@ return 0;
 static async Task<DocumentExtractionResult> OcrOnce(IDocumentExtractionClient ocr, string path, string mediaType)
 {
     await using FileStream doc = File.OpenRead(path);
-    return await ocr.ExtractAsync(doc, mediaType);
+    return await ocr.ExtractAsync(doc, Path.GetFileName(path), mediaType);
 }
 
 static string Require(string name) =>

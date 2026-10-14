@@ -1,6 +1,7 @@
 @using System.Runtime.CompilerServices
 @using System.Text.RegularExpressions
 @using System.Linq
+@inject CitationRegistry CitationRegistry
 
 @if (Message.Role == ChatRole.User)
 {
@@ -24,11 +25,13 @@ else if (Message.Role == ChatRole.Assistant)
                 </div>
                 <div class="assistant-message-header">Assistant</div>
                 <div class="assistant-message-text">
-                    <assistant-message markdown="@text"></assistant-message>
+                    <assistant-message markdown="@CitationRegex.Replace(text, "")"></assistant-message>
 
                     @foreach (var citation in citations ?? [])
                     {
-                        <ChatCitation File="@citation.File" Quote="@citation.Quote" />
+                        <ChatCitation File="@citation.Evidence.DocumentId" Quote="@citation.Quote"
+                            Pages="@citation.Evidence.Pages.Select(p => p.PageNumber).Distinct().Order().ToArray()"
+                            RecordKey="@citation.Evidence.RecordKey" />
                     }
                 </div>
             </div>
@@ -69,9 +72,9 @@ else if (Message.Role == ChatRole.Assistant)
 
 @code {
     private static readonly ConditionalWeakTable<ChatMessage, ChatMessageItem> SubscribersLookup = new();
-    private static readonly Regex CitationRegex = new(@"<citation filename='(?<file>[^']*)'>(?<quote>.*?)</citation>", RegexOptions.NonBacktracking);
+    private static readonly Regex CitationRegex = new(@"<citation id='(?<id>[a-f0-9]{64})'>(?<quote>.*?)</citation>", RegexOptions.NonBacktracking | RegexOptions.Singleline);
 
-    private List<(string File, string Quote)>? citations;
+    private List<(CitationEvidence Evidence, string Quote)>? citations;
 
     [Parameter, EditorRequired]
     public required ChatMessage Message { get; set; }
@@ -93,15 +96,21 @@ else if (Message.Role == ChatRole.Assistant)
     {
         if (SubscribersLookup.TryGetValue(source, out var subscriber))
         {
+            subscriber.ParseCitations(source.Text ?? "");
             subscriber.StateHasChanged();
         }
     }
 
     private void ParseCitations(string text)
     {
-        var matches = CitationRegex.Matches(text);
-        citations = matches.Any()
-            ? matches.Select(m => (m.Groups["file"].Value, m.Groups["quote"].Value)).ToList()
-            : null;
+        citations = [];
+        foreach (Match match in CitationRegex.Matches(text))
+        {
+            string quote = match.Groups["quote"].Value;
+            if (CitationRegistry.TryResolve(match.Groups["id"].Value, quote, out CitationEvidence? evidence) && evidence is not null)
+            {
+                citations.Add((evidence, quote));
+            }
+        }
     }
 }

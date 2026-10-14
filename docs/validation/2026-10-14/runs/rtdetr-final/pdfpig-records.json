@@ -1,0 +1,196 @@
+[
+  {
+    "key": "B642DC22-C66E-4A88-BD0D-9B763F04A178",
+    "citationId": "b047691559e96046883388c7dc1931b4d0773a3e0d4fba87b6f4875141b1c7e6",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "8c8130b1e85cbfe7267b627de569cc82b43ac03a7202b999207341e8dc4c53da",
+    "serializedContent": {
+      "$type": "text",
+      "text": "The validation code is ORBIT-742."
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:pdfpig:page:1",
+        "PageNumber": 1,
+        "Width": 595,
+        "Height": 842,
+        "Unit": "Point",
+        "Origin": "BottomLeft"
+      }
+    ],
+    "sourceRegions": [
+      {
+        "PageIdentifier": "synthetic-source.pdf:pdfpig:page:1",
+        "Kind": "layout-detection",
+        "Role": "Text",
+        "Polygon": [
+          [
+            71.91421508789062,
+            720.1054077148438
+          ],
+          [
+            285.3639221191406,
+            720.1054077148438
+          ],
+          [
+            285.3639221191406,
+            734.1828689575195
+          ],
+          [
+            71.91421508789062,
+            734.1828689575195
+          ]
+        ],
+        "ConfidenceKind": "model",
+        "Confidence": 0.9064044952392578
+      },
+      {
+        "PageIdentifier": "synthetic-source.pdf:pdfpig:page:1",
+        "Kind": "native-text-block",
+        "Role": null,
+        "Polygon": [
+          [
+            72,
+            720
+          ],
+          [
+            285.97599999999994,
+            720
+          ],
+          [
+            285.97599999999994,
+            730.318
+          ],
+          [
+            72,
+            730.318
+          ]
+        ],
+        "ConfidenceKind": null,
+        "Confidence": null
+      },
+      {
+        "PageIdentifier": "synthetic-source.pdf:pdfpig:page:1",
+        "Kind": "layout-detection",
+        "Role": "Text",
+        "Polygon": [
+          [
+            71.91421508789062,
+            720.1054077148438
+          ],
+          [
+            285.3639221191406,
+            720.1054077148438
+          ],
+          [
+            285.3639221191406,
+            734.1828689575195
+          ],
+          [
+            71.91421508789062,
+            734.1828689575195
+          ]
+        ],
+        "ConfidenceKind": "model",
+        "Confidence": 0.9064044952392578
+      }
+    ]
+  },
+  {
+    "key": "12B87492-7882-463E-91EE-F5CD176A7F0E",
+    "citationId": "b78d5555ac5c7a81ac3cd7738c96068f70392f92625cae92030d7c6e6e38b6e6",
+    "documentId": "synthetic-source.pdf",
+    "sourceHash": "8c8130b1e85cbfe7267b627de569cc82b43ac03a7202b999207341e8dc4c53da",
+    "serializedContent": {
+      "$type": "text",
+      "text": "The backup code is MAPLE-915."
+    },
+    "sourcePages": [
+      {
+        "Identifier": "synthetic-source.pdf:pdfpig:page:2",
+        "PageNumber": 2,
+        "Width": 595,
+        "Height": 842,
+        "Unit": "Point",
+        "Origin": "BottomLeft"
+      }
+    ],
+    "sourceRegions": [
+      {
+        "PageIdentifier": "synthetic-source.pdf:pdfpig:page:2",
+        "Kind": "layout-detection",
+        "Role": "Text",
+        "Polygon": [
+          [
+            71.9038314819336,
+            720.1155548095703
+          ],
+          [
+            276.0746154785156,
+            720.1155548095703
+          ],
+          [
+            276.0746154785156,
+            734.3411407470703
+          ],
+          [
+            71.9038314819336,
+            734.3411407470703
+          ]
+        ],
+        "ConfidenceKind": "model",
+        "Confidence": 0.9062280058860779
+      },
+      {
+        "PageIdentifier": "synthetic-source.pdf:pdfpig:page:2",
+        "Kind": "native-text-block",
+        "Role": null,
+        "Polygon": [
+          [
+            72,
+            720
+          ],
+          [
+            276.65199999999993,
+            720
+          ],
+          [
+            276.65199999999993,
+            730.052
+          ],
+          [
+            72,
+            730.052
+          ]
+        ],
+        "ConfidenceKind": null,
+        "Confidence": null
+      },
+      {
+        "PageIdentifier": "synthetic-source.pdf:pdfpig:page:2",
+        "Kind": "layout-detection",
+        "Role": "Text",
+        "Polygon": [
+          [
+            71.9038314819336,
+            720.1155548095703
+          ],
+          [
+            276.0746154785156,
+            720.1155548095703
+          ],
+          [
+            276.0746154785156,
+            734.3411407470703
+          ],
+          [
+            71.9038314819336,
+            734.3411407470703
+          ]
+        ],
+        "ConfidenceKind": "model",
+        "Confidence": 0.9062280058860779
+      }
+    ]
+  }
+]
